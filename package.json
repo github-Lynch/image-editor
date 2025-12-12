@@ -7,7 +7,7 @@
     "dev": "vite --host --port 3332",
     "dev:port": "vite --host --port 3666",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",

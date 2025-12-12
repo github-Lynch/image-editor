@@ -5,25 +5,33 @@
       "name": "Vue.js: 调试 Chrome",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:3666",
-      "webRoot": "${workspaceFolder}/src",
+      "url": "http://localhost:3332", 
+      "webRoot": "${workspaceFolder}",
       "pathMapping": {
         "/_karma_webpack_": "${workspaceFolder}"
       },
       "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/*"
+        "webpack:///src/*": "${webRoot}/src/*"
       },
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ],
       "preLaunchTask": "npm: dev:port"
     },
     {
       "name": "Vue.js: 调试 Edge",
       "type": "msedge",
       "request": "launch",
-      "url": "http://localhost:3666",
-      "webRoot": "${workspaceFolder}/src",
+      "url": "http://localhost:3332",
+      "webRoot": "${workspaceFolder}",
       "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/*"
+        "webpack:///src/*": "${webRoot}/src/*"
       },
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ],
       "preLaunchTask": "npm: dev:port"
     },
     {
@@ -31,9 +39,13 @@
       "type": "node",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
-      "runtimeArgs": ["--experimental-modules"],
+      "runtimeArgs": [
+        "--experimental-modules"
+      ],
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "program": "${workspaceFolder}/src/main.js"
     }
   ]

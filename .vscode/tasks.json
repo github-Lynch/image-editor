@@ -3,19 +3,39 @@
   "tasks": [
     {
       "type": "npm",
-      "script": "dev:port",
-      "group": "build",
-      "problemMatcher": [],
+      "script": "dev", 
       "label": "npm: dev:port",
-      "detail": "运行开发服务器"
+      "detail": "启动开发服务器 (Vite)",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "server"
+      },
+      "problemMatcher": [
+        {
+          "owner": "custom",
+          "pattern": {
+            "regexp": "^$"
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "VITE v",
+            "endsPattern": "Local:"
+          }
+        }
+      ]
     },
     {
       "type": "npm",
       "script": "build",
-      "group": "build",
-      "problemMatcher": [],
       "label": "npm: build",
-      "detail": "构建项目"
+      "detail": "构建生产环境代码",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
     }
   ]
 }
