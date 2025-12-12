@@ -23,6 +23,7 @@ import Workspace from '../Workspace.vue';
 // === 核心修复：在这里初始化 Canvas 逻辑 ===
 const {
   init, 
+  initImage,
   addImage, 
   toggleDrawing, 
   exportMask, 
@@ -45,6 +46,7 @@ const {
 const api = {
   canvas, 
   init,
+  initImage,
   addImage,
   toggleDrawing,
   exportMask,

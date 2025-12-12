@@ -16,6 +16,8 @@
 import { onMounted, inject, ref } from 'vue';
 import { Plus, Minus } from '@element-plus/icons-vue';
 
+const DEFAULT_IMG_URL = 'src/assets/image/01.jpg';
+
 // === 核心修复：接收注入 ===
 const canvasAPI = inject('canvasAPI');
 const canvasContainer = ref(null);
@@ -27,6 +29,9 @@ onMounted(() => {
     const height = canvasContainer.value.clientHeight || 1000;
     // 传递容器元素给 canvasAPI.init
     canvasAPI.init('c', width, height);
+    setTimeout(() => {
+      canvasAPI.initImage(DEFAULT_IMG_URL);
+    }, 100);
   } else {
     console.error('CanvasAPI not found. Make sure EditorLayout provides it.');
   }

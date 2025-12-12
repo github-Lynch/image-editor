@@ -5,7 +5,7 @@
       "name": "Vue.js: 调试 Chrome",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:3000",
+      "url": "http://localhost:3666",
       "webRoot": "${workspaceFolder}/src",
       "pathMapping": {
         "/_karma_webpack_": "${workspaceFolder}"
@@ -19,7 +19,7 @@
       "name": "Vue.js: 调试 Edge",
       "type": "msedge",
       "request": "launch",
-      "url": "http://localhost:3000",
+      "url": "http://localhost:3666",
       "webRoot": "${workspaceFolder}/src",
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/*"

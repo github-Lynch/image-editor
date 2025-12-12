@@ -61,7 +61,7 @@ const onFileSelected = (e) => {
       return;
     }
     const url = URL.createObjectURL(file);
-    canvasAPI.addImage(url);
+    canvasAPI.initImage(url);
     // 清空 value，允许重复选择同一张图片
     e.target.value = '';
   }
