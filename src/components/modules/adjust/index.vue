@@ -1,9 +1,6 @@
 <template>
   <div class="panel-adjust">
-    <div class="panel-title">调整</div>
-    
     <div class="tool-list">
-      
       <AdjustCrop 
         :is-expanded="activeCollapse === 'crop'" 
         @toggle="toggle('crop')" 
@@ -70,11 +67,4 @@ const notImplemented = () => {
   box-sizing: border-box;
 }
 
-.panel-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 20px;
-  text-align: center;
-}
 </style>

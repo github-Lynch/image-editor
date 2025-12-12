@@ -43,13 +43,13 @@ export function useCanvas() {
   const updateStoreHistory = () => {
     store.setHistoryState(
       historyIndex > 0, // canUndo
-      historyIndex < history.length - 1 // canRedo
+      historyIndex > 0  // canRedo
     );
   };
 
   // === 2. 撤销 ===
   const undo = () => {
-    if (historyIndex <= 0) return; // 初始状态在 index 0，不能再退了
+    if (historyIndex <= 0 || historyProcessing) return;
 // [新增] 撤销时强制退出裁剪模式，防止 bug
     if (cropObject.value) {
         cancelCrop(); 
@@ -67,19 +67,19 @@ export function useCanvas() {
 
   // === 3. 重做 ===
   const redo = () => {
-    if (historyIndex >= history.length - 1) return;
+    if (historyIndex === 0 || historyProcessing) return;
     // [新增] 重做时也强制退出裁剪模式
     if (cropObject.value) {
         cancelCrop();
     }
     historyProcessing = true; // 加锁
-    historyIndex++;
+    historyIndex = 0; 
 
     const content = history[historyIndex];
     canvas.value.loadFromJSON(content, () => {
       canvas.value.renderAll();
       historyProcessing = false; // 解锁
-      updateStoreHistory();
+      updateStoreHistory(); // 更新按钮状态
     });
   };
 
