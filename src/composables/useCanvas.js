@@ -2,12 +2,13 @@ import { ref, shallowRef, markRaw, toRaw } from "vue";
 import { fabric } from "fabric";
 import { useEditorState } from "./useEditorState";
 let aspectRatioValue = null;
+
 export function useCanvas() {
   // 使用 shallowRef 避免 Vue 深度代理导致 Fabric 对象移除失败
   const canvas = shallowRef(null);
   const cropObject = shallowRef(null);
   const { setHistoryState } = useEditorState(); // 获取 store 实例
-
+  const zoom = ref(1);
   // === 历史记录状态 ===
   const history = []; // 存放 JSON 字符串
   let historyIndex = -1; // 当前历史记录指针
@@ -151,7 +152,28 @@ export function useCanvas() {
     c.on("object:moving", (e) => constrainCrop(e.target));
     c.on("object:scaling", (e) => constrainCrop(e.target));
 
-    // === 绑定历史记录事件 ===
+    // [新增] 绑定鼠标滚轮缩放事件
+    c.on('mouse:wheel', function (opt) {
+      const delta = opt.e.deltaY;
+      let newZoom = c.getZoom();
+
+      // 计算新缩放比例 (0.999 ** delta 是为了平滑缩放)
+      newZoom *= 0.999 ** delta;
+
+      // 限制缩放范围 (10% ~ 500%)
+      if (newZoom > 5) newZoom = 5;
+      if (newZoom < 0.1) newZoom = 0.1;
+
+      // 以鼠标指针为中心进行缩放
+      c.zoomToPoint({ x: opt.e.offsetX, y: opt.e.offsetY }, newZoom);
+
+      // 更新响应式状态
+      zoom.value = newZoom;
+
+      // [关键] 阻止默认的页面滚动行为
+      opt.e.preventDefault();
+      opt.e.stopPropagation();
+    });
     // 监听对象的修改、添加、移除
     c.on("object:modified", (e) => {
       if (e.target && e.target.type !== "rect") saveHistory();
@@ -186,6 +208,7 @@ export function useCanvas() {
         const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * 0.8;
         img.scale(scale);
       }
+      zoom.value = canvas.value.getZoom();
       historyProcessing = true;
       canvas.value?.add(img);
       canvas.value?.centerObject(img);
@@ -194,6 +217,24 @@ export function useCanvas() {
       saveHistory();
     }, { crossOrigin: 'anonymous' });
   };
+
+  // [新增] 手动缩放控制 API
+  const setZoom = (value) => {
+    if (!canvas.value) return;
+    let newZoom = value;
+    if (newZoom > 5) newZoom = 5;
+    if (newZoom < 0.1) newZoom = 0.1;
+
+    // 以画布中心为基准缩放
+    const center = canvas.value.getCenter();
+    canvas.value.zoomToPoint({ x: center.left, y: center.top }, newZoom);
+
+    zoom.value = newZoom;
+  };
+
+  const zoomIn = () => setZoom(zoom.value + 0.1);
+  const zoomOut = () => setZoom(zoom.value - 0.1);
+  const zoomReset = () => setZoom(1);
 
   const initImage = (url) => {
     if (!canvas.value) return;
@@ -459,6 +500,11 @@ export function useCanvas() {
 
   return {
     canvas,
+    zoom,
+    zoomIn,
+    zoomOut,
+    zoomReset,
+    setZoom,
     init,
     initImage,
     addImage,

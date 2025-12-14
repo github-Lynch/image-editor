@@ -5,15 +5,17 @@
     </div>
 
     <div class="zoom-controls">
-      <button class="ie-btn ie-btn-circle" title="缩小">
+      <button class="ie-btn ie-btn-circle" title="缩小" @click="handleZoomOut">
         <svg viewBox="0 0 1024 1024" width="16" height="16">
           <path d="M128 544h768a32 32 0 1 0 0-64H128a32 32 0 1 0 0 64z" fill="currentColor" />
         </svg>
       </button>
 
-      <span class="zoom-text">100%</span>
+      <span class="zoom-text" @click="handleReset" title="点击重置为100%">
+        {{ zoomPercentage }}%
+      </span>
 
-      <button class="ie-btn ie-btn-circle" title="放大">
+      <button class="ie-btn ie-btn-circle" title="放大" @click="handleZoomIn">
         <svg viewBox="0 0 1024 1024" width="16" height="16">
           <path
             d="M480 480H160a32 32 0 0 0 0 64h320v320a32 32 0 0 0 64 0V544h320a32 32 0 0 0 0-64H544V160a32 32 0 0 0-64 0v320z"
@@ -25,23 +27,35 @@
 </template>
 
 <script setup>
-import { onMounted, inject, ref } from 'vue';
+import { onMounted, inject, ref, computed } from 'vue';
 
+// 默认图片路径 (注意：发包后如果是纯组件使用，建议改为 Props 传入或由外部控制)
 const DEFAULT_IMG_URL = 'src/assets/image/01.jpg';
 
 const canvasAPI = inject('canvasAPI');
 const canvasContainer = ref(null);
 
+// 计算属性：显示百分比
+const zoomPercentage = computed(() => {
+  // 确保 zoom 存在，否则默认为 1 (100%)
+  return canvasAPI?.zoom?.value ? Math.round(canvasAPI.zoom.value * 100) : 100;
+});
+
+// 操作处理
+const handleZoomIn = () => canvasAPI?.zoomIn && canvasAPI.zoomIn();
+const handleZoomOut = () => canvasAPI?.zoomOut && canvasAPI.zoomOut();
+const handleReset = () => canvasAPI?.zoomReset && canvasAPI.zoomReset();
+
 onMounted(() => {
-  // 等 DOM 渲染好 <canvas id="c"> 后，通知父组件初始化 Fabric
   if (canvasAPI && canvasAPI.init) {
     const width = canvasContainer.value.clientWidth || 1900;
     const height = canvasContainer.value.clientHeight || 1000;
-    // 传递容器元素给 canvasAPI.init
+
+    // 初始化画布
     canvasAPI.init('c', width, height);
+
+    // 延迟加载默认图片
     setTimeout(() => {
-      // 注意：如果打包后没有 public/src 目录，这个默认图片可能需要调整加载方式
-      // 建议改为传入 base64 或外部 URL，或者在组件外部控制初始图片
       canvasAPI.initImage(DEFAULT_IMG_URL);
     }, 100);
   } else {
@@ -60,13 +74,12 @@ onMounted(() => {
   position: relative;
   background-color: #f0f2f5;
   overflow: hidden;
-  /* 防止画布溢出 */
+  /* 防止画布放大时撑破容器 */
 }
 
 .canvas-center {
   /* 给画布一个阴影，让它看起来像一张纸 */
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  /* 这里的宽高可能需要根据 fabric 实际大小自适应，或者作为容器限制 */
   width: 90%;
   height: 90%;
   display: flex;
@@ -95,6 +108,12 @@ onMounted(() => {
   text-align: center;
   user-select: none;
   font-variant-numeric: tabular-nums;
-  /* 数字等宽，防止抖动 */
+  /* 防止数字变化时宽度抖动 */
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.zoom-text:hover {
+  color: #409eff;
 }
 </style>
