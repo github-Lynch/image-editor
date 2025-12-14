@@ -51,21 +51,11 @@ const onFileSelected = (e) => {
 };
 
 const handleSave = () => {
-  if (!canvasAPI) return;
 
-  // 1. 取消选中状态，防止把选中框（蓝色边框）也截进去
-  canvasAPI.canvas.value?.discardActiveObject();
-  canvasAPI.canvas.value?.renderAll();
-
-  // 2. 导出图片 (如果不希望有背景色，可以用 { format: 'png', multiplier: 2 } 来提高分辨率)
-  const dataURL = canvasAPI.exportImg();
-
-  if (dataURL) {
-    // 3. 触发下载
-    saveAs(dataURL, `edited-image-${Date.now()}.png`);
-    Toast.success('图片导出成功');
+  if (canvasAPI && canvasAPI.save) {
+    canvasAPI.save(); // 调用 EditorLayout 中定义的 handleExport
   } else {
-    Toast.warning('画布为空');
+    Toast.error('导出功能未实现');
   }
 };
 

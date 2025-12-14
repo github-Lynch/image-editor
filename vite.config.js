@@ -15,7 +15,7 @@ export default defineConfig({
       // 指定入口为 index.js
       entry: resolve(__dirname, 'src/index.js'),
       name: 'ImageEditor',
-      fileName: (format) => `image-editor.${format}.js`
+      fileName: 'image-editor'
     },
     rollupOptions: {
       // 关键：确保外部化处理那些你不想打包进库的依赖
@@ -26,6 +26,11 @@ export default defineConfig({
         // 在 UMD 构建模式下为这些外部化的依赖提供一个全局变量
         globals: {
           vue: 'Vue'
+        },
+        // 建议导出 CSS 文件名固定
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name === 'style.css') return 'index.css';
+          return assetInfo.name;
         },
         exports: 'named'
       }

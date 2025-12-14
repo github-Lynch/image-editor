@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-container">
+  <div class="image-editor-sdk-container">
     <NavBar class="layout-header" />
 
     <div class="layout-body">
@@ -7,20 +7,42 @@
 
       <ToolPanel class="layout-panel" />
 
-      <Workspace class="layout-workspace" />
+      <Workspace :imageUrl="imageUrl" class="layout-workspace" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { provide } from 'vue';
+import { provide, watch, defineProps, defineEmits } from 'vue';
 import { useCanvas } from '../../composables/useCanvas';
 import NavBar from './NavBar.vue';
 import LeftSidebar from './LeftSidebar.vue';
 import ToolPanel from '../panels/ToolPanel.vue';
 import Workspace from '../Workspace.vue';
 
-// === 核心修复：在这里初始化 Canvas 逻辑 ===
+// === 1. 定义组件接口 (Props & Emits) ===
+const props = defineProps({
+  // 初始图片链接
+  imageUrl: {
+    type: String,
+    default: ''
+  },
+  // 全局配置（如 AI 后端地址）
+  config: {
+    type: Object,
+    default: () => ({
+      aiBaseUrl: 'http://localhost:3000/ai', // 默认值
+    })
+  }
+});
+
+const emit = defineEmits(['save']); // 定义保存事件
+
+// === 2. Provide 配置给子组件 ===
+// 这样 AdjustRembg.vue 等组件可以通过 inject('editorConfig') 获取配置
+provide('editorConfig', props.config);
+
+// === 3. 初始化 Canvas 逻辑 ===
 const {
   init,
   initImage,
@@ -45,11 +67,42 @@ const {
   saveHistory
 } = useCanvas();
 
-// 组装 API 对象
-// 2. 组装 API 对象
+// === 4. 监听图片变化 ===
+watch(() => props.imageUrl, (newUrl) => {
+  if (newUrl && canvas.value) {
+    initImage(newUrl);
+  }
+});
+
+// 封装初始化方法，以便在 Canvas 准备好后加载初始图片
+const handleInit = (id, width, height) => {
+  init(id, width, height); // 调用原始 init
+
+  // 如果有传入图片，延迟加载
+  if (props.imageUrl) {
+    setTimeout(() => {
+      initImage(props.imageUrl);
+    }, 100);
+  }
+};
+
+// 保存图片
+const handleExport = () => {
+  // 1. 取消选中状态
+  canvas.value?.discardActiveObject();
+  canvas.value?.renderAll();
+
+  // 2. 获取 Base64
+  const dataURL = canvas.value?.toDataURL({ format: 'png' });
+
+  // 3. 抛出事件给父组件
+  emit('save', dataURL);
+};
+
+// === 5. 组装 API 对象 ===
 const api = {
   canvas,
-  init,
+  init: handleInit, // 使用封装后的 init
   zoom,
   zoomIn,
   zoomOut,
@@ -74,38 +127,45 @@ const api = {
   clearPaths: () => {
     const paths = canvas.value?.getObjects().filter(o => o.type === 'path');
     canvas.value?.remove(...paths);
-  }
+  },
+  // 暴露保存方法供 NavBar 调用
+  save: handleExport
 };
 
 // === 向下分发 ===
-// 这样 ToolPanel 和 Workspace 都能接收到了
 provide('canvasAPI', api);
 </script>
 
 <style scoped>
-.layout-container {
+/* 修改类名，避免过于通用的 layout-container */
+.image-editor-sdk-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  /* 改为 100% 以适应父容器，而不是强制全屏 */
+  height: 100%;
+  width: 100%;
   overflow: hidden;
+  background-color: #fff;
+  position: relative;
 }
 
 .layout-header {
   height: 50px;
   flex-shrink: 0;
   z-index: 20;
+  border-bottom: 1px solid #e4e7ed;
+  /* 确保有边界 */
 }
 
 .layout-body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .layout-sidebar {
   width: 72px;
-  /* 稍微宽一点适配图标 */
   flex-shrink: 0;
   z-index: 10;
 }
@@ -121,6 +181,5 @@ provide('canvasAPI', api);
   background-color: #f0f2f5;
   position: relative;
   min-width: 0;
-  /* 防止 flex 子元素溢出 */
 }
 </style>

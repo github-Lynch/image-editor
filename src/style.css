@@ -1,264 +1,249 @@
-@import './reset.css';
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+/* 1. 移除全局的 @import './reset.css'; 防止污染宿主环境 */
+/* @import './reset.css'; */
+
+/* 2. 将原先 :root 里的变量移到容器内，变成局部变量 */
+.image-editor-sdk-container {
+  /* 定义局部变量 */
+  --ie-font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --ie-bg-color: #242424;
+  --ie-text-color: rgba(255, 255, 255, 0.87);
+  --ie-primary-color: #409eff;
+  --ie-border-color: #dcdfe6;
+
+  /* === 核心重置 (替代 reset.css) === */
+  /* 强制在这个容器内使用 border-box，不依赖宿主环境 */
+  box-sizing: border-box;
+  font-family: var(--ie-font-family);
   line-height: 1.5;
   font-weight: 400;
-
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: var(--ie-text-color);
+  background-color: var(--ie-bg-color);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
+  text-align: left; /* 覆盖可能居中的 body 样式 */
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
+  /* 确保容器内的所有元素继承 box-sizing */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-  outline: none;
-}
-button:hover {
-  border-color: #646cff;
-}
-
-
-/* 2. 输入框 */
-.ie-input {
-  height: 32px;
-  line-height: 32px;
-  padding: 0 8px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  color: #606266;
-  background-color: #ffffff; /* [核心修复] 显式设置为白色背景 */
-  width: 100%;
-  box-sizing: border-box;
-  /* 修复数字输入框在某些浏览器下的默认样式 */
-  appearance: textfield; 
-}
-
-/* === 修复数字输入框样式 === */
-
-/* 1. 隐藏 Chrome, Safari, Edge, Opera 的原生旋转按钮 */
-.ie-input::-webkit-outer-spin-button,
-.ie-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* 2. 隐藏 Firefox 的原生旋转按钮 */
-.ie-input[type=number] {
-  -moz-appearance: textfield;
-}
-
-.ie-input:focus { 
-  border-color: #409eff; 
-  outline: none; 
-}
-
-.card {
-  padding: 2em;
-}
-
-#app {
-  width: 100%;
-  margin: 0 auto;
-  text-align: center;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+  /* === 链接样式 (Scope 化) === */
+  a {
+    font-weight: 500;
+    color: #646cff;
+    text-decoration: inherit;
   }
   a:hover {
-    color: #747bff;
+    color: #535bf2;
   }
+
+  /* === 标题样式 === */
+  h1 {
+    font-size: 3.2em;
+    line-height: 1.1;
+    margin: 0; /* 移除默认边距 */
+  }
+
+  /* === 按钮样式 (Scope 化，只影响编辑器内的 button) === */
   button {
-    background-color: #f9f9f9;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 0.6em 1.2em;
+    font-size: 1em;
+    font-weight: 500;
+    font-family: inherit;
+    background-color: #1a1a1a;
+    cursor: pointer;
+    transition: border-color 0.25s;
+    outline: none;
+    margin: 0; /* 移除默认边距 */
+  }
+  button:hover {
+    border-color: #646cff;
+  }
+  
+  /* 针对亮色模式的适配 (如果宿主是亮色) */
+  @media (prefers-color-scheme: light) {
+    --ie-text-color: #213547;
+    --ie-bg-color: #ffffff;
+    
+    a:hover {
+      color: #747bff;
+    }
+    button {
+      background-color: #f9f9f9;
+    }
+  }
+
+  /* === IE UI Kit (组件库样式) === */
+
+  /* 1. 按钮增强 */
+  .ie-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: 28px;
+    padding: 0 12px;
+    font-size: 13px;
+    border-radius: 4px;
+    border: 1px solid var(--ie-border-color);
+    background-color: #fff;
+    color: #606266;
+    cursor: pointer;
+    transition: .2s;
+    outline: none;
+  }
+  .ie-btn:hover { color: var(--ie-primary-color); border-color: #c6e2ff; background-color: #ecf5ff; }
+  .ie-btn:disabled { color: #c0c4cc; cursor: not-allowed; background-color: #fff; border-color: #ebeef5; }
+  .ie-btn.ie-primary { color: #fff; background-color: var(--ie-primary-color); border-color: var(--ie-primary-color); }
+  .ie-btn.ie-primary:hover { background-color: #66b1ff; border-color: #66b1ff; }
+  .ie-btn-circle { width: 32px; padding: 0; border-radius: 50%; }
+
+  /* 2. 输入框 */
+  .ie-input {
+    height: 32px;
+    line-height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--ie-border-color);
+    border-radius: 4px;
+    color: #606266;
+    background-color: #ffffff;
+    width: 100%;
+    box-sizing: border-box;
+    appearance: textfield; 
+    font-size: 13px; /* 统一字体 */
+  }
+
+  /* 隐藏原生旋转按钮 */
+  .ie-input::-webkit-outer-spin-button,
+  .ie-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  /* Firefox */
+  .ie-input[type=number] {
+    -moz-appearance: textfield;
+  }
+
+  .ie-input:focus { 
+    border-color: var(--ie-primary-color); 
+    outline: none; 
+  }
+
+  /* 3. 分割线 */
+  .ie-divider { 
+    width: 1px; 
+    height: 1em; 
+    margin: 0 8px; 
+    background: var(--ie-border-color); 
+    display: inline-block; 
+    vertical-align: middle; 
+  }
+
+  /* === 工具栏布局样式 === */
+  
+  .tool-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .tool-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tool-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    height: 50px;
+    background-color: #f5f7fa;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #333;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .tool-item:hover {
+    background-color: #e6e8eb;
+    transform: translateY(-1px);
+  }
+
+  .tool-item.is-expanded {
+    background-color: #ecf5ff;
+    color: var(--ie-primary-color);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .tool-item .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .tool-item .right-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+  }
+
+  .tool-item .arrow {
+    font-size: 14px;
+    color: #909399;
+    transition: transform 0.3s;
+  }
+
+  .tool-item.is-expanded .arrow {
+    transform: rotate(90deg);
+    color: var(--ie-primary-color);
+  }
+
+  .tool-content {
+    background-color: #fff;
+    padding: 16px;
+    border: 1px solid #eee;
+    border-top: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
+    animation: slideDown 0.2s ease-out;
+    color: #333; /* 确保文字颜色正确 */
+  }
+
+  /* 动画 */
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .status-dot { 
+    width: 8px; 
+    height: 8px; 
+    background-color: var(--ie-primary-color); 
+    border-radius: 50%; 
+  }
+
+  .is-loading {
+    animation: rotating 2s linear infinite;
+    color: var(--ie-primary-color);
+  }
+  @keyframes rotating {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 }
 
-/* 列表容器 */
-.tool-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* 工具项外层容器 */
-.tool-group {
-  display: flex;
-  flex-direction: column;
-}
-
-/* 核心条目样式 (Header) */
-.tool-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  height: 50px;
-  background-color: #f5f7fa;
-  border-radius: 8px;
-  cursor: pointer;
-  color: #333;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.tool-item:hover {
-  background-color: #e6e8eb;
-  transform: translateY(-1px);
-}
-
-/* 展开状态 */
-.tool-item.is-expanded {
-  background-color: #ecf5ff;
-  color: #409eff;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-/* 内部左侧布局 (图标+文字) */
-.tool-item .left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.tool-item .el-icon {
-  font-size: 18px;
-}
-
-/* 内部右侧布局 (箭头/状态) */
-.tool-item .right-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-}
-
-/* 箭头旋转动画 */
-.tool-item .arrow {
-  font-size: 14px;
-  color: #909399;
-  transition: transform 0.3s;
-}
-
-.tool-item.is-expanded .arrow {
-  transform: rotate(90deg);
-  color: #409eff;
-}
-
-/* 展开的内容区域容器 */
-.tool-content {
-  background-color: #fff;
-  padding: 16px;
-  border: 1px solid #eee;
-  border-top: none;
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
-  animation: slideDown 0.2s ease-out;
-}
-
-/* 通用动画 */
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* 通用状态点 (消除笔等使用) */
-.status-dot { 
-  width: 8px; 
-  height: 8px; 
-  background-color: #409eff; 
-  border-radius: 50%; 
-}
-
-/* 通用 Loading (一键抠图等使用) */
-.is-loading {
-  animation: rotating 2s linear infinite;
-  color: #409eff;
-}
-@keyframes rotating {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-/* === IE UI Kit (Image Editor UI) === */
-
-/* 1. 按钮 */
-.ie-btn {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  height: 28px;
-  padding: 0 12px;
-  font-size: 13px;
-  border-radius: 4px;
-  border: 1px solid #dcdfe6;
-  background-color: #fff;
-  color: #606266;
-  cursor: pointer;
-  transition: .2s;
-  outline: none;
-}
-.ie-btn:hover { color: #409eff; border-color: #c6e2ff; background-color: #ecf5ff; }
-.ie-btn:disabled { color: #c0c4cc; cursor: not-allowed; background-color: #fff; border-color: #ebeef5; }
-.ie-btn.ie-primary { color: #fff; background-color: #409eff; border-color: #409eff; }
-.ie-btn.ie-primary:hover { background-color: #66b1ff; border-color: #66b1ff; }
-.ie-btn-circle { width: 32px; padding: 0; border-radius: 50%; }
-
-/* 2. 输入框 */
-.ie-input {
-  height: 28px;
-  line-height: 28px;
-  padding: 0 8px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  color: #606266;
-  width: 100%;
-  box-sizing: border-box;
-}
-.ie-input:focus { border-color: #409eff; outline: none; }
-
-/* 3. 分割线 */
-.ie-divider { width: 1px; height: 1em; margin: 0 8px; background: #dcdfe6; display: inline-block; vertical-align: middle; }
-
-/* 4. 简单的 Toast 提示样式 (替代 ElMessage) */
+/* === Toast 提示 (它通常挂载在 body 上，所以放在容器外面) === */
+/* 如果 Toast 逻辑改为挂载到容器内，也可以移进去 */
 .ie-toast {
   position: fixed;
   top: 20px;
@@ -271,5 +256,6 @@ button:hover {
   font-size: 14px;
   z-index: 9999;
   animation: ie-fade-in 0.3s;
+  pointer-events: none; /* 防止遮挡点击 */
 }
 @keyframes ie-fade-in { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
