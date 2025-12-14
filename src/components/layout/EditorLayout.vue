@@ -1,6 +1,6 @@
 <template>
   <div class="image-editor-sdk-container">
-    <NavBar class="layout-header" />
+    <NavBar :textMap="textMap" class="layout-header" />
 
     <div class="layout-body">
       <LeftSidebar class="layout-sidebar" />
@@ -26,6 +26,15 @@ const props = defineProps({
   imageUrl: {
     type: String,
     default: ''
+  },
+  // 文本映射表
+  textMap: {
+    type: Object,
+    default: () => ({
+      upload: '打开图片',
+      save: '保存',
+      title: '大秘美图'
+    })
   },
   // 全局配置（如 AI 后端地址）
   config: {
@@ -134,6 +143,12 @@ const api = {
 
 // === 向下分发 ===
 provide('canvasAPI', api);
+defineExpose({
+  save: handleExport,
+  undo,
+  redo,
+  canvas: canvas
+})
 </script>
 
 <style scoped>

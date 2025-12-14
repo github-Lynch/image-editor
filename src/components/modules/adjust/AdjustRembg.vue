@@ -28,11 +28,12 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue';
+import { ref, inject } from 'vue'; // 确保引入 inject
 import { aiApi } from '@/api/ai';
 import { Toast } from '@/utils/toast';
 
 const canvasAPI = inject('canvasAPI');
+const config = inject('editorConfig'); // 1. 获取全局配置
 const loading = ref(false);
 
 const handleRembg = async () => {
@@ -43,7 +44,14 @@ const handleRembg = async () => {
   try {
     const src = activeObj.getSrc();
     const blob = await (await fetch(src)).blob();
-    const newUrl = await aiApi.removeBackground(new File([blob], "img.png"));
+
+    // 2. 调用 API 时传入配置中的 baseUrl
+    // 如果 config 为空（单独使用组件时），api 内部会使用默认值
+    const newUrl = await aiApi.removeBackground(
+      new File([blob], "img.png"),
+      config?.aiBaseUrl
+    );
+
     canvasAPI.replaceActiveImage(newUrl);
     Toast.success('抠图完成');
   } catch (e) {

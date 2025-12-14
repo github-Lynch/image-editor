@@ -1,6 +1,8 @@
 <template>
   <div class="navbar">
-    <div class="logo">大秘美图</div>
+    <div class="logo">
+      <slot name="logo">{{ textMap.title || '大蜜美图' }}</slot>
+    </div>
     <div class="actions">
       <input type="file" ref="fileInput" @change="onFileSelected" style="display:none" accept="image/*" />
 
@@ -9,7 +11,7 @@
           <path
             d="M544 253.696V704h-64V247.296L237.248 490.048 192 444.8 512 128l320 316.8-45.248 45.248L544 253.696zM160 832h704a32 32 0 1 1 0 64H160a32 32 0 1 1 0-64z" />
         </svg>
-        打开图片
+        {{ textMap.upload }}
       </button>
 
       <span class="ie-divider"></span>
@@ -17,20 +19,26 @@
       <button class="ie-btn" style="margin-right:8px;" @click="handleUndo" :disabled="!state.canUndo">撤销</button>
       <button class="ie-btn" style="margin-right:8px;" @click="handleRedo" :disabled="!state.canRedo">重做</button>
 
-      <button class="ie-btn ie-primary" @click="handleSave">保存 / 导出</button>
+      <button class="ie-btn ie-primary" @click="handleSave">{{ textMap.save }}</button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { inject, ref } from 'vue';
-import { saveAs } from 'file-saver';
 import { useEditorState } from '@/composables/useEditorState'; // 使用新状态
 import { Toast } from '@/utils/toast'; // 使用新提示
 
 const { state } = useEditorState();
 const canvasAPI = inject('canvasAPI');
 const fileInput = ref(null);
+
+const props = defineProps({
+  textMap: {
+    type: Object,
+    default: () => ({}),
+  },
+});
 
 const handleUpload = () => {
   fileInput.value.click();
