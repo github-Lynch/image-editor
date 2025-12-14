@@ -33,12 +33,9 @@ const props = defineProps({
   // 初始图片链接
   imageUrl: {
     type: String,
-    default: 'src/assets/image/01.jpg'
+    default: ''
   },
 });
-
-// 默认图片路径 (注意：发包后如果是纯组件使用，建议改为 Props 传入或由外部控制)
-const DEFAULT_IMG_URL = 'src/assets/image/01.jpg';
 
 const canvasAPI = inject('canvasAPI');
 const canvasContainer = ref(null);
@@ -64,7 +61,7 @@ onMounted(() => {
 
     // 延迟加载默认图片
     setTimeout(() => {
-      canvasAPI.initImage(DEFAULT_IMG_URL);
+      canvasAPI.initImage(props.imageUrl);
     }, 100);
   } else {
     console.error('CanvasAPI not found. Make sure EditorLayout provides it.');

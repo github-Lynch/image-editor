@@ -25,7 +25,7 @@ const props = defineProps({
   // 初始图片链接
   imageUrl: {
     type: String,
-    default: ''
+    default: 'https://wallpaperm.cmcm.com/21f96d39cffd296c2dd2f0cf9cf65c9b.jpg'
   },
   // 文本映射表
   textMap: {

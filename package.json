@@ -11,7 +11,7 @@
       "import": "./dist/image-editor.js",
       "require": "./dist/image-editor.umd.cjs"
     },
-    "./style.css": "./dist/style.css"
+    "./style.css": "./dist/index.css"
   },
   "scripts": {
     "dev": "vite",
