@@ -55,14 +55,8 @@ onMounted(() => {
   if (canvasAPI && canvasAPI.init) {
     const width = canvasContainer.value.clientWidth || 1900;
     const height = canvasContainer.value.clientHeight || 1000;
-
     // 初始化画布
     canvasAPI.init('c', width, height);
-
-    // 延迟加载默认图片
-    setTimeout(() => {
-      canvasAPI.initImage(props.imageUrl);
-    }, 100);
   } else {
     console.error('CanvasAPI not found. Make sure EditorLayout provides it.');
   }
