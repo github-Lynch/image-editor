@@ -198,6 +198,96 @@ export const startManualSelection = () => {
   canvas.on('mouse:up', onSelectionUp);
   canvas.requestRenderAll();
 };
+// 【新增】标记比例是否锁定
+const isRatioLocked = ref(false); 
+// 【新增】记录当前的宽高比数值 (例如 1.5 或 0.5625)
+const currentAspectRatio = ref(null);
+/**
+ * 应用特定的裁剪比例
+ * @param {number|null} ratio - 宽高比 (width / height)，传入 null 表示自由比例
+ */
+export const setCropRatio = (ratio) => {
+  if (!canvasRef?.value) return;
+  const canvas = canvasRef.value;
+  
+  // 1. 设置状态
+  if (ratio === null) {
+    isRatioLocked.value = false;
+    currentAspectRatio.value = null;
+    
+    // 如果已经有裁剪框，解锁它的缩放限制
+    if (cropObject.value) {
+      cropObject.value.set({ lockUniScaling: false });
+      canvas.requestRenderAll();
+    }
+    return;
+  }
+
+  // 2. 锁定比例状态
+  isRatioLocked.value = true;
+  currentAspectRatio.value = ratio;
+
+  // 3. 获取计算基准 (优先使用当前裁剪框，如果没有则使用图片)
+  let baseW, baseH, left, top;
+  const activeObj = canvas.getObjects().find((obj) => obj.type === "image");
+  if (!activeObj) return;
+
+  if (cropObject.value) {
+    // 基于当前裁剪框计算
+    baseW = cropObject.value.getScaledWidth();
+    baseH = cropObject.value.getScaledHeight();
+    left = cropObject.value.left;
+    top = cropObject.value.top;
+  } else {
+    // 基于原图计算（初始化）
+    const rect = activeObj.getBoundingRect();
+    baseW = rect.width;
+    baseH = rect.height;
+    left = rect.left;
+    top = rect.top;
+  }
+
+  // 4. 【核心算法】计算最大内含尺寸 (Fit Inside)
+  // 比较当前矩形的比例与目标比例
+  const currentRatio = baseW / baseH;
+  let newW, newH;
+
+  if (currentRatio > ratio) {
+    // 当前比目标更“宽”，以高度为基准，缩小宽度
+    // 例如：当前 1:1，目标 9:16 (瘦高)。高度撑满，宽度变小。
+    newH = baseH;
+    newW = newH * ratio;
+    // 居中调整 left
+    left += (baseW - newW) / 2;
+  } else {
+    // 当前比目标更“瘦”，以宽度为基准，缩小高度
+    // 例如：当前 1:1，目标 3:2 (扁宽)。宽度撑满，高度变小。
+    newW = baseW;
+    newH = newW / ratio;
+    // 居中调整 top
+    top += (baseH - newH) / 2;
+  }
+
+  // 5. 应用或创建裁剪框
+  if (cropObject.value) {
+    cropObject.value.set({
+      width: newW,
+      height: newH,
+      left: left,
+      top: top,
+      scaleX: 1, // 重置缩放，直接改宽高
+      scaleY: 1,
+      lockUniScaling: true // 锁定等比缩放
+    });
+    cropObject.value.setCoords();
+    // 立即进行边界约束检查，防止计算出的框超出图片
+    constrainCrop(cropObject.value); 
+    canvas.requestRenderAll();
+  } else {
+    // 如果还没开始裁剪，直接启动
+    startCrop(ratio, { left, top, width: newW, height: newH });
+  }
+};
 
 // === 核心功能：开始裁剪 ===
 export const startCrop = (aspectRatio = null, customBox = null) => {
@@ -232,10 +322,16 @@ export const startCrop = (aspectRatio = null, customBox = null) => {
         height = imgHeight;
         width = height * aspectRatio;
       }
+      isRatioLocked.value = true;
+      currentAspectRatio.value = aspectRatio;
+    }else{
+      isRatioLocked.value = false;
+      currentAspectRatio.value = null;
     }
     left = rect.left + (imgWidth - width) / 2;
     top = rect.top + (imgHeight - height) / 2;
   }
+
 
   const cropZone = new fabric.Rect({
     left: left,
@@ -346,4 +442,9 @@ export const flipActive = (axis) => {
 };
 
 // 导出状态，供外部监听
-export { cropObject, isManualCropping };
+export { 
+  cropObject, 
+  isManualCropping,
+  isRatioLocked,
+  currentAspectRatio,
+};

@@ -156,15 +156,18 @@ import { fabric } from 'fabric';
 // === 【关键】直接从 Singleton 模块导入方法和状态 ===
 import { 
   startCrop, 
-  confirmCrop, 
+  confirmCrop,
+  setCropRatio,
   cancelCrop, 
+  isRatioLocked,
+  currentAspectRatio,
   setCropBoxSize, 
   rotateActive, 
   flipActive, 
   startManualSelection,
   isManualCropping,
-  cropObject 
-} from './useCanvasCrop'; // <--- 相对路径导入
+  cropObject
+} from './useCanvasCrop';
 
 const props = defineProps({
   isExpanded: {
@@ -177,6 +180,72 @@ const emit = defineEmits(['toggle']);
 const currentRatio = ref('free');
 const cropW = ref(1000);
 const cropH = ref(1000);
+
+// 辅助函数：判断按钮是否激活
+const isRatioMatch = (r) => {
+    if (!currentAspectRatio.value) return false;
+    // 简单的浮点数比较
+    return Math.abs(currentAspectRatio.value - r) < 0.01;
+};
+
+// 切换比例
+const handleSetRatio = (ratio) => {
+    if (ratio === 'original') {
+        currentRatio.value = 'original';
+        // 计算原图比例
+        const activeObj = cropObject.value?.canvas?.getObjects().find(o => o.type === 'image');
+        if (activeObj) {
+            setCropRatio(activeObj.width / activeObj.height);
+        }
+    } else if (ratio === null) {
+        currentRatio.value = 'free';
+        setCropRatio(null);
+    } else {
+        currentRatio.value = ratio;
+        setCropRatio(ratio);
+    }
+    // 更新输入框数值
+    updateInputFromCanvas();
+};
+
+// 手动点击中间的链接图标
+const toggleRatioLock = () => {
+    if (isRatioLocked.value) {
+        // 解锁 -> 变自由比例
+        handleSetRatio(null);
+    } else {
+        // 锁定 -> 锁定当前比例
+        if (cropW.value && cropH.value) {
+            const currentR = cropW.value / cropH.value;
+            currentRatio.value = ''; // 不高亮特定预设按钮
+            setCropRatio(currentR);
+        }
+    }
+};
+
+// 输入框输入宽度时的逻辑
+const onWidthInput = () => {
+    if (isRatioLocked.value && currentAspectRatio.value) {
+        // 锁定状态下，根据比例自动计算高度
+        // H = W / Ratio
+        cropH.value = Math.round(cropW.value / currentAspectRatio.value);
+    }
+};
+
+// 输入框输入高度时的逻辑
+const onHeightInput = () => {
+    if (isRatioLocked.value && currentAspectRatio.value) {
+        // 锁定状态下，根据比例自动计算宽度
+        // W = H * Ratio
+        cropW.value = Math.round(cropH.value * currentAspectRatio.value);
+    }
+};
+
+// 提交尺寸到 Canvas (change 或 enter 事件)
+const applyInputSize = () => {
+    setCropBoxSize(cropW.value, cropH.value);
+};
+
 
 // 状态计算属性
 const isManualActive = computed(() => isManualCropping.value);
@@ -260,9 +329,14 @@ onMounted(() => {
   if (canvasInstance) {
     canvasInstance.on('object:scaling', updateInputFromCanvas);
     canvasInstance.on('object:modified', updateInputFromCanvas);
+    // 监听选区移动以更新数值（虽然移动不改宽高，但保持一致性）
+    canvasInstance.on('object:moving', updateInputFromCanvas);
   }
-  // 如果 canvas 还没有加载，我们依赖 init 时的 startCrop 触发后续更新
-
+  updateInputFromCanvas();
+  // 如果当前是锁定状态（比如从其他 Tab 切回来），保持 UI 同步
+  if (!isRatioLocked.value) {
+      currentRatio.value = 'free';
+  }
   if (props.isExpanded) {
     startCrop(null);
   }

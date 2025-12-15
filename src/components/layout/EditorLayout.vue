@@ -59,18 +59,12 @@ const {
   toggleDrawing,
   exportMask,
   replaceActiveImage,
-  setCropBoxSize,
   canvas,
   zoom,
   zoomIn,
   zoomOut,
   zoomReset,
   addText,
-  startManualSelection,
-  isManualCropping,
-  startCrop,
-  confirmCrop,
-  cancelCrop,
   rotateActive,
   flipActive,
   undo,
@@ -97,6 +91,16 @@ const handleInit = (id, width, height) => {
   }
 };
 
+// 【新增】还原到初始状态的方法
+const handleReset = () => {
+  // 确保有初始图片 URL 且 initImage 方法可用
+  if (props.imageUrl && initImage) {
+    // 调用 useCanvas 的 initImage 方法，传入初始 URL
+    // 这会清空画布、重置历史记录并加载初始图片
+    initImage(props.imageUrl);
+  }
+};
+
 // 保存图片
 const handleExport = () => {
   // 1. 取消选中状态
@@ -112,8 +116,8 @@ const handleExport = () => {
 
 // === 5. 组装 API 对象 ===
 const api = {
-  canvas,
-  init: handleInit, // 使用封装后的 init
+ canvas,
+  init: handleInit,
   zoom,
   zoomIn,
   zoomOut,
@@ -123,12 +127,6 @@ const api = {
   toggleDrawing,
   exportMask,
   replaceActiveImage,
-  setCropBoxSize,
- startManualSelection,
-  isManualCropping,
-  startCrop,
-  confirmCrop,
-  cancelCrop,
   rotateActive,
   flipActive,
   undo,
@@ -141,8 +139,8 @@ const api = {
     const paths = canvas.value?.getObjects().filter(o => o.type === 'path');
     canvas.value?.remove(...paths);
   },
-  // 暴露保存方法供 NavBar 调用
-  save: handleExport
+  save: handleExport,
+  reset: handleReset
 };
 
 // === 向下分发 ===

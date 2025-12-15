@@ -79,7 +79,10 @@
   }
 
   /* === IE UI Kit (组件库样式) === */
-
+  .ie-actions {
+    display: flex;
+    
+  }
   /* 1. 按钮增强 */
   .ie-btn {
     display: inline-flex;
@@ -137,7 +140,7 @@
   .ie-divider { 
     width: 1px; 
     height: 1em; 
-    margin: 0 8px; 
+    margin: 6px 8px; 
     background: var(--ie-border-color); 
     display: inline-block; 
     vertical-align: middle; 

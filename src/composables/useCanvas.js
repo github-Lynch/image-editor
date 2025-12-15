@@ -3,27 +3,21 @@ import { ref, shallowRef, markRaw, toRaw } from "vue";
 import { fabric } from "fabric";
 import { useEditorState } from "./useEditorState";
 
-// === 引入剪裁模块：使用 Singleton 模式，导入所有需要的公共方法和状态 ===
+// 引入剪裁模块
 import { 
-  registerCropModule, // 用于在 init 中注入 canvas 依赖
+  registerCropModule, 
   constrainCrop, 
   cropObject, 
-  startCrop, 
-  cancelCrop,
-  confirmCrop,
-  setCropBoxSize,
-  startManualSelection,
-  isManualCropping,
-  rotateActive as rotateCrop, // 别名，避免命名冲突
+  rotateActive as rotateCrop, 
   flipActive as flipCrop
-} from "@/components/modules/adjust/useCanvasCrop"; // <--- 修正后的路径
+} from "@/components/modules/adjust/useCanvasCrop";
 
 export function useCanvas() {
   const canvas = shallowRef(null);
   const { setHistoryState } = useEditorState();
   const zoom = ref(1);
 
-  // === 历史记录 (保留在全局) ===
+  // === 历史记录 ===
   const history = [];
   let historyIndex = -1;
   let historyProcessing = false;
@@ -46,12 +40,12 @@ export function useCanvas() {
   };
 
   const updateStoreHistory = () => {
-    setHistoryState(historyIndex > 0, historyIndex > 0);
+    // 【修复】canRedo 应该是当前索引小于历史记录总长度减 1
+    setHistoryState(historyIndex > 0, historyIndex < history.length - 1);
   };
   
 // === 撤销 (Undo) ===
   const undo = () => {
-    // 【增强】确保有 canvas 实例，并且不在历史记录的起点
     if (!canvas.value || historyIndex <= 0 || historyProcessing) return;
     
     if (cropObject.value) cancelCrop(); 
@@ -60,7 +54,6 @@ export function useCanvas() {
     historyIndex--;
     const content = history[historyIndex];
     
-    // 使用可选链 ? 防止 canvas 在异步操作中变为 null
     canvas.value?.loadFromJSON(content, () => {
       canvas.value?.renderAll();
       historyProcessing = false;
@@ -70,17 +63,14 @@ export function useCanvas() {
 
 // === 重做 (Redo) ===
   const redo = () => {
-    // 【修正】确保有 canvas 实例，并且不在历史记录的终点
     if (!canvas.value || historyIndex >= history.length - 1 || historyProcessing) return;
     
     if (cropObject.value) cancelCrop();
 
     historyProcessing = true;
-    
-    historyIndex++; // 【修正】前进到下一个历史状态
+    historyIndex++; 
     const content = history[historyIndex];
     
-    // 使用可选链 ? 防止 canvas 在异步操作中变为 null
     canvas.value?.loadFromJSON(content, () => {
       canvas.value?.renderAll();
       historyProcessing = false;
@@ -98,10 +88,8 @@ export function useCanvas() {
     });
     canvas.value = markRaw(c);
 
-    // 【关键步骤】注册 Crop 模块，注入依赖
     registerCropModule(canvas, saveHistory);
 
-    // 绑定约束检查：无论移动什么，都检查裁剪框
     const checkConstraint = () => {
       if (cropObject.value) {
         constrainCrop(toRaw(cropObject.value));
@@ -143,7 +131,6 @@ export function useCanvas() {
   };
 
   // === 通用 API ===
-  // ... (addImage, setZoom, zoomIn, zoomOut, zoomReset, initImage 保持不变) ...
   const addImage = (url) => {
     fabric.Image.fromURL(
       url,
@@ -194,7 +181,6 @@ export function useCanvas() {
     addImage(url);
   };
   
-  // 聚合：旋转/翻转 (优先使用 Crop 模块的逻辑，如果没有裁剪框则执行通用逻辑)
   const rotateActive = (angle) => {
     const handled = rotateCrop(angle); 
     if (!handled) {
@@ -219,7 +205,6 @@ export function useCanvas() {
     }
   };
 
-  // 其他工具 (保持不变)
   const toggleDrawing = (enable) => {
     if (!canvas.value) return;
     canvas.value.isDrawingMode = enable;
@@ -231,7 +216,7 @@ export function useCanvas() {
     }
   };
 
-  const exportMask = () => { /* ...保持之前的代码... */
+  const exportMask = () => {
     if (!canvas.value) return null;
     const originalBg = canvas.value.backgroundColor;
     const objects = canvas.value.getObjects();
@@ -301,15 +286,7 @@ export function useCanvas() {
     exportMask,
     replaceActiveImage,
     addText,
-
-    // === 导出 Crop API (直接导出导入的方法) ===
-    startCrop,
-    cancelCrop,
-    confirmCrop,
-    setCropBoxSize,
-    startManualSelection,
-    isManualCropping,
     rotateActive, 
-    flipActive    
+    flipActive   
   };
 }

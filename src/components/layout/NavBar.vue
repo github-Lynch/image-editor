@@ -3,7 +3,7 @@
     <div class="logo">
       <slot name="logo">{{ textMap.title }}</slot>
     </div>
-    <div class="actions">
+    <div class="ie-actions">
       <input type="file" ref="fileInput" @change="onFileSelected" style="display:none" accept="image/*" />
 
       <button class="ie-btn" @click="handleUpload">
@@ -18,7 +18,7 @@
 
       <button class="ie-btn" style="margin-right:8px;" @click="handleUndo" :disabled="!state.canUndo">撤销</button>
       <button class="ie-btn" style="margin-right:8px;" @click="handleRedo" :disabled="!state.canRedo">重做</button>
-
+      <button class="ie-btn" style="margin-right:8px;" @click="handleReset" :disabled="!state.canUndo">还原</button>
       <button class="ie-btn ie-primary" @click="handleSave">{{ textMap.save }}</button>
     </div>
   </div>
@@ -26,16 +26,12 @@
 
 <script setup>
 import { inject, ref } from 'vue';
-import { useEditorState } from '@/composables/useEditorState'; // 使用新状态
-import { Toast } from '@/utils/toast'; // 使用新提示
-import { useCanvas } from '@/composables/useCanvas'; // 引入 useCanvas 模块
+import { useEditorState } from '@/composables/useEditorState'; 
+import { Toast } from '@/utils/toast'; 
+ 
 
 const { state } = useEditorState();
 
-// 【关键修改】：直接从 useCanvas 实例获取 undo, redo, initImage 等函数
-const { undo, redo, initImage } = useCanvas();
-
-// 保持 canvasAPI 注入，仅用于调用 EditorLayout 包装的 save 方法
 const canvasAPI = inject('canvasAPI');
 const fileInput = ref(null);
 
@@ -53,38 +49,47 @@ const handleUpload = () => {
 const onFileSelected = (e) => {
   const file = e.target.files?.[0];
   if (file) {
-    if (!initImage) { 
+    // 检查 inject 的 API 是否存在
+    if (!canvasAPI || !canvasAPI.initImage) { 
       Toast.error('画布尚未初始化');
       return;
     }
     const url = URL.createObjectURL(file);
     
-    // 直接调用从 useCanvas 获取的 initImage
-    initImage(url); 
+    // 调用 canvasAPI 中的方法
+    canvasAPI.initImage(url); 
     
-    // 清空 value，允许重复选择同一张图片
     e.target.value = '';
   }
 };
 
 const handleSave = () => {
-  // 保持使用 canvasAPI.save，因为它调用了 EditorLayout 中定义的 handleExport 逻辑
   if (canvasAPI && canvasAPI.save) {
-    canvasAPI.save(); // 调用 EditorLayout 中定义的 handleExport
+    canvasAPI.save(); 
   } else {
     Toast.error('导出功能未实现');
   }
 };
 
-
 const handleUndo = () => {
-  // 直接调用导入的 undo 函数
-  undo();
+  // 调用 canvasAPI 中的方法
+  if (canvasAPI && canvasAPI.undo) {
+    canvasAPI.undo();
+  }
 };
 
 const handleRedo = () => {
-  // 直接调用导入的 redo 函数
-  redo();
+  // 调用 canvasAPI 中的方法
+  if (canvasAPI && canvasAPI.redo) {
+    canvasAPI.redo();
+  }
+};
+
+const handleReset = () => {
+  // 调用 canvasAPI 中的方法
+  if (canvasAPI && canvasAPI.reset) {
+    canvasAPI.reset();
+  }
 };
 </script>
 
