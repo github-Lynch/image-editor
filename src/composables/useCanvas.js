@@ -96,8 +96,6 @@ export function useCanvas() {
       }
     };
 
-    c.on("object:moving", checkConstraint);
-    c.on("object:scaling", checkConstraint);
     c.on("object:modified", (e) => {
       checkConstraint(); 
       if (e.target && e.target.type !== "rect") saveHistory();
