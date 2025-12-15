@@ -27,195 +27,88 @@ export const registerCropModule = (canvas, saveHistory) => {
   saveHistoryFn = saveHistory;
 };
 
-// 聚焦动画相关变量
-let defaultViewport = [1, 0, 0, 1, 0, 0];
-/**
- * 【新增】聚焦到剪裁框
- * @param {fabric.Object} targetObj - 剪裁框对象
- */
-const focusOnCrop = (targetObj) => {
-  if (!canvasRef?.value || !targetObj) return;
-  const canvas = canvasRef.value;
-
-  // 1. 记录当前视口作为“默认状态”，以便后续还原 (仅第一次记录)
-  // 如果你的画布本身支持缩放拖拽，这里可能需要更复杂的逻辑来决定“还原到哪里”
-  // 这里假设还原到 "fit canvas to screen" 的初始状态
-  if (JSON.stringify(defaultViewport) === JSON.stringify([1, 0, 0, 1, 0, 0])) {
-      defaultViewport = [...canvas.viewportTransform];
-  }
-
-  // 2. 获取画布尺寸
-  const canvasW = canvas.getWidth();
-  const canvasH = canvas.getHeight();
-
-  // 3. 获取目标对象的几何信息
-  const rect = targetObj.getBoundingRect();
-  const targetW = rect.width;
-  const targetH = rect.height;
-  const targetCenter = targetObj.getCenterPoint();
-
-  // 4. 计算目标缩放级别 (Zoom)
-  // 我们希望目标占据屏幕的 85% (0.85)，留出一点边距
-  const paddingFactor = 0.85; 
-  // 计算宽和高的缩放比，取较小值以保证完全容纳
-  let zoom = Math.min(canvasW / targetW, canvasH / targetH) * paddingFactor;
-
-  // 限制最大放大倍数，防止选区太小时放大得过于模糊 (例如最大放大 5 倍)
-  if (zoom > 5) zoom = 5;
-  // 限制最小缩放，防止比原始视角还小
-  if (zoom < 1) zoom = 1; 
-
-  // 5. 计算目标平移 (Pan) - 也就是视口偏移量
-  // 公式：视口中心 - (物体中心 * 缩放倍率)
-  const panX = (canvasW / 2) - (targetCenter.x * zoom);
-  const panY = (canvasH / 2) - (targetCenter.y * zoom);
-
-  // 6. 执行动画 (使用 fabric.util.animate 产生平滑过渡)
-  const currentVpt = canvas.viewportTransform;
-  
-  fabric.util.animate({
-    startValue: { 
-      zoom: currentVpt[0], 
-      x: currentVpt[4], 
-      y: currentVpt[5] 
-    },
-    endValue: { 
-      zoom: zoom, 
-      x: panX, 
-      y: panY 
-    },
-    duration: 400, // 动画时长 400ms
-    easing: fabric.util.ease.easeOutQuad, // 缓动函数
-    onChange: (value) => {
-      canvas.setViewportTransform([value.zoom, 0, 0, value.zoom, value.x, value.y]);
-      canvas.requestRenderAll();
-    },
-    onComplete: () => {
-      // 动画结束后再次确保坐标正确 (防止浮点数误差)
-      canvas.setViewportTransform([zoom, 0, 0, zoom, panX, panY]);
-      targetObj.setCoords(); // 更新控制点
-    }
-  });
-};
-
-/**
- * 【新增】还原视角
- */
-const resetZoom = () => {
-  if (!canvasRef?.value) return;
-  const canvas = canvasRef.value;
-  
-  // 同样使用动画还原
-  const currentVpt = canvas.viewportTransform;
-  
-  fabric.util.animate({
-    startValue: { 
-      zoom: currentVpt[0], 
-      x: currentVpt[4], 
-      y: currentVpt[5] 
-    },
-    endValue: { 
-      zoom: defaultViewport[0], 
-      x: defaultViewport[4], 
-      y: defaultViewport[5] 
-    },
-    duration: 300,
-    easing: fabric.util.ease.easeOutQuad,
-    onChange: (value) => {
-      canvas.setViewportTransform([value.zoom, 0, 0, value.zoom, value.x, value.y]);
-      canvas.requestRenderAll();
-    }
-  });
-};
-
 // === 核心功能：约束逻辑 (回弹矫正版) ===
-// === 核心功能：约束逻辑 (抗缩放干扰 + 尺寸压缩 + 位置回弹) ===
 export const constrainCrop = (activeObj) => {
   if (!canvasRef?.value || !activeObj) return;
 
   const bgImage = canvasRef.value.getObjects().find((o) => o.type === "image");
   if (!bgImage) return;
 
-  // 【核心修正点】：不要用 getBoundingRect()，那个会受 Zoom 影响
-  // 直接读取对象的逻辑坐标和缩放，这是“绝对真值”
-  
-  // 1. 获取背景图的逻辑边界 (Model Coordinates)
-  const bgScaleX = bgImage.scaleX;
-  const bgScaleY = bgImage.scaleY;
-  const bgWidth = bgImage.width * bgScaleX;
-  const bgHeight = bgImage.height * bgScaleY;
-  const bgLeft = bgImage.left;
-  const bgTop = bgImage.top;
+  // 1. 获取背景图（容器）的绝对边界
+  const bgRect = bgImage.getBoundingRect();
+  const bgWidth = bgRect.width;
+  const bgHeight = bgRect.height;
+  const bgLeft = bgRect.left;
+  const bgTop = bgRect.top;
 
-  // 2. 获取剪裁框的逻辑尺寸
+  // 2. === 步骤一：尺寸修正 (Size Correction) ===
+  // 这一步是为了解决你截图中的问题：框比图大
+  
   let currentScaleX = activeObj.scaleX;
   let currentScaleY = activeObj.scaleY;
   
-  // getScaledWidth() 在某些版本也会受 viewport 影响，最稳妥是用 raw math
+  // 获取当前剪裁框的实际显示宽/高
   let cropCurrentWidth = activeObj.width * currentScaleX;
   let cropCurrentHeight = activeObj.height * currentScaleY;
 
-  // 3. === 步骤一：尺寸修正 (Size Correction) ===
-  // 确保框不比图大
+  // 标记是否需要重置尺寸
   let sizeChanged = false;
 
-  // 宽度检查
-  if (cropCurrentWidth > bgWidth + 1) { // +1 是容差
+  // 检查宽度是否超标
+  // 容差值 1px，防止浮点数计算导致的细微抖动
+  if (cropCurrentWidth > bgWidth + 1) {
+    // 如果超宽，计算出刚好等于背景宽度的缩放比例
     currentScaleX = bgWidth / activeObj.width;
-    cropCurrentWidth = bgWidth; // 更新当前宽，供后面位置计算用
     sizeChanged = true;
   }
 
-  // 高度检查
+  // 检查高度是否超标
   if (cropCurrentHeight > bgHeight + 1) {
+    // 如果超高，计算出刚好等于背景高度的缩放比例
     currentScaleY = bgHeight / activeObj.height;
-    cropCurrentHeight = bgHeight; // 更新当前高
     sizeChanged = true;
   }
 
+  // 如果尺寸有修正，先应用缩放，这样下面的位置计算才能基于正确的大小
   if (sizeChanged) {
     activeObj.set({
       scaleX: currentScaleX,
       scaleY: currentScaleY
     });
+    // 强制刷新 activeObj 的内部坐标计算，确保 getScaledWidth 是最新的
+    activeObj.setCoords(); 
   }
 
-  // 4. === 步骤二：位置修正 (Position Correction) ===
-  
-  // 计算 Left 的安全范围 (基于纯逻辑坐标)
+  // 3. === 步骤二：位置修正 (Position Correction) ===
+  // 重新获取修正后的尺寸（此时一定 <= 背景尺寸）
+  const finalCropWidth = activeObj.getScaledWidth();
+  const finalCropHeight = activeObj.getScaledHeight();
+
+  // 计算 Left 的安全范围
   const minLeft = bgLeft;
-  const maxLeft = bgLeft + bgWidth - cropCurrentWidth;
+  const maxLeft = bgLeft + bgWidth - finalCropWidth;
 
   // 计算 Top 的安全范围
   const minTop = bgTop;
-  const maxTop = bgTop + bgHeight - cropCurrentHeight;
+  const maxTop = bgTop + bgHeight - finalCropHeight;
 
   let newLeft = activeObj.left;
   let newTop = activeObj.top;
 
-  // 修正 X 轴
-  // 注意：如果剪裁框比背景宽(极少数情况)，maxLeft 会小于 minLeft，Math.min 会取 maxLeft
-  // 所以我们需要处理这种情况，通常让它居中或贴左
-  if (cropCurrentWidth >= bgWidth) {
-      newLeft = bgLeft;
-  } else {
-      newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
-  }
+  // 修正 X 轴位置
+  // 逻辑：不能比 minLeft 小，不能比 maxLeft 大
+  newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
 
-  // 修正 Y 轴
-  if (cropCurrentHeight >= bgHeight) {
-      newTop = bgTop;
-  } else {
-      newTop = Math.max(minTop, Math.min(newTop, maxTop));
-  }
+  // 修正 Y 轴位置
+  newTop = Math.max(minTop, Math.min(newTop, maxTop));
 
-  // 5. 应用最终位置
+  // 4. 应用最终位置
   activeObj.set({
     left: newLeft,
     top: newTop
   });
 
-  // 6. 刷新
+  // 5. 最终刷新
   activeObj.setCoords(); 
   canvasRef.value.requestRenderAll();
 };
@@ -227,8 +120,6 @@ export const cancelCrop = () => {
     canvasRef.value.remove(rawObj);
     cropObject.value = null;
     canvasRef.value.renderAll();
-    // 取消时还原视角
-    resetZoom();
   }
 };
 
@@ -503,8 +394,6 @@ export const startCrop = (aspectRatio = null, customBox = null) => {
   canvas.renderAll();
   
   constrainCrop(cropZone);
-  // 聚焦到剪裁框
-  focusOnCrop(cropZone);
 };
 
 // === 核心功能：确认裁剪 ===
