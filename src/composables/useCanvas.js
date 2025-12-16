@@ -1,13 +1,14 @@
 // src/composables/useCanvas.js
 import { ref, shallowRef, markRaw, toRaw } from "vue";
 import { fabric } from "fabric";
-import { useEditorState } from "./useEditorState";
+import { useEditorState, ZOOM_PADDING } from "./useEditorState";
 
 // 引入剪裁模块
 import { 
   registerCropModule, 
   constrainCrop, 
   cropObject, 
+  cancelCrop,
   rotateActive as rotateCrop, 
   flipActive as flipCrop
 } from "@/components/modules/adjust/useCanvasCrop";
@@ -84,11 +85,10 @@ export function useCanvas() {
     const height = canvas.value.height;
 
     // 1. 计算目标缩放 (留 10% 边距，看着更舒服)
-    const padding = 0.9;
-    let targetZoom = Math.min(width / rect.width, height / rect.height) * padding;
+    let targetZoom = Math.min(width / rect.width, height / rect.height) * ZOOM_PADDING;
 
     // 限制最大缩放倍数 (与你 setZoom 中的逻辑保持一致，防止放太大)
-    targetZoom = Math.max(0.1, Math.min(targetZoom, 5));
+    targetZoom = Math.max(0.1, Math.min(targetZoom, 50));
 
     // 2. 计算 Pan (偏移量)
     // 目标：将选区中心点 (rectCenterX, rectCenterY) 移动到 画布中心
@@ -148,7 +148,7 @@ export function useCanvas() {
         const delta = e.deltaY;
         let newZoom = c.getZoom();
         newZoom *= 0.999 ** delta;
-        if (newZoom > 5) newZoom = 5;
+        if (newZoom > 50) newZoom = 50;
         if (newZoom < 0.1) newZoom = 0.1;
         c.zoomToPoint({ x: e.offsetX, y: e.offsetY }, newZoom);
         zoom.value = newZoom;
@@ -167,7 +167,7 @@ export function useCanvas() {
         const canvasWidth = canvas.value.width;
         const canvasHeight = canvas.value.height;
         if (img.width > canvasWidth || img.height > canvasHeight) {
-          const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * 0.8;
+          const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * ZOOM_PADDING;
           img.scale(scale);
         }
         zoom.value = canvas.value.getZoom();
@@ -185,7 +185,7 @@ export function useCanvas() {
   const setZoom = (value) => {
     if (!canvas.value) return;
     let newZoom = value;
-    if (newZoom > 5) newZoom = 5;
+    if (newZoom > 50) newZoom = 50;
     if (newZoom < 0.1) newZoom = 0.1;
     const center = canvas.value.getCenter();
     canvas.value.zoomToPoint({ x: center.left, y: center.top }, newZoom);
@@ -198,6 +198,9 @@ export function useCanvas() {
 
   const initImage = (url) => {
     if (!canvas.value) return;
+    // 重置相机视角
+    canvas.value.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    zoom.value = 1;
     historyProcessing = true;
     canvas.value.clear();
     canvas.value.setBackgroundColor("#f3f3f3", () => {

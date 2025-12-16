@@ -31,3 +31,6 @@ export function useEditorState() {
         setHistoryState
     };
 }
+
+// 全局聚焦系数
+export const ZOOM_PADDING = 0.85;

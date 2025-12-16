@@ -16,8 +16,31 @@
 
       <span class="ie-divider"></span>
 
-      <button class="ie-btn" style="margin-right:8px;" @click="handleUndo" :disabled="!state.canUndo">撤销</button>
-      <button class="ie-btn" style="margin-right:8px;" @click="handleRedo" :disabled="!state.canRedo">重做</button>
+      <button 
+        class="ie-btn ie-btn-icon" 
+        style="margin-right:8px; padding: 0 8px;" 
+        title="撤销" 
+        @click="handleUndo" 
+        :disabled="!state.canUndo"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 14 4 9l5-5"/>
+          <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
+        </svg>
+      </button>
+      
+      <button 
+        class="ie-btn ie-btn-icon" 
+        style="margin-right:8px; padding: 0 8px;" 
+        title="重做" 
+        @click="handleRedo" 
+        :disabled="!state.canRedo"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 14l5-5-5-5"/>
+          <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/>
+        </svg>
+      </button>
       <button class="ie-btn" style="margin-right:8px;" @click="handleReset" :disabled="!state.canUndo">还原</button>
       <button class="ie-btn ie-primary" @click="handleSave">{{ textMap.save }}</button>
     </div>

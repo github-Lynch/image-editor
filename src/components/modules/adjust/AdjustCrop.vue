@@ -192,7 +192,7 @@ watch(() => props.isExpanded, (val) => {
     });
   } else {
     // 【折叠】：清理一切，恢复视图
-    // closeCropPanel();
+    closeCropPanel();
   }
 });
 
@@ -218,6 +218,7 @@ const handleApply = () => {
 
 // === 3. 其他辅助逻辑 (保持原有) ===
 const isRatioMatch = (r) => {
+  if (currentRatio.value === 'original') return false;
     if (!currentAspectRatio.value) return false;
     return Math.abs(currentAspectRatio.value - r) < 0.01;
 };
@@ -265,8 +266,24 @@ const isManualActive = computed(() => isManualCropping.value);
 
 const updateInputFromCanvas = () => {
   if (cropObject.value) {
-    cropW.value = Math.round(cropObject.value.getScaledWidth());
-    cropH.value = Math.round(cropObject.value.getScaledHeight());
+    const w = Math.round(cropObject.value.getScaledWidth());
+    const h = Math.round(cropObject.value.getScaledHeight());
+    
+    cropW.value = w;
+    cropH.value = h;
+    if (currentRatio.value !== 'free' && currentRatio.value !== 'original' && typeof currentRatio.value === 'number') {
+      const currentRealRatio = w / h;
+      const targetRatio = currentRatio.value;
+      
+      // 允许 1% 的误差 (比如 16:9 是 1.7777...)
+      if (Math.abs(currentRealRatio - targetRatio) > 0.02) {
+        // 如果误差超过阈值，说明用户手动拉伸了，破坏了比例
+        // 自动切换为 'free' (自由比例)
+        currentRatio.value = 'free';
+        // 同时在逻辑层也解除锁定标记（虽然我们已经解除了物理锁定，但状态变量也要同步）
+        setCropRatio(null); 
+      }
+    }
   }
 };
 

@@ -1,7 +1,7 @@
 // src/components/modules/adjust/useCanvasCrop.js
 import { ref, shallowRef, toRaw } from "vue";
 import { fabric } from "fabric";
-
+import { ZOOM_PADDING } from "@/composables/useEditorState";
 // === 状态变量 ===
 const cropObject = shallowRef(null);
 const isManualCropping = ref(false);
@@ -91,18 +91,50 @@ export const openCropPanel = () => {
   isCropping.value = true;
 };
 
+// 【新增】关闭裁剪面板时，自动取消当前选区
 export const closeCropPanel = () => {
   if (!canvasRef?.value) return;
+
+  // 1. 清理蒙版
+  if (isManualCropping.value) {
+    endManualSelectionMode();
+  }
+
   const canvas = canvasRef.value;
   cancelCrop(); 
-  canvas.off('mouse:wheel', preventZoomWheel);
-  if (savedWheelListeners.length > 0) {
-    savedWheelListeners.forEach(handler => {
-      canvas.on('mouse:wheel', handler);
-    });
-    savedWheelListeners = [];
-  }
+
   isCropping.value = false;
+  
+  // === 【新增】取消时也自动缩放适配屏幕 (Fit to Screen) ===
+  const bgImage = canvas.getObjects().find((o) => o.type === "image");
+  if (bgImage) {
+      const imgWidth = bgImage.width * bgImage.scaleX;
+      const imgHeight = bgImage.height * bgImage.scaleY;
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      
+      // 使用全局定义的边距系数
+      const paddingFactor = ZOOM_PADDING; 
+
+      // 计算适配比例
+      const zoomToFit = Math.min(
+          (canvasWidth * paddingFactor) / imgWidth,
+          (canvasHeight * paddingFactor) / imgHeight
+      );
+
+      // 计算平移量 (Pan)，使图片中心对齐画布中心
+      // 公式: Pan = CanvasCenter - ObjectCenter * Zoom
+      const center = bgImage.getCenterPoint();
+      const panX = (canvasWidth / 2) - center.x * zoomToFit;
+      const panY = (canvasHeight / 2) - center.y * zoomToFit;
+
+      // 应用视口变换
+      canvas.setViewportTransform([zoomToFit, 0, 0, zoomToFit, panX, panY]);
+      canvas.setZoom(zoomToFit);
+  }
+  // =======================================================
+
+  canvas.requestRenderAll();
   canvas.fire('zoom:change'); 
 };
 
@@ -261,6 +293,10 @@ const onSelectionUp = () => {
 
 export const startManualSelection = () => {
   if (!canvasRef?.value) return;
+  // 如果当前已经是手动选区模式，先清理掉旧的蒙版和事件监听
+  if (isManualCropping.value) {
+    endManualSelectionMode();
+  }
   const canvas = canvasRef.value;
   cancelCrop(); 
   canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
@@ -325,11 +361,16 @@ export const setCropRatio = (ratio) => {
   if (cropObject.value) {
     cropObject.value.set({
       width: newW, height: newH, left: left, top: top,
-      scaleX: 1, scaleY: 1, lockUniScaling: true 
+      scaleX: 1, scaleY: 1, lockUniScaling: false 
     });
     cropObject.value.setCoords();
     constrainCrop(cropObject.value); 
     canvas.requestRenderAll();
+
+    // === 【新增】切换比例时，自动聚焦到新的裁剪框 ===
+    if (zoomToRectFn) {
+       zoomToRectFn(getLogicRect(cropObject.value));
+    }
   } else {
     startCrop(ratio, { left, top, width: newW, height: newH });
   }
@@ -383,11 +424,22 @@ export const startCrop = (aspectRatio = null, customBox = null) => {
     fill: "transparent", stroke: "#409eff", strokeWidth: 2,
     cornerColor: "white", cornerStrokeColor: "#409eff", cornerSize: 12,
     transparentCorners: false, lockRotation: true, hasRotatingPoint: false,
-    lockUniScaling: !!aspectRatio 
+    lockUniScaling: false
   });
   if (aspectRatio) {
     cropZone.set("height", width / aspectRatio);
   }
+
+  // === 【新增】 监听修改完成事件，实现自动聚焦效果 ===
+  cropZone.on('modified', () => {
+    // 只有当 zoomToRectFn 存在时才执行
+    if (zoomToRectFn) {
+      // 获取当前裁剪框的逻辑坐标（排除缩放影响）
+      const logicRect = getLogicRect(cropZone);
+      // 执行聚焦动画
+      zoomToRectFn(logicRect);
+    }
+  });
 
   canvas.add(cropZone);
   canvas.setActiveObject(cropZone);
@@ -398,6 +450,10 @@ export const startCrop = (aspectRatio = null, customBox = null) => {
   // 之前如果使用 getScaledWidth() 可能会因为还没渲染或 Scale 未生效导致为 0
   updateCurrentDims(cropZone);
 
+  // 无论是刚进来，还是 startCrop 被外部调用，都聚焦一次
+  if (zoomToRectFn) {
+      zoomToRectFn(getLogicRect(cropZone));
+  }
   constrainCrop(cropZone);
 };
 
@@ -445,10 +501,10 @@ export const confirmCrop = () => {
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
     
-    const paddingFactor = 0.9;
+    // 计算聚焦系数，确保裁剪框在可见区域内
     const zoomToFit = Math.min(
-        (canvasWidth * paddingFactor) / imgWidth,
-        (canvasHeight * paddingFactor) / imgHeight
+        (canvasWidth * ZOOM_PADDING) / imgWidth,
+        (canvasHeight * ZOOM_PADDING) / imgHeight
     );
     
     canvas.setZoom(zoomToFit);
@@ -465,10 +521,41 @@ export const confirmCrop = () => {
 
 export const setCropBoxSize = (width, height) => {
   if (!cropObject.value || !canvasRef?.value) return;
-  cropObject.value.set({ width, height });
-  cropObject.value.setCoords();
-  canvasRef.value.renderAll();
-  constrainCrop(cropObject.value);
+  
+  const obj = cropObject.value;
+  
+  // 1. 获取当前中心点坐标 (基于旧尺寸)
+  // Fabric 对象默认 origin 是左上角，所以中心 = left + 宽/2
+  const oldRealWidth = obj.getScaledWidth();
+  const oldRealHeight = obj.getScaledHeight();
+  const centerX = obj.left + oldRealWidth / 2;
+  const centerY = obj.top + oldRealHeight / 2;
+
+  // 2. 应用新尺寸
+  // 同时重置 scale 为 1，确保 width/height 是真实的逻辑像素值
+  obj.set({ 
+    width: width, 
+    height: height,
+    scaleX: 1,
+    scaleY: 1
+  });
+
+  // 3. 重新计算左上角位置 (NewLeft = Center - NewWidth/2)
+  // 这样就把原点“拉”回到了保持中心不变的位置
+  const newLeft = centerX - width / 2;
+  const newTop = centerY - height / 2;
+
+  obj.set({
+    left: newLeft,
+    top: newTop
+  });
+
+  obj.setCoords();
+  
+  // 4. 边界约束 (如果中心缩放导致超出图片边界，这里会自动修正推回)
+  constrainCrop(obj);
+  
+  canvasRef.value.requestRenderAll();
 };
 
 export const rotateActive = (angle) => {
