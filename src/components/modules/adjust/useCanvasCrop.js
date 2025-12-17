@@ -7,7 +7,7 @@ import { ZOOM_PADDING } from "@/composables/useEditorState";
 const cropObject = shallowRef(null);
 const isManualCropping = ref(false);
 const isCropping = ref(false);
-const isRatioLocked = ref(false); 
+const isRatioLocked = ref(false);
 const currentAspectRatio = ref(null);
 
 // 用于实时向 UI 传递当前选区/裁剪框的宽高
@@ -24,7 +24,7 @@ let maskRect = null;
 let selectionStartX = 0;
 let selectionStartY = 0;
 let aspectRatioValue = null;
-let savedWheelListeners = []; 
+let savedWheelListeners = [];
 
 // 拖拽图片相关变量
 let isDraggingImage = false;
@@ -46,11 +46,11 @@ export const registerCropModule = (canvas, saveHistory, zoomToRect) => {
 const getLogicRect = (obj) => {
   if (!canvasRef?.value || !obj) return { left: 0, top: 0, width: 0, height: 0 };
   const canvas = canvasRef.value;
-  const zoom = canvas.getZoom(); 
+  const zoom = canvas.getZoom();
   const vpt = canvas.viewportTransform;
-  
+
   const rawRect = obj.getBoundingRect();
-  
+
   return {
     left: (rawRect.left - vpt[4]) / zoom,
     top: (rawRect.top - vpt[5]) / zoom,
@@ -92,7 +92,7 @@ const constrainImageUnderCrop = (bgImage, cropRect) => {
   if (bgRect.left > cropRectVal.left) {
     deltaX = cropRectVal.left - bgRect.left;
   }
-  
+
   // 2. 检查上边界：图片的上边不能在这个点下边 (必须 <= cropRect.top)
   if (bgRect.top > cropRectVal.top) {
     deltaY = cropRectVal.top - bgRect.top;
@@ -103,7 +103,7 @@ const constrainImageUnderCrop = (bgImage, cropRect) => {
   const cropRight = cropRectVal.left + cropRectVal.width;
   if (bgRight < cropRight) {
     // 优先保证填满
-    deltaX = cropRight - bgRight; 
+    deltaX = cropRight - bgRight;
   }
 
   // 4. 检查下边界
@@ -130,7 +130,7 @@ const onCropMouseDown = (opt) => {
   const target = opt.target;
   // 必须点击在剪裁框上
   if (target !== cropObject.value) return;
-  
+
   const activeObj = canvasRef.value.getActiveObject();
   if (activeObj && activeObj.__corner) return;
 
@@ -148,9 +148,9 @@ const onCropMouseMove = (opt) => {
   const pointer = canvas.getPointer(opt.e);
   const deltaX = pointer.x - dragLastX;
   const deltaY = pointer.y - dragLastY;
-  
+
   const bgImage = canvas.getObjects().find(o => o.type === 'image');
-  
+
   if (bgImage) {
     // 【修改】只移动，不实时约束
     // 这样用户可以把图片拖出边界，体验更流畅
@@ -158,7 +158,7 @@ const onCropMouseMove = (opt) => {
     bgImage.top += deltaY;
     bgImage.setCoords();
   }
-  
+
   dragLastX = pointer.x;
   dragLastY = pointer.y;
   canvas.requestRenderAll();
@@ -168,12 +168,12 @@ const onCropMouseUp = () => {
   if (isDraggingImage) {
     // 【修改】拖拽结束的一瞬间，执行“回弹/修正”
     if (canvasRef?.value && cropObject.value) {
-       const bgImage = canvasRef.value.getObjects().find(o => o.type === 'image');
-       if (bgImage) {
-         // 这里执行修正，如果图片跑出去了，会瞬间回到边缘
-         constrainImageUnderCrop(bgImage, cropObject.value);
-         canvasRef.value.requestRenderAll();
-       }
+      const bgImage = canvasRef.value.getObjects().find(o => o.type === 'image');
+      if (bgImage) {
+        // 这里执行修正，如果图片跑出去了，会瞬间回到边缘
+        constrainImageUnderCrop(bgImage, cropObject.value);
+        canvasRef.value.requestRenderAll();
+      }
     }
 
     isDraggingImage = false;
@@ -186,20 +186,20 @@ const onCropMouseUp = () => {
 // =========================================================
 export const openCropPanel = () => {
   if (!canvasRef?.value) return;
-  if (isCropping.value) return; 
+  if (isCropping.value) return;
 
   isApplyingCrop = false;
 
   const canvas = canvasRef.value;
   canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
   canvas.fire('zoom:change', { from: 'crop-module' });
-  
+
   if (canvas.__eventListeners && canvas.__eventListeners['mouse:wheel']) {
     savedWheelListeners = [...canvas.__eventListeners['mouse:wheel']];
     canvas.off('mouse:wheel');
   }
   canvas.on('mouse:wheel', preventZoomWheel);
-  
+
   isCropping.value = true;
 };
 
@@ -209,7 +209,7 @@ export const closeCropPanel = () => {
 
   if (isApplyingCrop) {
     if (isManualCropping.value) endManualSelectionMode();
-    isCropping.value = false; 
+    isCropping.value = false;
     return;
   }
 
@@ -217,31 +217,31 @@ export const closeCropPanel = () => {
     endManualSelectionMode();
   }
 
-  cancelCrop(); 
+  cancelCrop();
 
   isCropping.value = false;
-  
+
   const bgImage = canvas.getObjects().find((o) => o.type === "image");
   if (bgImage) {
-      const imgWidth = bgImage.width * bgImage.scaleX;
-      const imgHeight = bgImage.height * bgImage.scaleY;
-      const canvasWidth = canvas.width;
-      const canvasHeight = canvas.height;
-      const paddingFactor = ZOOM_PADDING; 
-      const zoomToFit = Math.min(
-          (canvasWidth * paddingFactor) / imgWidth,
-          (canvasHeight * paddingFactor) / imgHeight
-      );
-      const center = bgImage.getCenterPoint();
-      const panX = (canvasWidth / 2) - center.x * zoomToFit;
-      const panY = (canvasHeight / 2) - center.y * zoomToFit;
+    const imgWidth = bgImage.width * bgImage.scaleX;
+    const imgHeight = bgImage.height * bgImage.scaleY;
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
+    const paddingFactor = ZOOM_PADDING;
+    const zoomToFit = Math.min(
+      (canvasWidth * paddingFactor) / imgWidth,
+      (canvasHeight * paddingFactor) / imgHeight
+    );
+    const center = bgImage.getCenterPoint();
+    const panX = (canvasWidth / 2) - center.x * zoomToFit;
+    const panY = (canvasHeight / 2) - center.y * zoomToFit;
 
-      canvas.setViewportTransform([zoomToFit, 0, 0, zoomToFit, panX, panY]);
-      canvas.setZoom(zoomToFit);
+    canvas.setViewportTransform([zoomToFit, 0, 0, zoomToFit, panX, panY]);
+    canvas.setZoom(zoomToFit);
   }
-
+  canvas.discardActiveObject();
   canvas.requestRenderAll();
-  canvas.fire('zoom:change'); 
+  canvas.fire('zoom:change');
 };
 
 // =========================================================
@@ -261,7 +261,7 @@ export const constrainCrop = (activeObj) => {
 
   let currentScaleX = activeObj.scaleX;
   let currentScaleY = activeObj.scaleY;
-  
+
   let cropCurrentWidth = activeObj.width * currentScaleX;
   let cropCurrentHeight = activeObj.height * currentScaleY;
   let sizeChanged = false;
@@ -276,7 +276,7 @@ export const constrainCrop = (activeObj) => {
   }
   if (sizeChanged) {
     activeObj.set({ scaleX: currentScaleX, scaleY: currentScaleY });
-    activeObj.setCoords(); 
+    activeObj.setCoords();
   }
 
   const finalCropWidth = activeObj.getScaledWidth();
@@ -290,8 +290,8 @@ export const constrainCrop = (activeObj) => {
   let newTop = Math.max(minTop, Math.min(activeObj.top, maxTop));
 
   activeObj.set({ left: newLeft, top: newTop });
-  activeObj.setCoords(); 
-  
+  activeObj.setCoords();
+
   updateCurrentDims(activeObj);
   canvasRef.value.requestRenderAll();
 };
@@ -302,16 +302,16 @@ export const constrainCrop = (activeObj) => {
 export const cancelCrop = (shouldRender = true) => {
   if (canvasRef?.value && cropObject.value) {
     const rawObj = toRaw(cropObject.value);
-    
+
     // 解绑拖拽图片事件
     canvasRef.value.off('mouse:down', onCropMouseDown);
     canvasRef.value.off('mouse:move', onCropMouseMove);
     canvasRef.value.off('mouse:up', onCropMouseUp);
-    
+
     canvasRef.value.remove(rawObj);
     cropObject.value = null;
     isDraggingImage = false; // 重置拖拽状态
-    
+
     if (shouldRender) {
       canvasRef.value.renderAll();
     }
@@ -389,16 +389,16 @@ export const startManualSelection = () => {
   if (!canvasRef?.value) return;
   if (isManualCropping.value) endManualSelectionMode();
   const canvas = canvasRef.value;
-  cancelCrop(); 
+  cancelCrop();
   canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
   maskRect = new fabric.Rect({
     left: -5000, top: -5000, width: 20000, height: 20000,
     fill: 'rgba(0, 0, 0, 0.45)', selectable: false, evented: false, excludeFromExport: true
   });
   canvas.add(maskRect);
-  canvas.defaultCursor = 'crosshair'; 
-  canvas.hoverCursor = 'crosshair';   
-  canvas.selection = false;           
+  canvas.defaultCursor = 'crosshair';
+  canvas.hoverCursor = 'crosshair';
+  canvas.selection = false;
   isManualCropping.value = true;
   canvas.on('mouse:down', onSelectionDown);
   canvas.on('mouse:move', onSelectionMove);
@@ -436,10 +436,10 @@ export const setCropRatio = (ratio) => {
   if (cropObject.value) {
     cropObject.value.set({
       width: newW, height: newH, left: left, top: top,
-      scaleX: 1, scaleY: 1, lockUniScaling: false 
+      scaleX: 1, scaleY: 1, lockUniScaling: false
     });
     cropObject.value.setCoords();
-    constrainCrop(cropObject.value); 
+    constrainCrop(cropObject.value);
     canvas.requestRenderAll();
     if (zoomToRectFn) zoomToRectFn(getLogicRect(cropObject.value));
   } else {
@@ -475,7 +475,7 @@ export const startCrop = (aspectRatio = null, customBox = null) => {
         height = imgHeight; width = height * aspectRatio;
       }
       isRatioLocked.value = true; currentAspectRatio.value = aspectRatio;
-    }else{
+    } else {
       isRatioLocked.value = false; currentAspectRatio.value = null;
     }
     left = rect.left + (imgWidth - width) / 2;
@@ -531,18 +531,18 @@ export const confirmCrop = () => {
   canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
   cropRect.visible = false;
   const currentImageScale = bgImage.scaleX || 1;
-  const multiplier = 1 / currentImageScale; 
+  const multiplier = 1 / currentImageScale;
   const croppedDataUrl = canvas.toDataURL({
     left: cropRect.left, top: cropRect.top,
     width: cropRect.getScaledWidth(), height: cropRect.getScaledHeight(),
-    format: "png", multiplier: multiplier, 
+    format: "png", multiplier: multiplier,
   });
   canvas.setViewportTransform(prevVpt);
-  cropRect.visible = true; 
+  cropRect.visible = true;
 
   return new Promise((resolve) => {
     bgImage.setSrc(croppedDataUrl, () => {
-      cancelCrop(false); 
+      cancelCrop(false);
       bgImage.set({
         originX: "center", originY: "center",
         left: canvas.width / 2, top: canvas.height / 2,
@@ -614,11 +614,11 @@ export const flipActive = (axis) => {
   return false;
 };
 
-export { 
-  cropObject, 
+export {
+  cropObject,
   isManualCropping,
   isRatioLocked,
   currentAspectRatio,
   isCropping,
-  currentSelectionDims 
+  currentSelectionDims
 };

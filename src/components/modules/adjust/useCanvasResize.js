@@ -34,7 +34,7 @@ export const getCurrentSize = () => {
 const getLogicRect = (obj) => {
   if (!canvasRef?.value || !obj) return { left: 0, top: 0, width: 0, height: 0 };
   const canvas = canvasRef.value;
-  const zoom = canvas.getZoom(); 
+  const zoom = canvas.getZoom();
   const vpt = canvas.viewportTransform;
   const rawRect = obj.getBoundingRect();
   return {
@@ -58,11 +58,11 @@ const constrainImageToRect = (bgImage, targetRect) => {
   // 简单碰撞检测
   if (bgRect.left > targetRect.left) deltaX = targetRect.left - bgRect.left;
   if (bgRect.top > targetRect.top) deltaY = targetRect.top - bgRect.top;
-  
+
   const bgRight = bgRect.left + bgRect.width;
   const targetRight = targetRect.left + targetRect.width;
-  if (bgRight < targetRight) deltaX = targetRight - bgRight; 
-  
+  if (bgRight < targetRight) deltaX = targetRight - bgRight;
+
   const bgBottom = bgRect.top + bgRect.height;
   const targetBottom = targetRect.top + targetRect.height;
   if (bgBottom < targetBottom) deltaY = targetBottom - bgBottom;
@@ -99,14 +99,14 @@ const onPreviewMouseMove = (opt) => {
   const pointer = canvas.getPointer(opt.e);
   const deltaX = pointer.x - dragLastX;
   const deltaY = pointer.y - dragLastY;
-  
+
   const bgImage = canvas.getObjects().find(o => o.type === 'image');
   if (bgImage) {
     bgImage.left += deltaX;
     bgImage.top += deltaY;
     bgImage.setCoords();
   }
-  
+
   dragLastX = pointer.x;
   dragLastY = pointer.y;
   canvas.requestRenderAll();
@@ -115,12 +115,12 @@ const onPreviewMouseMove = (opt) => {
 const onPreviewMouseUp = () => {
   if (isDraggingImage) {
     if (canvasRef?.value && previewRect.value) {
-       const bgImage = canvasRef.value.getObjects().find(o => o.type === 'image');
-       if (bgImage) {
-         const rectLogic = getLogicRect(previewRect.value);
-         constrainImageToRect(bgImage, rectLogic);
-         canvasRef.value.requestRenderAll();
-       }
+      const bgImage = canvasRef.value.getObjects().find(o => o.type === 'image');
+      if (bgImage) {
+        const rectLogic = getLogicRect(previewRect.value);
+        constrainImageToRect(bgImage, rectLogic);
+        canvasRef.value.requestRenderAll();
+      }
     }
     isDraggingImage = false;
     if (canvasRef?.value) canvasRef.value.defaultCursor = 'default';
@@ -179,7 +179,7 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
     canvas.remove(toRaw(previewRect.value));
     previewRect.value = null;
   }
-  
+
   // 【修复核心】：如果是拉伸模式，不要把图片恢复成原样，否则会闪烁！
   // 只有在“保真/裁剪模式”下，才需要图片恢复正常比例供用户操作。
   if (!isStretch) {
@@ -189,24 +189,24 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
     bgImage.selectable = false;
     bgImage.evented = false;
   }
-  
+
   // === 计算预览框尺寸 ===
   // 注意：计算必须使用 originalTransform (原始数据)，不能用 bgImage (因为它可能被拉伸了)
   const imgW = originalTransform.width * originalTransform.scaleX;
   const imgH = originalTransform.height * originalTransform.scaleY;
   const center = canvas.getCenter();
-  
+
   const targetRatio = targetW / targetH;
   const imgRatio = imgW / imgH;
 
   let previewW, previewH;
-  
+
   if (targetRatio > imgRatio) {
-     previewW = imgW;
-     previewH = imgW / targetRatio;
+    previewW = imgW;
+    previewH = imgW / targetRatio;
   } else {
-     previewH = imgH;
-     previewW = imgH * targetRatio;
+    previewH = imgH;
+    previewW = imgH * targetRatio;
   }
 
   // 5. 绘制蓝框
@@ -224,7 +224,7 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
     selectable: false,
     evented: false,
     excludeFromExport: true,
-    data: { isStretch } 
+    data: { isStretch }
   });
 
   previewRect.value = rect;
@@ -248,7 +248,7 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
       originY: 'center'
     });
     bgImage.setCoords();
-    
+
     // 移除拖拽事件
     canvas.off('mouse:down', onPreviewMouseDown);
     canvas.off('mouse:move', onPreviewMouseMove);
@@ -275,7 +275,7 @@ export const stopPreview = () => {
     canvas.off('mouse:down', onPreviewMouseDown);
     canvas.off('mouse:move', onPreviewMouseMove);
     canvas.off('mouse:up', onPreviewMouseUp);
-    
+
     if (previewRect.value) {
       canvas.remove(toRaw(previewRect.value));
       previewRect.value = null;
@@ -288,7 +288,7 @@ export const stopPreview = () => {
       bgImage.selectable = originalSelectable;
       bgImage.evented = originalEvented;
     }
-    
+    canvas.discardActiveObject();
     originalTransform = null; // 清空记录
     canvas.requestRenderAll();
   }
@@ -299,7 +299,7 @@ export const stopPreview = () => {
 // =========================================================
 export const applyResize = (width, height, isStretch = false) => {
   const canvas = unref(canvasRef);
-  if (!canvas || !previewRect.value) return; 
+  if (!canvas || !previewRect.value) return;
 
   width = Math.round(width);
   height = Math.round(height);
@@ -311,12 +311,12 @@ export const applyResize = (width, height, isStretch = false) => {
   // 1. 截图准备
   const rect = previewRect.value;
   rect.visible = false;
-  
+
   const originalVpt = [...canvas.viewportTransform];
   const oldZoom = originalVpt[0];
   const oldPanX = originalVpt[4];
   const oldPanY = originalVpt[5];
-  
+
   canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
 
   // 计算裁剪区域
@@ -326,7 +326,7 @@ export const applyResize = (width, height, isStretch = false) => {
   const cropTop = rect.top - (rect.height * rect.scaleY) / 2;
   const cropWidth = rect.width * rect.scaleX;
   const cropHeight = rect.height * rect.scaleY;
-  
+
   // 计算最终输出的倍率
   const multiplier = width / cropWidth;
 
@@ -342,11 +342,11 @@ export const applyResize = (width, height, isStretch = false) => {
 
   // 截图完毕，恢复视口，避免加载等待期间画面跳动
   canvas.setViewportTransform(originalVpt);
-  
+
   // 3. 加载新图
   bgImage.setSrc(dataURL, () => {
     // 新图加载完毕，清理旧状态
-    
+
     // 这里的 restoreImageState 调用很重要
     // 因为 setSrc 只是换了源图，但对象的 scaleX/scaleY 还是刚才预览时的拉伸状态
     // 我们需要重置它们为 1 (因为新图本身已经是处理好的尺寸了)
@@ -357,10 +357,10 @@ export const applyResize = (width, height, isStretch = false) => {
       originX: 'center', originY: 'center',
       cropX: 0, cropY: 0
     });
-    
+
     // 因为已经应用了，所以不需要再恢复到 originalTransform 了
     // 我们手动清空它，防止 stopPreview 被调用时回滚回旧图
-    originalTransform = null; 
+    originalTransform = null;
 
     canvas.centerObject(bgImage);
     bgImage.setCoords();
@@ -379,7 +379,7 @@ export const applyResize = (width, height, isStretch = false) => {
     canvas.setViewportTransform([newZoom, 0, 0, newZoom, newPanX, newPanY]);
     canvas.requestRenderAll();
     canvas.fire('zoom:change', { from: 'resize-apply' });
-    
+
     if (saveHistoryFn) saveHistoryFn();
   });
 };

@@ -39,7 +39,7 @@
             <div class="resize-input-box">
                 <div class="input-controls">
                     <div class="input-wrapper">
-                        <input type="number" v-model.number="width" class="ie-input" @input="onInputChanged">
+                        <input type="number" v-model.number="width" class="ie-input" @change="onInputChanged('w')">
                         <span class="suffix">W</span>
                     </div>
 
@@ -58,7 +58,7 @@
                     </div>
 
                     <div class="input-wrapper">
-                        <input type="number" v-model.number="height" class="ie-input" @input="onInputChanged">
+                        <input type="number" v-model.number="height" class="ie-input" @change="onInputChanged('h')">
                         <span class="suffix">H</span>
                     </div>
                 </div>
@@ -226,11 +226,34 @@ watch([width, height], ([newW, newH]) => {
     updatePreviewBox();
 });
 
-const onInputChanged = () => {
-    if (isAdaptive.value) {
-        // 简单实现：改变谁以谁为准，这里假设主要是Width驱动Height，或者不强制
-        // 若需要严格联动，可参考 AdjustResize 中的 watch 逻辑
+const onInputChanged = (type) => {
+    // 1. 如果开启了“锁定比例” (isAdaptive) 且有原始比例数据
+    if (isAdaptive.value && originalRatio.value) {
+
+        // 标记为内部更新，防止触发 watch 导致死循环或多余计算
+        isInternalUpdate.value = true;
+
+        // 根据输入的类型进行换算
+        // originalRatio = 宽 / 高
+
+        if (type === 'w' && width.value > 0) {
+            // 用户改了【宽度】 -> 自动算【高度】
+            // 公式: Height = Width / Ratio
+            height.value = Math.round(width.value / originalRatio.value);
+
+        } else if (type === 'h' && height.value > 0) {
+            // 用户改了【高度】 -> 自动算【宽度】
+            // 公式: Width = Height * Ratio
+            width.value = Math.round(height.value * originalRatio.value);
+        }
+
+        // 计算并赋值完成后，在下一个 tick 释放锁
+        nextTick(() => {
+            isInternalUpdate.value = false;
+        });
     }
+
+    // 2. 实时更新画布上的预览框
     updatePreviewBox();
 };
 
@@ -248,8 +271,13 @@ watch(() => props.isExpanded, (val) => {
     else stopPreview();
 });
 
-const handleApply = () => {
-    applyWhitePadding(width.value, height.value, currentBgColor.value);
+const handleApply = async () => {
+    // 1. 等待图片处理完全结束 (新图上屏，状态重置完成)
+    await applyWhitePadding(width.value, height.value, currentBgColor.value);
+
+    // 2. 只有处理完了，才通知父组件关闭面板
+    // 此时 isExpanded 变 false 触发 watcher 里的 stopPreview
+    // 但因为 originalTransform 已经被置空，stopPreview 不会产生任何副作用
     emit('toggle');
 };
 
