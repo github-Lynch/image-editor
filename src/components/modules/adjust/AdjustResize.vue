@@ -25,12 +25,13 @@
           :class="{ active: isCustomMode }" 
           @click="selectCustomMode"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px">
+        <span>自定义</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="12" y1="8" x2="12" y2="16"></line>
             <line x1="8" y1="12" x2="16" y2="12"></line>
           </svg>
-          <span>自定义</span>
+          
         </div>
 
         <div 
@@ -92,9 +93,9 @@
           <span class="switch-label">锁定长宽比 (保真模式)</span>
         </div>
 
-        <div class="reset-row">
+        <!-- <div class="reset-row">
            <span class="reset-link" @click="resetToOriginal">恢复原图尺寸</span>
-        </div>
+        </div> -->
 
       </div>
 
@@ -129,10 +130,14 @@ const isInternalUpdate = ref(false); // 防止循环更新
 // 预设数据 (可根据需要扩展)
 const presets = [
   { label: '方形主图', w: 800, h: 800 },
-  { label: '电商竖图', w: 750, h: 1000 },
-  { label: '横版海报', w: 1920, h: 1080 },
-  { label: '封面图', w: 1280, h: 720 },
-  { label: 'Temu', w: 1340, h: 1785 },
+  { label: 'Temu服装图', w: 1340, h: 1785 },
+  { label: '方形主图', w: 1000, h: 1000 },
+  { label: '竖图主图', w: 750, h: 1000 },
+   {label: '方形主图', w: 500, h: 500 },
+   { label: '竖图主图', w: 1000, h: 1200 },
+  { label: 'Youtube视频封面', w: 1280, h: 720 },
+  { label: 'Pinterest帖子', w: 750, h: 1120 },
+  { label: 'Facebook封面', w: 851, h: 315 },
 ];
 
 const isCustomMode = computed(() => activePresetIndex.value === -1);
@@ -165,7 +170,7 @@ const initSize = () => {
     
     // 立即启动预览 (显示蓝色虚线框)
     nextTick(() => {
-      startPreview(width.value, height.value);
+      startPreview(width.value, height.value, !isAdaptive.value);
     });
   }
 };
@@ -203,6 +208,9 @@ const toggleAdaptive = () => {
       isInternalUpdate.value = false; 
       updatePreviewBox();
     });
+  } else {
+    // 修改点 2：如果是关闭保真（进入拉伸模式），也立即刷新预览，触发图片拉伸效果
+    updatePreviewBox();
   }
 };
 
@@ -246,10 +254,10 @@ const onInputChanged = () => {
   updatePreviewBox();
 };
 
-// 统一的更新函数
 const updatePreviewBox = () => {
   if (width.value > 0 && height.value > 0) {
-    updatePreview(width.value, height.value);
+    // 修改点 3：传入拉伸状态 (!isAdaptive.value)
+    updatePreview(width.value, height.value, !isAdaptive.value);
   } else {
     stopPreview();
   }
@@ -263,9 +271,8 @@ watch(() => props.isExpanded, (val) => {
 
 // === 应用与取消 ===
 const handleApply = () => {
-  // 传给底层：是否是拉伸模式 (!isAdaptive)
-  // 如果 isAdaptive 为 false，applyResize 会直接拉伸图片到指定 w, h
-  applyResize(width.value, height.value);
+  // 修改点 4：传入拉伸状态
+  applyResize(width.value, height.value, !isAdaptive.value);
   emit('toggle');
 };
 
@@ -307,7 +314,7 @@ onUnmounted(() => stopPreview());
   display: flex;
   flex-direction: column; /* 垂直排列文字 */
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   text-align: center;
   transition: all 0.2s;
 }
