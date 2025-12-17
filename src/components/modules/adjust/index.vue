@@ -8,7 +8,9 @@
 
       <AdjustInpaint :is-expanded="activeCollapse === 'inpaint'" @toggle="toggle('inpaint')" />
 
-      <AdjustRembg />
+      <AdjustRembg :is-expanded="activeCollapse === 'rembg'" @toggle="toggle('rembg')" />
+
+      <AdjustWhite :is-expanded="activeCollapse === 'white'" @toggle="toggle('white')" />
 
       <div class="tool-group">
         <div class="tool-item" @click="notImplemented">
@@ -28,7 +30,7 @@
         </div>
       </div>
 
-      <div class="tool-group">
+      <!-- <div class="tool-group">
         <div class="tool-item" @click="notImplemented">
           <div class="left">
             <svg width="18" height="18" viewBox="0 0 1024 1024" style="margin-right: 8px; fill: currentColor">
@@ -44,7 +46,7 @@
             </svg>
           </div>
         </div>
-      </div>
+      </div> -->
 
     </div>
   </div>
@@ -59,7 +61,7 @@ const AdjustCrop = defineAsyncComponent(() => import('./AdjustCrop.vue'));
 const AdjustResize = defineAsyncComponent(() => import('./AdjustResize.vue'));
 const AdjustInpaint = defineAsyncComponent(() => import('./AdjustInpaint.vue'));
 const AdjustRembg = defineAsyncComponent(() => import('./AdjustRembg.vue'));
-
+const AdjustWhite = defineAsyncComponent(() => import('./AdjustWhite.vue'));
 const activeCollapse = ref('');
 
 const toggle = (id) => {
