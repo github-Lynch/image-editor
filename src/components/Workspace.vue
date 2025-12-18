@@ -63,7 +63,7 @@ onMounted(() => {
   if (canvasAPI && canvasAPI.init) {
     const width = canvasContainer.value.clientWidth || 1900;
     const height = canvasContainer.value.clientHeight || 1000;
-    
+
     // 1. 初始化画布
     canvasAPI.init('c', width, height);
 
@@ -75,9 +75,9 @@ onMounted(() => {
       // 3. 【核心修复】监听我们在 useCanvasCrop 中发射的 'zoom:change' 事件
       // 同时也监听原生的 'zoom' 事件（如果有缩放滚轮逻辑）
       fabricCanvas.on('zoom:change', updateZoomState);
-      
+
       // 如果你的 canvasAPI 内部没有处理滚轮更新 zoom 变量，也可以在这里补一个
-      fabricCanvas.on('mouse:wheel', updateZoomState); 
+      fabricCanvas.on('mouse:wheel', updateZoomState);
     }
 
   } else {
@@ -109,8 +109,8 @@ onUnmounted(() => {
 
 .canvas-center {
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  width: 90%;
-  height: 90%;
+  width: 95%;
+  height: 95%;
   display: flex;
   justify-content: center;
   align-items: center;

@@ -33,4 +33,4 @@ export function useEditorState() {
 }
 
 // 全局聚焦系数
-export const ZOOM_PADDING = 0.9722;
+export const ZOOM_PADDING = 0.921;
