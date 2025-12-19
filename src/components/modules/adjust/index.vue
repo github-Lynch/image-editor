@@ -18,6 +18,8 @@
 
       <AdjustFilters :is-expanded="activeCollapse === 'filters'" @toggle="toggle('filters')" />
 
+      <AdjustMosaic :is-expanded="activeCollapse === 'mosaic'" @toggle="toggle('mosaic')" />
+
     </div>
   </div>
 </template>
@@ -35,6 +37,8 @@ const AdjustWhite = defineAsyncComponent(() => import('./AdjustWhite.vue'));
 const AdjustColor = defineAsyncComponent(() => import('./AdjustColor.vue'));
 const AdjustFilters = defineAsyncComponent(() => import('./AdjustFilters.vue'));
 const AdjustColorOverlay = defineAsyncComponent(() => import('./AdjustColorOverlay.vue'));
+const AdjustMosaic = defineAsyncComponent(() => import('./AdjustMosaic.vue'));
+
 const activeCollapse = ref('');
 
 const toggle = (id) => {
