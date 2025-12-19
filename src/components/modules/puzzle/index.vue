@@ -187,12 +187,34 @@
         </div>
 
         <!-- 拼接选项卡内容 -->
-        <button
-          v-else
-          class="select-btn"
-        >
-          <span class="plus-icon">+</span> 选择拼接
-        </button>
+        <div v-else>
+          <button class="select-btn">
+            <div class="icon-wrap">
+              <div
+                v-if="showControlPanel"
+                :style="curTemp.wrapStyle"
+                class="small-grid-template"
+              >
+                <div
+                  v-for="(gridArea, i) in curTemp.gridAreas"
+                  :key="i"
+                  class="grid-cell"
+                  :style="`grid-area: ${gridArea};`"
+                ></div>
+              </div>
+              <span
+                v-else
+                class="plus-icon"
+              >+</span>
+            </div>
+            <span>选择拼接</span>
+            <span
+              v-if="showControlPanel"
+              class="cancel-btn"
+              @click.stop="cancel"
+            >取消</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -253,19 +275,62 @@
     </div>
 
     <!-- 图片的配置页 -->
-    <div v-if="sub === 3"></div>
+    <div
+      v-if="sub === 3"
+      class="p-20"
+    >
+      <div class="operate-tabs">
+        <div class="tab-item border">
+          替换图片
+        </div>
+        <div
+          v-if="false"
+          class="tab-item border"
+        >
+          删除图片
+        </div>
+      </div>
+
+      <!-- 透明度 -->
+      <div class="control-group">
+        <label>透明度</label>
+        <input
+          v-model="transparent"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+        />
+        <span class="value-display">{{ transparent }}px</span>
+      </div>
+
+      <!-- 放大 -->
+      <div class="control-group">
+        <label>放大</label>
+        <input
+          type="range"
+          v-model="zoom"
+          min="100"
+          max="300"
+          step="1"
+        />
+        <span class="value-display">{{ zoom }}px</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-  import { ref, computed, watchEffect } from 'vue';
+  import { ref, computed, watchEffect, inject } from 'vue';
   import { gridTemplates, countOptions } from './config.js';
   import { useEditorState } from '../../../composables/useEditorState';
   import { useCanvas } from '../../../composables/useCanvas';
 
   // 获取编辑器状态和Canvas API
   const { state } = useEditorState();
-  const { canvas, initImage, addImage } = useCanvas();
+  const canvasAPI = inject('canvasAPI');
+  const canvas = computed(() => canvasAPI?.canvas?.value);
+  const { initImage, addImage } = useCanvas();
 
   /**
    * sub page count: 3
@@ -346,6 +411,34 @@
 
   // 保存拼图
   const save = () => { };
+
+  // sub 3
+  const transparent = ref(100);
+  const zoom = ref(100);
+
+  // Canvas 点击事件监听
+  watchEffect(() => {
+    if (canvas.value) {
+      // 移除之前的事件监听器
+      canvas.value.off('mouse:down');
+
+      // 添加新的点击事件监听器
+      canvas.value.on('mouse:down', (opt) => {
+        const target = opt.target;
+
+        if (!showControlPanel.value) return;
+
+        // 检查是否点击了图片区域
+        if (target && target.type === 'image') {
+          // 点击图片区域，设置sub为3
+          sub.value = 3;
+        } else {
+          // 点击非图片区域，设置sub为1
+          sub.value = 1;
+        }
+      });
+    }
+  });
 </script>
 
 <style scoped>
@@ -647,5 +740,18 @@
 
   .save-btn:hover {
     background-color: #66b1ff;
+  }
+
+  .p-20 {
+    padding: 20px;
+  }
+
+  .operate-tabs {
+    display: flex;
+    margin-bottom: 16px;
+  }
+
+  .border {
+    border: 1px solid #dcdfe6;
   }
 </style>
