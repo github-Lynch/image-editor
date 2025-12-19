@@ -321,123 +321,172 @@
 </template>
 
 <script setup>
-  import { ref, computed, watchEffect, inject } from 'vue';
+  import { ref, computed, watchEffect, watch, inject } from 'vue'; // ✅ 确保引入 watch
   import { gridTemplates, countOptions } from './config.js';
   import { useEditorState } from '../../../composables/useEditorState';
   import { useCanvas } from '../../../composables/useCanvas';
+  // ✅ 引入逻辑层
+  import { registerPuzzleModule, applyGridTemplate, fillCellWithImage } from './useCanvasPuzzle';
 
-  // 获取编辑器状态和Canvas API
   const { state } = useEditorState();
   const canvasAPI = inject('canvasAPI');
   const canvas = computed(() => canvasAPI?.canvas?.value);
-  const { initImage, addImage } = useCanvas();
 
-  /**
-   * sub page count: 3
-   * 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板)
-   * 2. 模板选择页
-   * 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1
-   */
+  // --- 1. 先定义所有状态变量 (防止初始化报错) ---
   const sub = ref(1);
   const showControlPanel = ref(false);
-
-  // 状态管理
   const selectedImageCount = ref('all');
   const activeTab = ref('grid');
-  const puzzleSettings = ref({
-    size: { width: 1000, height: 1000, lockRatio: true },
-    border: 15,
-    spacing: 15,
-    background: '#ffffff'
-  });
-
-  // 过滤显示的网格模板
-  const filteredTemplates = computed(() => {
-    if (selectedImageCount.value === 'all') {
-      return gridTemplates;
-    } else {
-      const curCount = parseInt(selectedImageCount.value);
-      const result = {};
-      for (const count in gridTemplates) {
-        if (parseInt(count) === curCount) {
-          result[count] = gridTemplates[count];
-        }
-      }
-      return result;
-    }
-  });
-
-  // 返回上一级
-  const backToMain = () => {
-    sub.value = 1;
-    selectedImageCount.value = 'all';
-  };
-
-  // 选择网格模板
   const curTemp = ref({});
-  const selectTemplate = (template) => {
-    curTemp.value = template;
-    showControlPanel.value = true;
-    sub.value = 1;
+  const transparent = ref(100);
+  const zoom = ref(100);
+  let mouseDownPoint = null;
+
+const puzzleSettings = ref({
+  size: { width: 1000, height: 1000, lockRatio: true }, // ✅ 默认宽高调大
+  border: 15,
+  spacing: 15,
+  background: '#ffffff'
+});
+
+
+const resetPosition = () => {
+  const activeObj = canvas.value.getActiveObject();
+  if (activeObj && activeObj.data?.cellRect) {
+    const rect = activeObj.data.cellRect;
+    activeObj.set({
+      left: rect.left + rect.width / 2,
+      top: rect.top + rect.height / 2
+    });
+    canvas.value.requestRenderAll();
+  }
+};
+  // --- 2. 再定义监听逻辑 ---
+
+  /**
+   * ✅ 修复点：深度监听滑块变化，实现丝滑重绘
+   */
+watch(
+  () => puzzleSettings.value,
+  (newVal) => {
+    if (showControlPanel.value && curTemp.value.id && canvas.value) {
+      applyGridTemplate(curTemp.value, newVal, null);
+    }
+  },
+  { deep: true }
+);
+
+// 监听图片配置页的滑块（sub 3）
+watch([transparent, zoom], ([newAlpha, newZoom]) => {
+  const canvasInstance = canvas.value;
+  if (!canvasInstance) return;
+
+  const activeObj = canvasInstance.getActiveObject();
+  if (activeObj && activeObj.data?.type === 'puzzle-image') {
+    // 处理透明度
+    activeObj.set('opacity', newAlpha / 100);
+
+    // 处理局部放大（基于原始 cover 比例的倍率）
+    const cellRect = activeObj.data.cellRect;
+    const baseScale = Math.max(cellRect.width / activeObj.width, cellRect.height / activeObj.height);
+    activeObj.set({
+      scaleX: baseScale * (newZoom / 100),
+      scaleY: baseScale * (newZoom / 100)
+    });
+
+    canvasInstance.requestRenderAll();
+  }
+});
+
+const selectTemplate = (template) => {
+  const canvasInstance = canvasAPI?.canvas.value;
+  if (!canvasInstance) return;
+
+  curTemp.value = template;
+  showControlPanel.value = true;
+  sub.value = 1;
+
+  registerPuzzleModule(canvasInstance, canvasAPI.saveHistory);
+  const mainImage = canvasInstance.getObjects().find(o => o.type === 'image');
+  
+  // 应用模板
+  applyGridTemplate(template, puzzleSettings.value, mainImage);
+  
+  // ✅ 核心：应用后让相机自动缩放以适配新的大尺寸
+  if (canvasAPI.zoomToRect) {
+     canvasAPI.zoomToRect({ left: 0, top: 0, width: puzzleSettings.value.size.width, height: puzzleSettings.value.size.height });
+  }
+};
+
+  const triggerCellUpload = (cellRect) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        fabric.Image.fromURL(url, (img) => {
+          fillCellWithImage(img, cellRect, cellRect.data.index);
+        });
+      }
+    };
+    input.click();
   };
 
   const cancel = () => {
     showControlPanel.value = false;
     curTemp.value = {};
-    // sub.value = 1;
   };
 
-  // 切换宽高比锁定
-  const toggleRatioLock = () => {
-    puzzleSettings.value.size.lockRatio = !puzzleSettings.value.size.lockRatio;
-  };
+// Canvas 点击交互增强
+watchEffect(() => {
+  if (canvas.value) {
+    canvas.value.on('mouse:up', (opt) => {
+      const target = opt.target;
+      if (!showControlPanel.value || !mouseDownPoint) return; 
 
-  // 更新尺寸
-  const updateSize = (dimension, value) => {
-    puzzleSettings.value.size[dimension] = parseInt(value) || 0;
-    // 如果锁定宽高比，同时更新另一个维度
-    if (puzzleSettings.value.size.lockRatio && canvas.value) {
-      const activeObject = canvas.value.getActiveObject();
-      if (activeObject) {
-        const ratio = activeObject.width / activeObject.height;
-        if (dimension === 'width') {
-          puzzleSettings.value.size.height = Math.round(puzzleSettings.value.size.width / ratio);
-        } else {
-          puzzleSettings.value.size.width = Math.round(puzzleSettings.value.size.height * ratio);
-        }
-      }
-    }
-  };
-
-  // 保存拼图
-  const save = () => { };
-
-  // sub 3
-  const transparent = ref(100);
-  const zoom = ref(100);
-
-  // Canvas 点击事件监听
-  watchEffect(() => {
-    if (canvas.value) {
-      // 移除之前的事件监听器
-      canvas.value.off('mouse:down');
-
-      // 添加新的点击事件监听器
-      canvas.value.on('mouse:down', (opt) => {
-        const target = opt.target;
-
-        if (!showControlPanel.value) return;
-
-        // 检查是否点击了图片区域
-        if (target && target.type === 'image') {
-          // 点击图片区域，设置sub为3
+      const pointer = canvas.value.getPointer(opt.e);
+      const moveDistance = mouseDownPoint.distanceFrom(pointer);
+      
+      // ✅ 仅在位移极小时响应“点击”意图
+      if (moveDistance < 5) {
+        if (target?.data?.type === 'cell-placeholder') {
+          // 触发上传
+          triggerCellUpload(target);
+        } else if (target?.data?.type === 'puzzle-image') {
+          // 进入图片配置页
           sub.value = 3;
         } else {
-          // 点击非图片区域，设置sub为1
+          // 点击空白处回到主页
+          canvas.value.discardActiveObject();
           sub.value = 1;
         }
-      });
-    }
+      }
+      // 注意：大于 5px 的逻辑由 useCanvasPuzzle.js 的边缘矫正负责
+    });
+  }
+});
+
+// 辅助：从逻辑层引入 mouseDownPoint 的引用或使用内部状态
+// 为了让 index.vue 也能拿到按下位置，我们需要在 index.vue 顶部也记录一下
+
+watchEffect(() => {
+  if (canvas.value) {
+    canvas.value.on('mouse:down', (opt) => {
+       const p = canvas.value.getPointer(opt.e);
+       mouseDownPoint = new fabric.Point(p.x, p.y);
+    });
+  }
+});
+
+  // 其他辅助方法...
+  const backToMain = () => { sub.value = 1; selectedImageCount.value = 'all'; };
+  const toggleRatioLock = () => { puzzleSettings.value.size.lockRatio = !puzzleSettings.value.size.lockRatio; };
+  const filteredTemplates = computed(() => {
+    if (selectedImageCount.value === 'all') return gridTemplates;
+    const curCount = parseInt(selectedImageCount.value);
+    return gridTemplates[curCount] ? { [curCount]: gridTemplates[curCount] } : {};
   });
 </script>
 
