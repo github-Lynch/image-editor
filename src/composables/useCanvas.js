@@ -167,6 +167,7 @@ export function useCanvas() {
         canvas.value?.setActiveObject(img);
         historyProcessing = false;
         saveHistory();
+        canvas.value.fire('image:updated');
       },
       { crossOrigin: "anonymous" }
     );
@@ -274,6 +275,8 @@ export function useCanvas() {
       () => {
         canvas.value.renderAll();
         saveHistory();
+        // 触发自定义事件，通知滤镜模块更新预览图
+        canvas.value.fire('image:updated');
       },
       { crossOrigin: "anonymous" }
     );
