@@ -14,16 +14,31 @@ let dragOriginPoint = null;
 let dragLastPoint = { x: 0, y: 0 };
 let dragProxy = null;
 let dragOriginCellIndex = -1;
+// 【关键保留】记录偏移量，修复拖拽时的瞬移问题
+let dragOffset = { x: 0, y: 0 };
+let isCreatingProxy = false;
 
-const puzzleState = reactive({
-  isActive: false,
-  cells: [],
+// 默认配置
+const DEFAULTS = {
   padding: 20,
   spacing: 10,
   radius: 0,
   width: 1000,
   height: 1000,
-  bgColor: '#ffffff'
+  bgColor: '#ffffff',
+  rows: 1,
+  cols: 1
+};
+
+const puzzleState = reactive({
+  isActive: false,
+  cells: [],
+  padding: DEFAULTS.padding,
+  spacing: DEFAULTS.spacing,
+  radius: DEFAULTS.radius,
+  width: DEFAULTS.width,
+  height: DEFAULTS.height,
+  bgColor: DEFAULTS.bgColor
 });
 
 export const registerPuzzleModule = (canvas, saveHistory, callbacks = {}) => {
@@ -43,18 +58,29 @@ export const initPuzzleMode = (initialTemplate = null) => {
 
   bindEvents();
 
-  const existingImages = canvas.getObjects().filter(o => o.type === 'image');
-  const cells = initialTemplate ? parseTemplateToCells(initialTemplate) : generateGridCells(2, 2);
+  // 1. 布局初始化
+  const cells = initialTemplate ? parseTemplateToCells(initialTemplate) : generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
+
+  // 2. 应用布局 (内部会自动吸入普通图片，无需手动 addImageToCell)
   updateLayout(cells);
 
-  if (existingImages.length > 0) {
-    const imgObj = existingImages[0];
-    const src = imgObj.getSrc();
-    canvas.remove(imgObj);
-    addImageToCell(src, 0);
-  } else {
-    canvas.requestRenderAll();
-  }
+  canvas.requestRenderAll();
+};
+
+// === 模块级重置 ===
+export const resetPuzzle = () => {
+  const canvas = unref(canvasRef);
+  if (!canvas) return;
+
+  puzzleState.padding = DEFAULTS.padding;
+  puzzleState.spacing = DEFAULTS.spacing;
+  puzzleState.radius = DEFAULTS.radius;
+  puzzleState.bgColor = DEFAULTS.bgColor;
+
+  const defaultCells = generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
+  updateLayout(defaultCells);
+
+  if (saveHistoryFn) saveHistoryFn();
 };
 
 export const exitPuzzleMode = () => {
@@ -68,7 +94,7 @@ export const exitPuzzleMode = () => {
 };
 
 // =========================================================================
-// 核心逻辑：计算合法的图片位置 (防止露白)
+// 核心逻辑：计算合法的图片位置
 // =========================================================================
 const calculateValidPosition = (img, cell) => {
   const minScaleX = cell.width / img.width;
@@ -94,7 +120,6 @@ const calculateValidPosition = (img, cell) => {
   const cellTopEdge = cell.top;
   const cellBottomEdge = cell.top + cell.height;
 
-  // X轴约束
   if (imgScaledW <= cell.width + 0.1) {
     targetLeft = cell.left + cell.width / 2;
   } else {
@@ -102,7 +127,6 @@ const calculateValidPosition = (img, cell) => {
     else if (imgRightEdge < cellRightEdge) targetLeft = cellRightEdge - imgScaledW / 2;
   }
 
-  // Y轴约束
   if (imgScaledH <= cell.height + 0.1) {
     targetTop = cell.top + cell.height / 2;
   } else {
@@ -113,7 +137,7 @@ const calculateValidPosition = (img, cell) => {
   return { scaleX: targetScale, scaleY: targetScale, left: targetLeft, top: targetTop };
 };
 
-// === 事件监听 ===
+// === 事件绑定 ===
 const bindEvents = () => {
   const canvas = unref(canvasRef);
   canvas.on('mouse:down', onMouseDown);
@@ -130,7 +154,6 @@ const unbindEvents = () => {
   canvas.off('mouse:wheel', onMouseWheel);
 };
 
-// 1. Mouse Down
 const onMouseDown = (opt) => {
   if (!puzzleState.isActive) return;
   const canvas = unref(canvasRef);
@@ -143,13 +166,24 @@ const onMouseDown = (opt) => {
     isDragging = true;
     dragOriginCellIndex = target.cellIndex;
     canvas.setActiveObject(target);
+
+    // 记录点击时的相对偏移，用于后续拖拽
+    const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === target.cellIndex);
+    if (img) {
+      dragOffset = {
+        x: img.left - pointer.x,
+        y: img.top - pointer.y
+      };
+    } else {
+      dragOffset = { x: 0, y: 0 };
+    }
+
   } else {
     isDragging = false;
     dragOriginCellIndex = -1;
   }
 };
 
-// 2. Mouse Move
 const onMouseMove = (opt) => {
   if (!puzzleState.isActive || !isDragging || dragOriginCellIndex === -1) return;
   const canvas = unref(canvasRef);
@@ -169,10 +203,11 @@ const onMouseMove = (opt) => {
     pointer.y >= cell.top && pointer.y <= cell.top + cell.height;
 
   if (isInsideCell) {
-    // === Pan 模式 (格子内) ===
+    // === Pan 模式 (保持原样) ===
     if (dragProxy) {
       canvas.remove(dragProxy);
       dragProxy = null;
+      isCreatingProxy = false;
       const originImg = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === dragOriginCellIndex);
       if (originImg) originImg.set('opacity', 1);
     }
@@ -184,76 +219,94 @@ const onMouseMove = (opt) => {
       img.setCoords();
     }
   } else {
-    // === Swap 模式 (拖出格子) ===
-    if (!dragProxy) createDragProxy(dragOriginCellIndex);
+    // === Swap 模式 (创建幽灵) ===
+    if (!dragProxy && !isCreatingProxy) {
+      isCreatingProxy = true;
+      createDragProxy(dragOriginCellIndex, pointer);
+    }
+
     if (dragProxy) {
-      dragProxy.set({ left: pointer.x, top: pointer.y });
+      // 使用偏移量，保证不跳动
+      dragProxy.set({
+        left: pointer.x + dragOffset.x,
+        top: pointer.y + dragOffset.y
+      });
       dragProxy.setCoords();
     }
   }
-
   dragLastPoint = { x: pointer.x, y: pointer.y };
   canvas.requestRenderAll();
 };
 
-// 创建幽灵对象
-const createDragProxy = (cellIndex) => {
+const createDragProxy = (cellIndex, pointer) => {
   const canvas = unref(canvasRef);
   const cell = puzzleState.cells.find(c => c.index === cellIndex);
   const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === cellIndex);
 
-  if (!cell || !img) return;
+  if (!cell || !img) {
+    isCreatingProxy = false;
+    return;
+  }
 
-  img.set('opacity', 0.4); // 降低原图不透明度
+  img.set('opacity', 0.4);
 
   img.clone((cloned) => {
     dragProxy = cloned;
 
-    // 设置幽灵样式
+    // 【关键】重新校准偏移量，确保生成的幽灵正好在当前图片位置
+    // 即使图片因为卡在边缘没有跟随鼠标，这里也会重新计算正确的 offset
+    if (pointer) {
+      dragOffset = {
+        x: img.left - pointer.x,
+        y: img.top - pointer.y
+      };
+    }
+
     dragProxy.set({
       opacity: 0.8, evented: false, selectable: false,
       originX: 'center', originY: 'center',
-      left: canvas.getPointer(null).x, top: canvas.getPointer(null).y,
+      left: pointer ? pointer.x + dragOffset.x : img.left,
+      top: pointer ? pointer.y + dragOffset.y : img.top,
       hasControls: false, hasBorders: false,
-      stroke: '#409eff', strokeWidth: 2
+      stroke: '#409eff', strokeWidth: 2,
+      isPuzzleImage: true,
+      isGhost: true
     });
 
-    // 计算幽灵的 ClipPath (相对)
     const cellCenterX = cell.left + cell.width / 2;
     const cellCenterY = cell.top + cell.height / 2;
     const offsetX = (cellCenterX - img.left) / img.scaleX;
     const offsetY = (cellCenterY - img.top) / img.scaleY;
 
+    // 幽灵的 ClipPath 保持相对定位，用于显示局部
     const clipRect = new fabric.Rect({
       left: offsetX, top: offsetY,
       width: cell.width / img.scaleX, height: cell.height / img.scaleY,
       originX: 'center', originY: 'center',
       absolutePositioned: false
     });
-
     dragProxy.clipPath = clipRect;
+
     canvas.add(dragProxy);
     canvas.bringToFront(dragProxy);
+    isCreatingProxy = false;
   });
 };
 
-// 3. Mouse Up
 const onMouseUp = (opt) => {
   if (!puzzleState.isActive) return;
   const canvas = unref(canvasRef);
   const pointer = canvas.getPointer(opt.e);
   isDragging = false;
+  isCreatingProxy = false;
 
   if (dragProxy) {
     const dropCell = getCellFromPoint(pointer.x, pointer.y);
     const originCellIndex = dragOriginCellIndex;
-
     canvas.remove(dragProxy);
     dragProxy = null;
-
     const originImg = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === originCellIndex);
     if (originImg) originImg.set('opacity', 1);
-
     if (dropCell && dropCell.index !== originCellIndex) {
       animateSwap(originCellIndex, dropCell.index);
     } else {
@@ -264,7 +317,6 @@ const onMouseUp = (opt) => {
       Math.pow(pointer.x - dragOriginPoint.x, 2) +
       Math.pow(pointer.y - dragOriginPoint.y, 2)
     );
-
     if (dist < 5) {
       const clickedCell = getCellFromPoint(pointer.x, pointer.y);
       if (clickedCell) {
@@ -281,37 +333,31 @@ const onMouseUp = (opt) => {
       if (dragOriginCellIndex !== -1) animateSnapBack(dragOriginCellIndex);
     }
   }
-
   dragOriginCellIndex = -1;
   dragOriginPoint = null;
   canvas.requestRenderAll();
 };
 
 // =========================================================================
-// 【核心重写】动画逻辑：交换 (同时动画化图片和其绝对定位的 ClipPath)
+// 动画逻辑：【完全还原】原来的 absolutePositioned 动画逻辑
 // =========================================================================
 const animateSwap = (idxA, idxB) => {
   const canvas = unref(canvasRef);
-
   const imgA = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === idxA);
   const imgB = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === idxB);
-
   const cellA = puzzleState.cells.find(c => c.index === idxA);
   const cellB = puzzleState.cells.find(c => c.index === idxB);
-
   const animations = [];
   const duration = 300;
   const easing = fabric.util.ease.easeOutQuart;
 
-  // --- 动画生成器 ---
-  // 同时移动图片本体和它的绝对定位裁剪框
   const createSyncAnimation = (img, targetCell) => {
     if (!img || !targetCell) return;
 
-    // 1. 计算图片本体的目标位置 (Cover 模式)
+    // 计算目标位置
     const targetImgState = calculateValidPosition(img, targetCell);
 
-    // 2. 动画化图片本体
+    // 1. 动画主体 (Image)
     animations.push(new Promise(resolve => {
       img.animate({
         left: targetImgState.left,
@@ -320,13 +366,13 @@ const animateSwap = (idxA, idxB) => {
         scaleY: targetImgState.scaleY
       }, {
         duration, easing,
-        onChange: canvas.requestRenderAll.bind(canvas), // 每帧刷新
+        onChange: canvas.requestRenderAll.bind(canvas),
         onComplete: resolve
       });
     }));
 
-    // 3. 动画化绝对定位裁剪框 (从当前格子形状 -> 目标格子形状)
-    // 我们的 ClipPath 是 absolutePositioned: true 的 Rect
+    // 2. 动画裁剪框 (ClipPath) - 使用【绝对定位】
+    // 这是您原版代码的逻辑，确保动画视觉效果一致
     if (img.clipPath) {
       animations.push(new Promise(resolve => {
         img.clipPath.animate({
@@ -334,51 +380,38 @@ const animateSwap = (idxA, idxB) => {
           top: targetCell.top,
           width: targetCell.width,
           height: targetCell.height,
-          // 如果圆角不同也可以动画
           rx: puzzleState.radius,
           ry: puzzleState.radius
         }, {
           duration, easing,
-          // 这里不需要 onChange，因为外层的图片 animate 已经触发了
           onComplete: resolve
         });
       }));
     }
   };
 
-  // 执行 A -> B
   createSyncAnimation(imgA, cellB);
-  // 执行 B -> A
   createSyncAnimation(imgB, cellA);
 
   Promise.all(animations).then(() => {
-    // 交换索引数据
     if (imgA) imgA.cellIndex = idxB;
     if (imgB) imgB.cellIndex = idxA;
-
     const ctrlA = canvas.getObjects().find(o => o.isPuzzleController && o.cellIndex === idxA);
     const ctrlB = canvas.getObjects().find(o => o.isPuzzleController && o.cellIndex === idxB);
     if (ctrlA) ctrlA.cellIndex = idxB;
     if (ctrlB) ctrlB.cellIndex = idxA;
-
-    // 刷新一次以修正所有状态
-    refreshPuzzleObjects();
+    refreshPuzzleObjects(); // 刷新以确保状态同步
     if (saveHistoryFn) saveHistoryFn();
   });
 };
 
-// =========================================================================
-// 动画逻辑：回弹
-// =========================================================================
 const animateSnapBack = (cellIndex) => {
   const canvas = unref(canvasRef);
   const cell = puzzleState.cells.find(c => c.index === cellIndex);
   const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === cellIndex);
-
   if (img && cell) {
     const validPos = calculateValidPosition(img, cell);
     const dist = Math.sqrt(Math.pow(img.left - validPos.left, 2) + Math.pow(img.top - validPos.top, 2));
-
     if (dist > 0.5) {
       img.animate({
         left: validPos.left, top: validPos.top
@@ -391,36 +424,29 @@ const animateSnapBack = (cellIndex) => {
   }
 };
 
-// === 滚轮缩放 (保持不变) ===
 const onMouseWheel = (opt) => {
   const canvas = unref(canvasRef);
   const target = canvas.getActiveObject();
   if (!target || !target.isPuzzleController) return;
-
   opt.e.preventDefault(); opt.e.stopPropagation();
-
   const cell = puzzleState.cells.find(c => c.index === target.cellIndex);
   const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === target.cellIndex);
   if (!cell || !img) return;
-
   let zoom = img.scaleX;
   zoom *= 0.999 ** opt.e.deltaY;
   const minScale = Math.max(cell.width / img.width, cell.height / img.height);
   const maxScale = minScale * 5;
   if (zoom < minScale) zoom = minScale;
   if (zoom > maxScale) zoom = maxScale;
-
   img.set({ scaleX: zoom, scaleY: zoom });
   const validPos = calculateValidPosition(img, cell);
   img.set({ left: validPos.left, top: validPos.top });
   canvas.requestRenderAll();
 };
 
-// === 布局刷新 (保持不变) ===
 export const updateLayout = (cellDefinitions = null, config = {}) => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
-
   if (config.padding !== undefined) puzzleState.padding = config.padding;
   if (config.spacing !== undefined) puzzleState.spacing = config.spacing;
   if (config.radius !== undefined) puzzleState.radius = config.radius;
@@ -428,18 +454,11 @@ export const updateLayout = (cellDefinitions = null, config = {}) => {
     puzzleState.bgColor = config.bgColor;
     canvas.setBackgroundColor(config.bgColor, () => canvas.requestRenderAll());
   }
-
-  // 标记是否发生了结构性变化 (行列变化/模板切换)
-  // 如果 cellDefinitions 存在，说明是切换了模板，需要重置图片缩放
-  // 如果是 null (仅调整间距)，则保留用户之前的缩放操作
   const isTemplateChange = !!cellDefinitions;
-
   if (cellDefinitions) puzzleState.rawCells = cellDefinitions;
-
   const { width, height, padding, spacing } = puzzleState;
   const availW = width - (padding * 2);
   const availH = height - (padding * 2);
-
   puzzleState.cells = puzzleState.rawCells.map(cell => ({
     index: cell.index,
     left: padding + cell.x * availW + spacing / 2,
@@ -447,29 +466,69 @@ export const updateLayout = (cellDefinitions = null, config = {}) => {
     width: cell.w * availW - spacing,
     height: cell.h * availH - spacing
   }));
-
-  // 传入标志位
   refreshPuzzleObjects(isTemplateChange);
-
   if (saveHistoryFn) saveHistoryFn();
 };
 
-/**
- * 刷新所有对象
- * @param {Boolean} shouldResetImages 是否强制重置图片位置和缩放 (用于模板切换时)
- */
+// === 刷新对象 (防重复 + 自动吸入) ===
 const refreshPuzzleObjects = (shouldResetImages = false) => {
   const canvas = unref(canvasRef);
   const { radius } = puzzleState;
-  const placeholders = canvas.getObjects().filter(o => o.isPlaceholder);
-  canvas.remove(...placeholders);
 
-  puzzleState.cells.forEach(cell => {
-    const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === cell.index);
-    const controller = canvas.getObjects().find(o => o.isPuzzleController && o.cellIndex === cell.index);
+  const toRemove = canvas.getObjects().filter(o => o.isPlaceholder || o.isPuzzleController);
+  canvas.remove(...toRemove);
 
-    if (img && controller) {
-      // 1. 恢复绝对定位 ClipPath
+  // 1. 过滤幽灵和代理
+  const existingPuzzleImages = canvas.getObjects()
+    .filter(o => o.isPuzzleImage && !o.isGhost && o !== dragProxy)
+    .sort((a, b) => a.cellIndex - b.cellIndex);
+
+  // 2. 自动吸入普通图片 (Fix 还原后切模板无效)
+  if (shouldResetImages && existingPuzzleImages.length === 0) {
+    const rawImages = canvas.getObjects().filter(o => o.type === 'image' && !o.isPuzzleItem);
+    if (rawImages.length > 0) {
+      const rawImg = rawImages[0];
+      const src = rawImg.getSrc();
+      canvas.remove(rawImg);
+      addImageToCell(src, 0);
+      puzzleState.cells.forEach(cell => drawPlaceholder(canvas, cell));
+      canvas.requestRenderAll();
+      return;
+    }
+  }
+
+  // 3. 遍历格子
+  puzzleState.cells.forEach((cell, index) => {
+    let img = null;
+
+    if (shouldResetImages) {
+      if (index < existingPuzzleImages.length) {
+        img = existingPuzzleImages[index];
+        img.cellIndex = cell.index;
+        img.set({ opacity: 1, visible: true });
+
+        const minScale = Math.max(cell.width / img.width, cell.height / img.height) + 0.0001;
+        img.set({
+          scaleX: minScale, scaleY: minScale,
+          left: cell.left + cell.width / 2,
+          top: cell.top + cell.height / 2
+        });
+        img.setCoords();
+      }
+    } else {
+      img = existingPuzzleImages.find(o => o.cellIndex === cell.index);
+      if (img) {
+        const validPos = calculateValidPosition(img, cell);
+        img.set({
+          left: validPos.left, top: validPos.top,
+          scaleX: validPos.scaleX, scaleY: validPos.scaleY
+        });
+        img.setCoords();
+      }
+    }
+
+    if (img) {
+      // 还原为绝对定位的 ClipPath，保证动画兼容性
       const clipRect = new fabric.Rect({
         left: cell.left, top: cell.top, width: cell.width, height: cell.height,
         rx: radius, ry: radius, absolutePositioned: true
@@ -477,45 +536,26 @@ const refreshPuzzleObjects = (shouldResetImages = false) => {
       img.set({ clipPath: clipRect, opacity: 1 });
       img.setCoords();
 
-      // 2. 控制器: 归位并锁定
-      controller.set({
+      const controller = new fabric.Rect({
         left: cell.left, top: cell.top, width: cell.width, height: cell.height,
-        rx: radius, ry: radius,
+        fill: 'transparent', noScaleCache: false,
+        transparentCorners: false, cornerSize: 8, borderOpacityWhenMoving: 0.5,
+        selectable: true, evented: true, hasControls: true, hasBorders: true,
         lockMovementX: true, lockMovementY: true,
         lockRotation: true, lockScalingX: true, lockScalingY: true,
-        hasControls: true, hasBorders: true
+        isPuzzleItem: true, isPuzzleController: true, cellIndex: cell.index
       });
-      controller.setCoords();
-
-      // 3. 位置与缩放调整策略
-      if (shouldResetImages) {
-        // === 策略 A: 模板切换 ===
-        // 强制重置为“最佳填充 (Cover)”并居中
-        // 这样从 2格 切到 9格 时，图片会自动缩小以展示更多内容
-        const minScale = Math.max(cell.width / img.width, cell.height / img.height) + 0.0001;
-
-        img.set({
-          scaleX: minScale,
-          scaleY: minScale,
-          left: cell.left + cell.width / 2,
-          top: cell.top + cell.height / 2
-        });
-      } else {
-        // === 策略 B: 样式微调 (如拖动间距滑块) ===
-        // 尽量保留用户之前的平移和缩放，只做合法性校验 (calculateValidPosition)
-        const validPos = calculateValidPosition(img, cell);
-        img.set({
-          left: validPos.left,
-          top: validPos.top,
-          scaleX: validPos.scaleX,
-          scaleY: validPos.scaleY
-        });
-      }
-
+      canvas.add(controller);
     } else {
       drawPlaceholder(canvas, cell);
     }
   });
+
+  if (shouldResetImages && existingPuzzleImages.length > puzzleState.cells.length) {
+    const extras = existingPuzzleImages.slice(puzzleState.cells.length);
+    canvas.remove(...extras);
+  }
+
   canvas.requestRenderAll();
 };
 

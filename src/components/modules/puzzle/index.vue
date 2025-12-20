@@ -532,7 +532,6 @@ const onFileSelected = (e) => {
   border: none;
   background: transparent;
   font-size: 14px;
-  font-weight: 600;
   color: var(--text-main);
   text-align: center;
   outline: none;
