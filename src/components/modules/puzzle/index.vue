@@ -1,806 +1,670 @@
 <template>
-  <div class="puzzle-module">
-    <!-- sub page count: 3 -->
-    <!-- 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板) -->
-    <!-- 2. 模板选择页 -->
-    <!-- 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1 -->
-
-    <!-- 初始页 -->
-    <div
-      v-if="sub === 1"
-      class="puzzle-main"
-    >
-      <!-- 选项卡 -->
-      <div class="puzzle-tabs">
-        <div
-          class="tab-item"
-          :class="{ active: activeTab === 'grid' }"
-          @click="activeTab = 'grid'"
-        >
-          网格
-        </div>
-        <div
-          class="tab-item"
-          :class="{ active: activeTab === 'join' }"
-          @click="activeTab = 'join'"
-        >
-          拼接
-        </div>
+  <div class="puzzle-panel">
+    <div class="main-tabs">
+      <div class="tab-item" :class="{ active: mode === 'grid' }" @click="mode = 'grid'">
+        网格布局
       </div>
-
-      <!-- 操作内容 -->
-      <div>
-        <!-- 网格选项卡内容 -->
-        <div v-if="activeTab === 'grid'">
-          <button
-            class="select-btn"
-            @click="sub = 2"
-          >
-            <div class="icon-wrap">
-              <div
-                v-if="showControlPanel"
-                :style="curTemp.wrapStyle"
-                class="small-grid-template"
-              >
-                <div
-                  v-for="(gridArea, i) in curTemp.gridAreas"
-                  :key="i"
-                  class="grid-cell"
-                  :style="`grid-area: ${gridArea};`"
-                ></div>
-              </div>
-              <span
-                v-else
-                class="plus-icon"
-              >+</span>
-            </div>
-            <span>选择网格</span>
-            <span
-              v-if="showControlPanel"
-              class="cancel-btn"
-              @click.stop="cancel"
-            >取消</span>
-          </button>
-
-          <!-- 控制组件 -->
-          <div
-            v-if="showControlPanel"
-            class="control-panel"
-          >
-            <!-- 拼图尺寸 -->
-            <div class="control-group">
-              <label>拼图尺寸</label>
-              <div class="size-controls">
-                <div class="input-wrapper">
-                  <input
-                    type="number"
-                    v-model.number="puzzleSettings.size.width"
-                    min="100"
-                    max="2000"
-                    class="ie-input"
-                    @change="updateSize('width', puzzleSettings.size.width)"
-                  >
-                  <span class="suffix">W</span>
-                </div>
-
-                <div
-                  class="link-icon"
-                  title="锁定宽高比"
-                  @click="toggleRatioLock"
-                >
-                  <svg
-                    v-if="puzzleSettings.size.lockRatio"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#409eff"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                  <svg
-                    v-else
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#909399"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    style="opacity: 0.6"
-                  >
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    <line
-                      x1="4"
-                      y1="4"
-                      x2="20"
-                      y2="20"
-                      stroke="#909399"
-                    />
-                  </svg>
-                </div>
-
-                <div class="input-wrapper">
-                  <input
-                    type="number"
-                    v-model.number="puzzleSettings.size.height"
-                    min="100"
-                    max="2000"
-                    class="ie-input"
-                    @change="updateSize('height', puzzleSettings.size.height)"
-                  >
-                  <span class="suffix">H</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 边框 -->
-            <div class="control-group">
-              <label>边框</label>
-              <input
-                v-model="puzzleSettings.border"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-              />
-              <span class="value-display">{{ puzzleSettings.border }}px</span>
-            </div>
-
-            <!-- 间距 -->
-            <div class="control-group">
-              <label>间距</label>
-              <input
-                type="range"
-                v-model="puzzleSettings.spacing"
-                min="0"
-                max="100"
-                step="1"
-              />
-              <span class="value-display">{{ puzzleSettings.spacing }}px</span>
-            </div>
-
-            <!-- 拼图背景 -->
-            <div class="control-group">
-              <label>拼图背景颜色</label>
-              <input
-                type="color"
-                class="color"
-                v-model="puzzleSettings.background"
-              />
-            </div>
-
-            <!-- 保存按钮 -->
-            <button
-              class="save-btn"
-              @click="save"
-            >
-              保存
-            </button>
-          </div>
-        </div>
-
-        <!-- 拼接选项卡内容 -->
-        <div v-else>
-          <button class="select-btn">
-            <div class="icon-wrap">
-              <div
-                v-if="showControlPanel"
-                :style="curTemp.wrapStyle"
-                class="small-grid-template"
-              >
-                <div
-                  v-for="(gridArea, i) in curTemp.gridAreas"
-                  :key="i"
-                  class="grid-cell"
-                  :style="`grid-area: ${gridArea};`"
-                ></div>
-              </div>
-              <span
-                v-else
-                class="plus-icon"
-              >+</span>
-            </div>
-            <span>选择拼接</span>
-            <span
-              v-if="showControlPanel"
-              class="cancel-btn"
-              @click.stop="cancel"
-            >取消</span>
-          </button>
-        </div>
+      <div class="tab-item disabled">
+        长图拼接
       </div>
     </div>
 
-    <!-- 模板选择面板 -->
-    <div
-      v-if="sub === 2"
-      class="grid-templates"
-    >
-      <!-- 返回按钮 -->
-      <div
-        class="back-header"
-        @click="backToMain"
-      >
-        <span class="back-icon">‹</span> 网格
+    <div v-if="mode === 'grid'" class="panel-content">
+      <div class="sub-tabs">
+        <div class="sub-item" :class="{ active: subTab === 'tpl' }" @click="subTab = 'tpl'">模板库</div>
+        <div class="sub-item" :class="{ active: subTab === 'style' }" @click="subTab = 'style'">样式调整</div>
       </div>
 
-      <!-- 图片数量选择 -->
-      <div class="image-count-selector">
-        <label>图片数量</label>
-        <select v-model="selectedImageCount">
-          <option
-            v-for="item in countOptions"
-            :key="item.value"
-            :value="item.value"
-          >{{ item.label }}</option>
-        </select>
-      </div>
+      <div v-show="subTab === 'tpl'" class="tab-pane fade-in">
 
-      <!-- 网格模板列表 -->
-      <div class="grid-list">
-        <div
-          v-for="(group, count) in filteredTemplates"
-          :key="count"
-          class="grid-group"
-        >
-          <!-- 图片数量标题 -->
-          <div class="grid-group-title">{{ count }}</div>
-
-          <!-- 该数量下的所有模板 -->
-          <div class="grid-templates-row">
-            <div
-              v-for="template in group"
-              :key="template.id"
-              :style="template.wrapStyle"
-              class="grid-template"
-              @click="selectTemplate(template)"
-            >
-              <div
-                v-for="(gridArea, i) in template.gridAreas"
-                :key="i"
-                class="grid-cell"
-                :style="`grid-area: ${gridArea};`"
-              ></div>
+        <div class="filter-section">
+          <div class="filter-label">图片数量</div>
+          <div class="filter-scroll-wrapper hide-scrollbar">
+            <div v-for="opt in countOptions" :key="opt.value" class="filter-tag"
+              :class="{ active: selectedCount === opt.value }" @click="selectedCount = opt.value">
+              {{ opt.label }}
             </div>
+          </div>
+        </div>
+
+        <div class="template-section">
+          <div class="section-header">
+            <span class="title">布局列表</span>
+            <span class="count-badge" v-if="filteredTemplates.length">{{ filteredTemplates.length }}</span>
+          </div>
+
+          <div v-if="filteredTemplates.length === 0" class="empty-state">
+            暂无此类模板
+          </div>
+
+          <div class="template-grid-container" v-else>
+            <div v-for="tpl in filteredTemplates" :key="tpl.id" class="tpl-card" @click="applyTemplate(tpl)">
+              <div class="mini-grid-preview" :style="tpl.wrapStyle">
+                <div v-for="(area, idx) in tpl.gridAreas" :key="idx" :style="{ gridArea: area }"></div>
+              </div>
+              <div class="card-overlay">{{ tpl.label || '模板' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="custom-grid-section">
+          <div class="section-header small">自定义行列</div>
+          <div class="custom-input-group">
+            <div class="input-item">
+              <span class="label">行</span>
+              <input type="number" class="ie-input" v-model.number="customRows" min="1" max="6" @change="applyCustom">
+            </div>
+            <div class="divider"></div>
+            <div class="input-item">
+              <span class="label">列</span>
+              <input type="number" class="ie-input" v-model.number="customCols" min="1" max="6" @change="applyCustom">
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div v-show="subTab === 'style'" class="tab-pane fade-in">
+        <div class="ie-group">
+          <div class="group-header">间距与圆角</div>
+          <div class="control-list">
+            <div class="slider-item">
+              <span class="label">外边距</span>
+              <input type="range" class="ie-range" v-model.number="style.padding" max="60" @input="updateStyle">
+              <span class="val">{{ style.padding }}</span>
+            </div>
+            <div class="slider-item">
+              <span class="label">间隙</span>
+              <input type="range" class="ie-range" v-model.number="style.spacing" max="40" @input="updateStyle">
+              <span class="val">{{ style.spacing }}</span>
+            </div>
+            <div class="slider-item">
+              <span class="label">圆角</span>
+              <input type="range" class="ie-range" v-model.number="style.radius" max="100" @input="updateStyle">
+              <span class="val">{{ style.radius }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ie-group">
+          <div class="group-header">画布背景</div>
+          <div class="color-selector">
+            <div class="color-preview" :style="{ backgroundColor: style.bgColor }">
+              <input type="color" v-model="style.bgColor" @input="updateStyle" class="color-input-hidden">
+            </div>
+            <span class="color-value">{{ style.bgColor }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 图片的配置页 -->
-    <div
-      v-if="sub === 3"
-      class="p-20"
-    >
-      <div class="operate-tabs">
-        <div class="tab-item border">
-          替换图片
-        </div>
-        <div
-          v-if="false"
-          class="tab-item border"
-        >
-          删除图片
-        </div>
-      </div>
-
-      <!-- 透明度 -->
-      <div class="control-group">
-        <label>透明度</label>
-        <input
-          v-model="transparent"
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-        />
-        <span class="value-display">{{ transparent }}px</span>
-      </div>
-
-      <!-- 放大 -->
-      <div class="control-group">
-        <label>放大</label>
-        <input
-          type="range"
-          v-model="zoom"
-          min="100"
-          max="300"
-          step="1"
-        />
-        <span class="value-display">{{ zoom }}px</span>
-      </div>
-    </div>
+    <input type="file" ref="fileInput" accept="image/png, image/jpeg, image/jpg" style="display:none"
+      @change="onFileSelected">
   </div>
 </template>
 
 <script setup>
-  import { ref, computed, watchEffect, watch, inject } from 'vue'; // ✅ 确保引入 watch
-  import { gridTemplates, countOptions } from './config.js';
-  import { useEditorState } from '../../../composables/useEditorState';
-  import { useCanvas } from '../../../composables/useCanvas';
-  // ✅ 引入逻辑层
-  import { registerPuzzleModule, applyGridTemplate, fillCellWithImage } from './useCanvasPuzzle';
+import { ref, reactive, inject, onMounted, onUnmounted, computed } from 'vue';
+import { Toast } from '@/utils/toast';
+import {
+  registerPuzzleModule,
+  initPuzzleMode,
+  exitPuzzleMode,
+  updateLayout,
+  addImageToCell,
+} from './useCanvasPuzzle';
+import {
+  generateGridCells,
+  gridTemplates,
+  countOptions,
+  parseTemplateToCells
+} from './config';
 
-  const { state } = useEditorState();
-  const canvasAPI = inject('canvasAPI');
-  const canvas = computed(() => canvasAPI?.canvas?.value);
+const canvasAPI = inject('canvasAPI');
+const fileInput = ref(null);
+const mode = ref('grid');
+const subTab = ref('tpl');
 
-  // --- 1. 先定义所有状态变量 (防止初始化报错) ---
-  const sub = ref(1);
-  const showControlPanel = ref(false);
-  const selectedImageCount = ref('all');
-  const activeTab = ref('grid');
-  const curTemp = ref({});
-  const transparent = ref(100);
-  const zoom = ref(100);
-  let mouseDownPoint = null;
+const selectedCount = ref('all');
+let pendingCellIndex = -1;
 
-const puzzleSettings = ref({
-  size: { width: 1000, height: 1000, lockRatio: true }, // ✅ 默认宽高调大
-  border: 15,
-  spacing: 15,
-  background: '#ffffff'
+const customRows = ref(2);
+const customCols = ref(2);
+
+const style = reactive({
+  padding: 20,
+  spacing: 10,
+  radius: 0,
+  bgColor: '#ffffff'
 });
 
-
-const resetPosition = () => {
-  const activeObj = canvas.value.getActiveObject();
-  if (activeObj && activeObj.data?.cellRect) {
-    const rect = activeObj.data.cellRect;
-    activeObj.set({
-      left: rect.left + rect.width / 2,
-      top: rect.top + rect.height / 2
-    });
-    canvas.value.requestRenderAll();
+const filteredTemplates = computed(() => {
+  if (selectedCount.value === 'all') {
+    return Object.values(gridTemplates).flat();
   }
-};
-  // --- 2. 再定义监听逻辑 ---
-
-  /**
-   * ✅ 修复点：深度监听滑块变化，实现丝滑重绘
-   */
-watch(
-  () => puzzleSettings.value,
-  (newVal) => {
-    if (showControlPanel.value && curTemp.value.id && canvas.value) {
-      applyGridTemplate(curTemp.value, newVal, null);
-    }
-  },
-  { deep: true }
-);
-
-// 监听图片配置页的滑块（sub 3）
-watch([transparent, zoom], ([newAlpha, newZoom]) => {
-  const canvasInstance = canvas.value;
-  if (!canvasInstance) return;
-
-  const activeObj = canvasInstance.getActiveObject();
-  if (activeObj && activeObj.data?.type === 'puzzle-image') {
-    // 处理透明度
-    activeObj.set('opacity', newAlpha / 100);
-
-    // 处理局部放大（基于原始 cover 比例的倍率）
-    const cellRect = activeObj.data.cellRect;
-    const baseScale = Math.max(cellRect.width / activeObj.width, cellRect.height / activeObj.height);
-    activeObj.set({
-      scaleX: baseScale * (newZoom / 100),
-      scaleY: baseScale * (newZoom / 100)
-    });
-
-    canvasInstance.requestRenderAll();
-  }
+  return gridTemplates[selectedCount.value] || [];
 });
 
-const selectTemplate = (template) => {
-  const canvasInstance = canvasAPI?.canvas.value;
-  if (!canvasInstance) return;
-
-  curTemp.value = template;
-  showControlPanel.value = true;
-  sub.value = 1;
-
-  registerPuzzleModule(canvasInstance, canvasAPI.saveHistory);
-  const mainImage = canvasInstance.getObjects().find(o => o.type === 'image');
-  
-  // 应用模板
-  applyGridTemplate(template, puzzleSettings.value, mainImage);
-  
-  // ✅ 核心：应用后让相机自动缩放以适配新的大尺寸
-  if (canvasAPI.zoomToRect) {
-     canvasAPI.zoomToRect({ left: 0, top: 0, width: puzzleSettings.value.size.width, height: puzzleSettings.value.size.height });
-  }
-};
-
-  const triggerCellUpload = (cellRect) => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const url = URL.createObjectURL(file);
-        fabric.Image.fromURL(url, (img) => {
-          fillCellWithImage(img, cellRect, cellRect.data.index);
-        });
-      }
-    };
-    input.click();
-  };
-
-  const cancel = () => {
-    showControlPanel.value = false;
-    curTemp.value = {};
-  };
-
-// Canvas 点击交互增强
-watchEffect(() => {
-  if (canvas.value) {
-    canvas.value.on('mouse:up', (opt) => {
-      const target = opt.target;
-      if (!showControlPanel.value || !mouseDownPoint) return; 
-
-      const pointer = canvas.value.getPointer(opt.e);
-      const moveDistance = mouseDownPoint.distanceFrom(pointer);
-      
-      // ✅ 仅在位移极小时响应“点击”意图
-      if (moveDistance < 5) {
-        if (target?.data?.type === 'cell-placeholder') {
-          // 触发上传
-          triggerCellUpload(target);
-        } else if (target?.data?.type === 'puzzle-image') {
-          // 进入图片配置页
-          sub.value = 3;
-        } else {
-          // 点击空白处回到主页
-          canvas.value.discardActiveObject();
-          sub.value = 1;
+onMounted(() => {
+  if (canvasAPI) {
+    registerPuzzleModule(canvasAPI.canvas, canvasAPI.saveHistory, {
+      onCellClick: (index) => {
+        pendingCellIndex = index;
+        if (fileInput.value) {
+          fileInput.value.value = '';
+          fileInput.value.click();
         }
       }
-      // 注意：大于 5px 的逻辑由 useCanvasPuzzle.js 的边缘矫正负责
     });
+    initPuzzleMode();
   }
 });
 
-// 辅助：从逻辑层引入 mouseDownPoint 的引用或使用内部状态
-// 为了让 index.vue 也能拿到按下位置，我们需要在 index.vue 顶部也记录一下
-
-watchEffect(() => {
-  if (canvas.value) {
-    canvas.value.on('mouse:down', (opt) => {
-       const p = canvas.value.getPointer(opt.e);
-       mouseDownPoint = new fabric.Point(p.x, p.y);
-    });
-  }
+onUnmounted(() => {
+  exitPuzzleMode();
 });
 
-  // 其他辅助方法...
-  const backToMain = () => { sub.value = 1; selectedImageCount.value = 'all'; };
-  const toggleRatioLock = () => { puzzleSettings.value.size.lockRatio = !puzzleSettings.value.size.lockRatio; };
-  const filteredTemplates = computed(() => {
-    if (selectedImageCount.value === 'all') return gridTemplates;
-    const curCount = parseInt(selectedImageCount.value);
-    return gridTemplates[curCount] ? { [curCount]: gridTemplates[curCount] } : {};
-  });
+const applyCustom = () => {
+  const cells = generateGridCells(customRows.value, customCols.value);
+  updateLayout(cells, style);
+};
+
+const applyTemplate = (tpl) => {
+  const cells = parseTemplateToCells(tpl);
+  updateLayout(cells, style);
+};
+
+const updateStyle = () => {
+  updateLayout(null, style);
+};
+
+const onFileSelected = (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+    Toast.error('仅支持 JPG/PNG 图片格式');
+    return;
+  }
+  if (pendingCellIndex >= 0) {
+    const url = URL.createObjectURL(file);
+    addImageToCell(url, pendingCellIndex);
+    pendingCellIndex = -1;
+  }
+};
 </script>
 
 <style scoped>
-  .puzzle-module {
-    width: 100%;
-    height: 100%;
-    background-color: #fff;
+/* === 全局变量 (Design Token) === */
+.puzzle-panel {
+  --primary: #409eff;
+  --primary-soft: #ecf5ff;
+  --text-main: #2c3e50;
+  --text-sub: #606266;
+  --text-light: #909399;
+  --bg-page: #ffffff;
+  --bg-block: #f7f8fa;
+  /* 浅灰块背景 */
+  --border: #eef0f4;
+  --radius-md: 8px;
+  --radius-pill: 20px;
+
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-page);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* === 顶部 Tabs === */
+.main-tabs {
+  display: flex;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+  background: var(--bg-page);
+}
+
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  font-size: 14px;
+  border-radius: var(--radius-md);
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--bg-block);
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.tab-item:hover:not(.disabled) {
+  background: #fff;
+  border-color: var(--border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.tab-item.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-color: transparent;
+}
+
+.tab-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === 内容区 === */
+.panel-content {
+  flex: 1;
+  overflow-y: auto;
+  /* 纵向滚动 */
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* 二级 Tabs */
+.sub-tabs {
+  display: flex;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-page);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.sub-item {
+  flex: 1;
+  text-align: center;
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--text-sub);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.sub-item.active {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.sub-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px 2px 0 0;
+}
+
+.tab-pane {
+  padding: 16px;
+}
+
+/* === 1. 筛选器 (横向滚动 + 胶囊) === */
+.filter-section {
+  margin-bottom: 24px;
+}
+
+.filter-label {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 8px;
+  padding-left: 2px;
+}
+
+.filter-scroll-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 4px;
+  justify-content: space-between;
+}
+
+.filter-scroll-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-scroll-wrapper:active {
+  cursor: grabbing;
+}
+
+.filter-tag {
+  width: 58px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  /* 圆角更精致 */
+  font-size: 14px;
+  color: #606266;
+  background: #ffffff;
+  border: 1px solid #e5e8eb;
+  /* 基础阴影 - 提升层次感 */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* 过渡动画 - 交互更丝滑 */
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 激活态（全部按钮）样式 */
+.filter-tag.active {
+  color: #ffffff;
+  /* 渐变背景 - 提升质感 */
+  background: linear-gradient(135deg, #2596ff 0%, #0078ff 100%);
+  border-color: #0078ff;
+  /* 增强阴影 - 突出选中状态 */
+  box-shadow: 0 4px 8px rgba(0, 120, 255, 0.25);
+}
+
+/* 悬浮态样式 */
+.filter-tag:not(.active):hover {
+  border-color: #ccd0d6;
+  background: #f8f9fa;
+  /* 悬浮阴影提升 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+  /* 轻微上浮 - 触感反馈 */
+}
+
+/* 点击按压态 */
+.filter-tag:not(.active):active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  background: #f0f2f5;
+}
+
+/* 激活态伪元素 - 增加细节质感 */
+.filter-tag.active::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+/* === 2. 模板列表 (卡片风格) === */
+.section-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 2px;
+}
+
+.count-badge {
+  font-size: 12px;
+  color: var(--text-light);
+  background: var(--bg-block);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.template-grid-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.tpl-card {
+  position: relative;
+  aspect-ratio: 1;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 5px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+}
+
+.tpl-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-soft);
+}
+
+/* 预览图容器 */
+.mini-grid-preview {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  gap: 2px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mini-grid-preview>div {
+  background: #e6e8eb;
+  /* 默认灰色 */
+  transition: background 0.2s;
+}
+
+.tpl-card:hover .mini-grid-preview>div {
+  background: #d4d7dc;
+  /* 悬浮加深 */
+}
+
+/* 底部文字遮罩 (只在hover显示) */
+.card-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.6);
+  /* 半透明黑底 */
+  padding: 4px;
+  text-align: center;
+  font-size: 10px;
+  color: #fff;
+  transform: translateY(100%);
+  transition: transform 0.2s ease;
+  backdrop-filter: blur(2px);
+}
+
+.tpl-card:hover .card-overlay {
+  transform: translateY(0);
+}
+
+/* === 3. 自定义行列 (整合输入框) === */
+.custom-grid-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--border);
+}
+
+.section-header.small {
+  font-size: 12px;
+  color: var(--text-light);
+  margin-bottom: 10px;
+}
+
+.custom-input-group {
+  display: flex;
+  align-items: center;
+  background: var(--bg-block);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  border: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.custom-input-group:focus-within {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 2px var(--primary-soft);
+}
+
+.input-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.input-item .label {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-right: 8px;
+}
+
+.ie-input {
+  width: 40px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  text-align: center;
+  outline: none;
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  background: #ddd;
+  margin: 0 8px;
+}
+
+/* === 样式调整 Tab === */
+.ie-group {
+  margin-bottom: 24px;
+}
+
+.group-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.slider-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.slider-item .label {
+  width: 48px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+
+.ie-range {
+  flex: 1;
+  margin: 0 12px;
+  height: 4px;
+  background: #e4e7ed;
+  border-radius: 2px;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.ie-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--primary);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.1s;
+}
+
+.ie-range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.slider-item .val {
+  width: 24px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-light);
+  font-family: monospace;
+}
+
+.color-selector {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-block);
+  padding: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.color-selector:hover {
+  background: #eef1f6;
+}
+
+.color-preview {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.color-input-hidden {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.color-value {
+  font-size: 13px;
+  color: var(--text-sub);
+  font-family: monospace;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 13px;
+  padding: 40px 0;
+  background: var(--bg-block);
+  border-radius: var(--radius-md);
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
   }
 
-  /* 主面板样式 */
-  .puzzle-main {
-    padding: 20px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-
-  .puzzle-tabs {
-    display: flex;
-  }
-
-  .tab-item {
-    flex: 1;
-    text-align: center;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #606266;
-  }
-
-  .tab-item.active {
-    background-color: #409eff;
-    color: #fff;
-  }
-
-  .select-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 20px;
-    border-radius: 4px;
-    width: 100%;
-    cursor: pointer;
-    font-size: 14px;
-    color: #606266;
-    transition: all 0.3s;
-  }
-
-  .select-btn:hover {
-    border-color: #409eff;
-    color: #409eff;
-  }
-
-  .icon-wrap {
-    width: 40px;
-    height: 40px;
-    border-radius: 4;
-    background-color: #fff;
-    font-size: 24px;
-    line-height: 40px;
-    text-align: center;
-    margin-right: 16px;
-  }
-
-  .small-grid-template {
-    height: 100%;
-    display: grid;
-    /* border-radius: 4px; */
-    overflow: hidden;
-  }
-
-  .plus-icon {
-    font-weight: bold;
-  }
-
-  .cancel-btn {
-    color: #409eff;
-    margin-left: 76px;
-    cursor: pointer;
-  }
-
-  /* 网格模板选择面板样式 */
-  .grid-templates {
-    padding: 20px 12px 20px;
-  }
-
-  .back-header {
-    display: flex;
-    align-items: center;
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 20px;
-    cursor: pointer;
-  }
-
-  .back-icon {
-    font-size: 20px;
-    margin-right: 8px;
-    color: #606266;
-  }
-
-  .image-count-selector {
-    margin-bottom: 20px;
-  }
-
-  .image-count-selector label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 14px;
-    color: #606266;
-  }
-
-  .image-count-selector select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-
-  .grid-list {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .grid-group {
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .grid-group-title {
-    padding: 10px 15px;
-    background-color: #f5f7fa;
-    font-size: 14px;
-    font-weight: 500;
-    color: #606266;
-  }
-
-  .grid-templates-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 12px 4px;
-  }
-
-  .grid-template {
-    width: 120px;
-    height: 120px;
-    display: grid;
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-
-  .grid-template:hover {
-    border-color: #409eff;
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  }
-
-  .grid-cell {
-    height: 100%;
-    background-color: #f0f0f0;
-    border: 1px solid #fff;
-  }
-
-  /* 控制面板样式 */
-  .control-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 15px 0;
-  }
-
-  .control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .control-group label {
-    font-size: 14px;
-    color: #606266;
-    font-weight: 500;
-  }
-
-  .color {
-    width: 100%;
-    cursor: pointer;
-    border: none;
-  }
-
-  /* 尺寸控制 */
-  .size-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .input-wrapper {
-    position: relative;
-    width: 38%;
-  }
-
-  .ie-input {
-    text-align: center;
-    padding-right: 20px;
-    font-weight: 500;
-    color: #333;
-  }
-
-  .suffix {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #c0c4cc;
-    font-size: 12px;
-    pointer-events: none;
-  }
-
-  .link-icon {
-    width: 24px;
-    display: flex;
-    justify-content: center;
-    cursor: pointer;
-  }
-
-  .-ratio-btn {
-    width: 32px;
-    height: 32px;
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    background-color: #fff;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s;
-  }
-
-  .-ratio-btn:hover {
-    border-color: #409eff;
-    color: #409eff;
-  }
-
-  .-ratio-btn.active {
-    background-color: #409eff;
-    border-color: #409eff;
-    color: #fff;
-  }
-
-  /* 滑块控制 */
-  .control-group input[type="range"] {
-    width: 100%;
-    height: 4px;
-    border-radius: 2px;
-    background: #dcdfe6;
-    outline: none;
-    -webkit-appearance: none;
-  }
-
-  .control-group input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #409eff;
-    cursor: pointer;
-  }
-
-  .control-group input[type="range"]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #409eff;
-    cursor: pointer;
-    border: none;
-  }
-
-  .value-display {
-    font-size: 14px;
-    color: #909399;
-    text-align: right;
-  }
-
-  /* 保存按钮 */
-  .save-btn {
-    padding: 12px 20px;
-    margin-top: 20px;
-    border: none;
-    border-radius: 21px;
-    background-color: #409eff;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-
-  .save-btn:hover {
-    background-color: #66b1ff;
-  }
-
-  .p-20 {
-    padding: 20px;
-  }
-
-  .operate-tabs {
-    display: flex;
-    margin-bottom: 16px;
-  }
-
-  .border {
-    border: 1px solid #dcdfe6;
-  }
+}
 </style>

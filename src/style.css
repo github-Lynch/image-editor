@@ -23,11 +23,16 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: left; /* 覆盖可能居中的 body 样式 */
+  text-align: left;
+  /* 覆盖可能居中的 body 样式 */
 
   /* 确保容器内的所有元素继承 box-sizing */
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(144, 147, 153, 0.3) transparent;
   }
 
   /* === 链接样式 (Scope 化) === */
@@ -36,6 +41,7 @@
     color: #646cff;
     text-decoration: inherit;
   }
+
   a:hover {
     color: #535bf2;
   }
@@ -44,7 +50,8 @@
   h1 {
     font-size: 3.2em;
     line-height: 1.1;
-    margin: 0; /* 移除默认边距 */
+    margin: 0;
+    /* 移除默认边距 */
   }
 
   /* === 按钮样式 (Scope 化，只影响编辑器内的 button) === */
@@ -59,20 +66,23 @@
     cursor: pointer;
     transition: border-color 0.25s;
     outline: none;
-    margin: 0; /* 移除默认边距 */
+    margin: 0;
+    /* 移除默认边距 */
   }
+
   button:hover {
     border-color: #646cff;
   }
-  
+
   /* 针对亮色模式的适配 (如果宿主是亮色) */
   @media (prefers-color-scheme: light) {
     --ie-text-color: #213547;
     --ie-bg-color: #ffffff;
-    
+
     a:hover {
       color: #747bff;
     }
+
     button {
       background-color: #f9f9f9;
     }
@@ -81,8 +91,9 @@
   /* === IE UI Kit (组件库样式) === */
   .ie-actions {
     display: flex;
-    
+
   }
+
   /* 1. 按钮增强 */
   .ie-btn {
     display: inline-flex;
@@ -99,11 +110,36 @@
     transition: .2s;
     outline: none;
   }
-  .ie-btn:hover { color: var(--ie-primary-color); border-color: #c6e2ff; background-color: #ecf5ff; }
-  .ie-btn:disabled { color: #c0c4cc; cursor: not-allowed; background-color: #fff; border-color: #ebeef5; }
-  .ie-btn.ie-primary { color: #fff; background-color: var(--ie-primary-color); border-color: var(--ie-primary-color); }
-  .ie-btn.ie-primary:hover { background-color: #66b1ff; border-color: #66b1ff; }
-  .ie-btn-circle { width: 32px; padding: 0; border-radius: 50%; }
+
+  .ie-btn:hover {
+    color: var(--ie-primary-color);
+    border-color: #c6e2ff;
+    background-color: #ecf5ff;
+  }
+
+  .ie-btn:disabled {
+    color: #c0c4cc;
+    cursor: not-allowed;
+    background-color: #fff;
+    border-color: #ebeef5;
+  }
+
+  .ie-btn.ie-primary {
+    color: #fff;
+    background-color: var(--ie-primary-color);
+    border-color: var(--ie-primary-color);
+  }
+
+  .ie-btn.ie-primary:hover {
+    background-color: #66b1ff;
+    border-color: #66b1ff;
+  }
+
+  .ie-btn-circle {
+    width: 32px;
+    padding: 0;
+    border-radius: 50%;
+  }
 
   /* 2. 输入框 */
   .ie-input {
@@ -116,8 +152,9 @@
     background-color: #ffffff;
     width: 100%;
     box-sizing: border-box;
-    appearance: textfield; 
-    font-size: 13px; /* 统一字体 */
+    appearance: textfield;
+    font-size: 13px;
+    /* 统一字体 */
   }
 
   /* 隐藏原生旋转按钮 */
@@ -126,28 +163,29 @@
     -webkit-appearance: none;
     margin: 0;
   }
+
   /* Firefox */
   .ie-input[type=number] {
     -moz-appearance: textfield;
   }
 
-  .ie-input:focus { 
-    border-color: var(--ie-primary-color); 
-    outline: none; 
+  .ie-input:focus {
+    border-color: var(--ie-primary-color);
+    outline: none;
   }
 
   /* 3. 分割线 */
-  .ie-divider { 
-    width: 1px; 
-    height: 1em; 
-    margin: 6px 8px; 
-    background: var(--ie-border-color); 
-    display: inline-block; 
-    vertical-align: middle; 
+  .ie-divider {
+    width: 1px;
+    height: 1em;
+    margin: 6px 8px;
+    background: var(--ie-border-color);
+    display: inline-block;
+    vertical-align: middle;
   }
 
   /* === 工具栏布局样式 === */
-  
+
   .tool-list {
     display: flex;
     flex-direction: column;
@@ -219,29 +257,43 @@
     border-bottom-right-radius: 8px;
     box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.05);
     animation: slideDown 0.2s ease-out;
-    color: #333; /* 确保文字颜色正确 */
+    color: #333;
+    /* 确保文字颜色正确 */
   }
 
   /* 动画 */
   @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  .status-dot { 
-    width: 8px; 
-    height: 8px; 
-    background-color: var(--ie-primary-color); 
-    border-radius: 50%; 
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--ie-primary-color);
+    border-radius: 50%;
   }
 
   .is-loading {
     animation: rotating 2s linear infinite;
     color: var(--ie-primary-color);
   }
+
   @keyframes rotating {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
   }
 }
 
@@ -252,13 +304,69 @@
   top: 20px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.7);
   color: white;
   padding: 8px 16px;
   border-radius: 4px;
   font-size: 14px;
   z-index: 9999;
   animation: ie-fade-in 0.3s;
-  pointer-events: none; /* 防止遮挡点击 */
+  pointer-events: none;
+  /* 防止遮挡点击 */
 }
-@keyframes ie-fade-in { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+@keyframes ie-fade-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* === 全局滚动条样式 (Global Scrollbar) === */
+
+/* 1. 设置滚动条整体宽高 */
+::-webkit-scrollbar {
+  width: 6px;
+  /* 纵向滚动条宽度 */
+  height: 6px;
+  /* 横向滚动条高度 */
+}
+
+/* 2. 滚动条轨道 (可选，通常设为透明) */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 3. 滚动条滑块 */
+::-webkit-scrollbar-thumb {
+  background: rgba(144, 147, 153, 0.3);
+  /* 默认颜色，半透明灰色 */
+  border-radius: 4px;
+  /* 圆角 */
+  transition: background 0.3s;
+}
+
+/* 4. 滑块悬停状态 (交互反馈) */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(144, 147, 153, 0.5);
+  /* 悬停时加深 */
+}
+
+/* === 定义一个工具类：用于隐藏滚动条但保留滚动功能 === */
+/* 使用方法：在标签上加 class="hide-scrollbar" */
+.hide-scrollbar {
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE 10+ */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome/Safari/Webkit */
+}
