@@ -14,7 +14,6 @@ let dragOriginPoint = null;
 let dragLastPoint = { x: 0, y: 0 };
 let dragProxy = null;
 let dragOriginCellIndex = -1;
-// 【关键保留】记录偏移量，修复拖拽时的瞬移问题
 let dragOffset = { x: 0, y: 0 };
 let isCreatingProxy = false;
 
@@ -58,10 +57,10 @@ export const initPuzzleMode = (initialTemplate = null) => {
 
   bindEvents();
 
-  // 1. 布局初始化
+  // 1. 准备布局
   const cells = initialTemplate ? parseTemplateToCells(initialTemplate) : generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
 
-  // 2. 应用布局 (内部会自动吸入普通图片，无需手动 addImageToCell)
+  // 2. 应用布局 (内部会自动检测并吸入画布上的普通图片)
   updateLayout(cells);
 
   canvas.requestRenderAll();
@@ -83,18 +82,61 @@ export const resetPuzzle = () => {
   if (saveHistoryFn) saveHistoryFn();
 };
 
+// === 退出逻辑：只删控件，保留并合并图片 ===
 export const exitPuzzleMode = () => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
+
   puzzleState.isActive = false;
   unbindEvents();
-  const puzzleObjs = canvas.getObjects().filter(o => o.isPuzzleItem);
-  canvas.remove(...puzzleObjs);
-  canvas.requestRenderAll();
+
+  const hasContent = canvas.getObjects().some(o => o.isPuzzleImage && !o.isGhost);
+
+  if (hasContent) {
+    // 隐藏辅助控件
+    const auxObjs = canvas.getObjects().filter(o =>
+      o.isPuzzleController || o.isDeleteBtn || o.isPlaceholder || o.isGhost
+    );
+    auxObjs.forEach(o => o.visible = false);
+
+    canvas.renderAll();
+
+    // 生成合成图
+    const dataURL = canvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: 2
+    });
+
+    // 清理所有拼图对象
+    const allPuzzleObjs = canvas.getObjects().filter(o => o.isPuzzleItem);
+    canvas.remove(...allPuzzleObjs);
+
+    // 加回合成图
+    fabric.Image.fromURL(dataURL, (img) => {
+      img.scaleToWidth(canvas.width);
+      img.set({
+        left: canvas.width / 2,
+        top: canvas.height / 2,
+        originX: 'center',
+        originY: 'center',
+        selectable: true,
+        evented: true
+      });
+      canvas.add(img);
+      canvas.requestRenderAll();
+      if (saveHistoryFn) saveHistoryFn();
+    });
+
+  } else {
+    const allPuzzleObjs = canvas.getObjects().filter(o => o.isPuzzleItem);
+    canvas.remove(...allPuzzleObjs);
+    canvas.requestRenderAll();
+  }
 };
 
 // =========================================================================
-// 核心逻辑：计算合法的图片位置
+// 核心逻辑：位置计算
 // =========================================================================
 const calculateValidPosition = (img, cell) => {
   const minScaleX = cell.width / img.width;
@@ -137,6 +179,16 @@ const calculateValidPosition = (img, cell) => {
   return { scaleX: targetScale, scaleY: targetScale, left: targetLeft, top: targetTop };
 };
 
+const calculateFitPosition = (img, cell) => {
+  const minScale = Math.max(cell.width / img.width, cell.height / img.height) + 0.0001;
+  return {
+    scaleX: minScale,
+    scaleY: minScale,
+    left: cell.left + cell.width / 2,
+    top: cell.top + cell.height / 2
+  };
+};
+
 // === 事件绑定 ===
 const bindEvents = () => {
   const canvas = unref(canvasRef);
@@ -158,16 +210,25 @@ const onMouseDown = (opt) => {
   if (!puzzleState.isActive) return;
   const canvas = unref(canvasRef);
   const target = opt.target;
+
   dragOriginPoint = opt.absolutePointer;
+
   const pointer = canvas.getPointer(opt.e);
   dragLastPoint = { x: pointer.x, y: pointer.y };
+
+  if (target && target.isDeleteBtn) {
+    deleteImageFromCell(target.cellIndex);
+    isDragging = false;
+    dragOriginCellIndex = -1;
+    dragOriginPoint = null;
+    return;
+  }
 
   if (target && target.isPuzzleController) {
     isDragging = true;
     dragOriginCellIndex = target.cellIndex;
     canvas.setActiveObject(target);
 
-    // 记录点击时的相对偏移，用于后续拖拽
     const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === target.cellIndex);
     if (img) {
       dragOffset = {
@@ -203,7 +264,6 @@ const onMouseMove = (opt) => {
     pointer.y >= cell.top && pointer.y <= cell.top + cell.height;
 
   if (isInsideCell) {
-    // === Pan 模式 (保持原样) ===
     if (dragProxy) {
       canvas.remove(dragProxy);
       dragProxy = null;
@@ -219,14 +279,12 @@ const onMouseMove = (opt) => {
       img.setCoords();
     }
   } else {
-    // === Swap 模式 (创建幽灵) ===
     if (!dragProxy && !isCreatingProxy) {
       isCreatingProxy = true;
       createDragProxy(dragOriginCellIndex, pointer);
     }
 
     if (dragProxy) {
-      // 使用偏移量，保证不跳动
       dragProxy.set({
         left: pointer.x + dragOffset.x,
         top: pointer.y + dragOffset.y
@@ -253,8 +311,6 @@ const createDragProxy = (cellIndex, pointer) => {
   img.clone((cloned) => {
     dragProxy = cloned;
 
-    // 【关键】重新校准偏移量，确保生成的幽灵正好在当前图片位置
-    // 即使图片因为卡在边缘没有跟随鼠标，这里也会重新计算正确的 offset
     if (pointer) {
       dragOffset = {
         x: img.left - pointer.x,
@@ -278,7 +334,6 @@ const createDragProxy = (cellIndex, pointer) => {
     const offsetX = (cellCenterX - img.left) / img.scaleX;
     const offsetY = (cellCenterY - img.top) / img.scaleY;
 
-    // 幽灵的 ClipPath 保持相对定位，用于显示局部
     const clipRect = new fabric.Rect({
       left: offsetX, top: offsetY,
       width: cell.width / img.scaleX, height: cell.height / img.scaleY,
@@ -320,7 +375,11 @@ const onMouseUp = (opt) => {
     if (dist < 5) {
       const clickedCell = getCellFromPoint(pointer.x, pointer.y);
       if (clickedCell) {
+        const target = opt.target;
+        if (target && target.isDeleteBtn) return;
+
         const hasImg = canvas.getObjects().some(o => o.isPuzzleImage && o.cellIndex === clickedCell.index);
+
         if (!hasImg && uiCallbacks.onCellClick) {
           uiCallbacks.onCellClick(clickedCell.index);
           canvas.discardActiveObject();
@@ -338,9 +397,20 @@ const onMouseUp = (opt) => {
   canvas.requestRenderAll();
 };
 
-// =========================================================================
-// 动画逻辑：【完全还原】原来的 absolutePositioned 动画逻辑
-// =========================================================================
+const getTargetRelativeClipParams = (targetImgState, targetCell) => {
+  const cellCenterX = targetCell.left + targetCell.width / 2;
+  const cellCenterY = targetCell.top + targetCell.height / 2;
+  const offsetX = (cellCenterX - targetImgState.left) / targetImgState.scaleX;
+  const offsetY = (cellCenterY - targetImgState.top) / targetImgState.scaleY;
+  return {
+    left: offsetX, top: offsetY,
+    width: targetCell.width / targetImgState.scaleX,
+    height: targetCell.height / targetImgState.scaleY,
+    rx: puzzleState.radius / targetImgState.scaleX,
+    ry: puzzleState.radius / targetImgState.scaleY
+  };
+};
+
 const animateSwap = (idxA, idxB) => {
   const canvas = unref(canvasRef);
   const imgA = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === idxA);
@@ -354,10 +424,8 @@ const animateSwap = (idxA, idxB) => {
   const createSyncAnimation = (img, targetCell) => {
     if (!img || !targetCell) return;
 
-    // 计算目标位置
-    const targetImgState = calculateValidPosition(img, targetCell);
+    const targetImgState = calculateFitPosition(img, targetCell);
 
-    // 1. 动画主体 (Image)
     animations.push(new Promise(resolve => {
       img.animate({
         left: targetImgState.left,
@@ -371,8 +439,6 @@ const animateSwap = (idxA, idxB) => {
       });
     }));
 
-    // 2. 动画裁剪框 (ClipPath) - 使用【绝对定位】
-    // 这是您原版代码的逻辑，确保动画视觉效果一致
     if (img.clipPath) {
       animations.push(new Promise(resolve => {
         img.clipPath.animate({
@@ -400,7 +466,7 @@ const animateSwap = (idxA, idxB) => {
     const ctrlB = canvas.getObjects().find(o => o.isPuzzleController && o.cellIndex === idxB);
     if (ctrlA) ctrlA.cellIndex = idxB;
     if (ctrlB) ctrlB.cellIndex = idxA;
-    refreshPuzzleObjects(); // 刷新以确保状态同步
+    refreshPuzzleObjects();
     if (saveHistoryFn) saveHistoryFn();
   });
 };
@@ -470,34 +536,36 @@ export const updateLayout = (cellDefinitions = null, config = {}) => {
   if (saveHistoryFn) saveHistoryFn();
 };
 
-// === 刷新对象 (防重复 + 自动吸入) ===
+// === 刷新对象 (防重叠 + 自动吸入) ===
 const refreshPuzzleObjects = (shouldResetImages = false) => {
   const canvas = unref(canvasRef);
   const { radius } = puzzleState;
 
-  const toRemove = canvas.getObjects().filter(o => o.isPlaceholder || o.isPuzzleController);
+  const toRemove = canvas.getObjects().filter(o => o.isPlaceholder || o.isPuzzleController || o.isDeleteBtn);
   canvas.remove(...toRemove);
 
-  // 1. 过滤幽灵和代理
   const existingPuzzleImages = canvas.getObjects()
     .filter(o => o.isPuzzleImage && !o.isGhost && o !== dragProxy)
     .sort((a, b) => a.cellIndex - b.cellIndex);
 
-  // 2. 自动吸入普通图片 (Fix 还原后切模板无效)
+  // === 3. 自动吸入普通图片 (修复：吸入时保持原图比例) ===
   if (shouldResetImages && existingPuzzleImages.length === 0) {
     const rawImages = canvas.getObjects().filter(o => o.type === 'image' && !o.isPuzzleItem);
     if (rawImages.length > 0) {
       const rawImg = rawImages[0];
       const src = rawImg.getSrc();
+      const currentScale = rawImg.scaleX; // 获取原图当前缩放
+
       canvas.remove(rawImg);
-      addImageToCell(src, 0);
+      // 传递 targetScale，保持原图大小
+      addImageToCell(src, 0, { targetScale: currentScale });
+
       puzzleState.cells.forEach(cell => drawPlaceholder(canvas, cell));
       canvas.requestRenderAll();
       return;
     }
   }
 
-  // 3. 遍历格子
   puzzleState.cells.forEach((cell, index) => {
     let img = null;
 
@@ -507,11 +575,12 @@ const refreshPuzzleObjects = (shouldResetImages = false) => {
         img.cellIndex = cell.index;
         img.set({ opacity: 1, visible: true });
 
-        const minScale = Math.max(cell.width / img.width, cell.height / img.height) + 0.0001;
+        // 模板切换时，依然强制适配新格子 (Cover)
+        const fitState = calculateFitPosition(img, cell);
         img.set({
-          scaleX: minScale, scaleY: minScale,
-          left: cell.left + cell.width / 2,
-          top: cell.top + cell.height / 2
+          scaleX: fitState.scaleX, scaleY: fitState.scaleY,
+          left: fitState.left,
+          top: fitState.top
         });
         img.setCoords();
       }
@@ -528,7 +597,6 @@ const refreshPuzzleObjects = (shouldResetImages = false) => {
     }
 
     if (img) {
-      // 还原为绝对定位的 ClipPath，保证动画兼容性
       const clipRect = new fabric.Rect({
         left: cell.left, top: cell.top, width: cell.width, height: cell.height,
         rx: radius, ry: radius, absolutePositioned: true
@@ -546,6 +614,9 @@ const refreshPuzzleObjects = (shouldResetImages = false) => {
         isPuzzleItem: true, isPuzzleController: true, cellIndex: cell.index
       });
       canvas.add(controller);
+
+      drawDeleteBtn(canvas, cell);
+
     } else {
       drawPlaceholder(canvas, cell);
     }
@@ -557,6 +628,49 @@ const refreshPuzzleObjects = (shouldResetImages = false) => {
   }
 
   canvas.requestRenderAll();
+};
+
+const deleteImageFromCell = (cellIndex) => {
+  const canvas = unref(canvasRef);
+  const objs = canvas.getObjects().filter(o =>
+    (o.isPuzzleImage || o.isPuzzleController || o.isDeleteBtn) && o.cellIndex === cellIndex
+  );
+  canvas.remove(...objs);
+  refreshPuzzleObjects();
+  if (saveHistoryFn) saveHistoryFn();
+};
+
+const drawDeleteBtn = (canvas, cell) => {
+  const btnRadius = 9;
+  const padding = 6;
+
+  const circle = new fabric.Circle({
+    radius: btnRadius,
+    fill: 'rgba(0, 0, 0, 0.6)',
+    originX: 'center', originY: 'center'
+  });
+
+  const text = new fabric.Text('×', {
+    fill: '#fff',
+    fontSize: 18,
+    fontFamily: 'Arial',
+    originX: 'center', originY: 'center',
+    top: -1
+  });
+
+  const group = new fabric.Group([circle, text], {
+    left: cell.left + cell.width - btnRadius - padding,
+    top: cell.top + btnRadius + padding,
+    originX: 'center', originY: 'center',
+    selectable: false,
+    hoverCursor: 'pointer',
+    isPuzzleItem: true,
+    isDeleteBtn: true,
+    cellIndex: cell.index
+  });
+
+  canvas.add(group);
+  canvas.bringToFront(group);
 };
 
 const drawPlaceholder = (canvas, cell) => {
@@ -582,14 +696,23 @@ const getCellFromPoint = (x, y) => {
   );
 };
 
-export const addImageToCell = (url, cellIndex) => {
+// 【升级】addImageToCell 支持 options
+export const addImageToCell = (url, cellIndex, options = {}) => {
   const canvas = unref(canvasRef);
-  const oldObjs = canvas.getObjects().filter(o => (o.isPuzzleImage || o.isPuzzleController) && o.cellIndex === cellIndex);
+  const oldObjs = canvas.getObjects().filter(o => (o.isPuzzleImage || o.isPuzzleController || o.isDeleteBtn) && o.cellIndex === cellIndex);
   canvas.remove(...oldObjs);
   fabric.Image.fromURL(url, (img) => {
     const cell = puzzleState.cells.find(c => c.index === cellIndex);
     if (!cell) return;
-    const scale = Math.max(cell.width / img.width, cell.height / img.height) + 0.001;
+
+    // 【核心修复】如果指定了 targetScale，就用指定的；否则使用 Cover 模式
+    let scale;
+    if (options.targetScale) {
+      scale = options.targetScale;
+    } else {
+      scale = Math.max(cell.width / img.width, cell.height / img.height) + 0.001;
+    }
+
     img.set({
       left: cell.left + cell.width / 2, top: cell.top + cell.height / 2,
       originX: 'center', originY: 'center',
