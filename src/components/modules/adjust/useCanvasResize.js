@@ -1,7 +1,10 @@
 // src/components/modules/adjust/useCanvasResize.js
-
 import { ref, unref, shallowRef, toRaw } from "vue";
 import { fabric } from "fabric";
+
+// 1. 引入通用物理约束与离屏渲染工具
+import { constrainObjectToRect, animateRebound } from '@/composables/useConstraint';
+import { renderHighResSnapshot } from '@/composables/useOffscreenHelper';
 
 let canvasRef = null;
 let saveHistoryFn = null;
@@ -13,7 +16,7 @@ let dragLastY = 0;
 
 let originalSelectable = true;
 let originalEvented = true;
-let originalTransform = null; 
+let originalTransform = null;
 
 export const registerResizeModule = (canvas, saveHistory) => {
   canvasRef = canvas;
@@ -33,50 +36,17 @@ export const getCurrentSize = () => {
   return { width: canvas.width, height: canvas.height };
 };
 
-const getLogicRect = (obj) => {
-  if (!canvasRef?.value || !obj) return { left: 0, top: 0, width: 0, height: 0 };
-  const canvas = canvasRef.value;
-  const zoom = canvas.getZoom();
-  const vpt = canvas.viewportTransform;
-  const rawRect = obj.getBoundingRect();
-  return {
-    left: (rawRect.left - vpt[4]) / zoom,
-    top: (rawRect.top - vpt[5]) / zoom,
-    width: rawRect.width / zoom,
-    height: rawRect.height / zoom
-  };
-};
-
-const constrainImageToRect = (bgImage, targetRect) => {
-  if (!bgImage || !targetRect) return;
-  const bgRect = getLogicRect(bgImage);
-  let deltaX = 0;
-  let deltaY = 0;
-
-  if (bgRect.left > targetRect.left) deltaX = targetRect.left - bgRect.left;
-  if (bgRect.top > targetRect.top) deltaY = targetRect.top - bgRect.top;
-
-  const bgRight = bgRect.left + bgRect.width;
-  const targetRight = targetRect.left + targetRect.width;
-  if (bgRight < targetRight) deltaX = targetRight - bgRight;
-
-  const bgBottom = bgRect.top + bgRect.height;
-  const targetBottom = targetRect.top + targetRect.height;
-  if (bgBottom < targetBottom) deltaY = targetBottom - bgBottom;
-
-  if (deltaX !== 0 || deltaY !== 0) {
-    bgImage.left += deltaX;
-    bgImage.top += deltaY;
-    bgImage.setCoords();
-  }
-};
+// --- 交互事件处理 ---
 
 const onPreviewMouseDown = (opt) => {
   if (!canvasRef?.value || !previewRect.value) return;
+  // 拉伸模式下禁止拖拽
   if (previewRect.value.data?.isStretch) return;
+
   const canvas = canvasRef.value;
   const bgImage = canvas.getObjects().find(o => o.type === 'image');
   if (!bgImage) return;
+
   isDraggingImage = true;
   const pointer = canvas.getPointer(opt.e);
   dragLastX = pointer.x;
@@ -90,8 +60,10 @@ const onPreviewMouseMove = (opt) => {
   const pointer = canvas.getPointer(opt.e);
   const deltaX = pointer.x - dragLastX;
   const deltaY = pointer.y - dragLastY;
+
   const bgImage = canvas.getObjects().find(o => o.type === 'image');
   if (bgImage) {
+    // 自由拖拽，暂不约束，依靠 mouseUp 时的回弹
     bgImage.left += deltaX;
     bgImage.top += deltaY;
     bgImage.setCoords();
@@ -106,14 +78,16 @@ const onPreviewMouseUp = () => {
     if (canvasRef?.value && previewRect.value) {
       const bgImage = canvasRef.value.getObjects().find(o => o.type === 'image');
       if (bgImage) {
-        constrainImageToRect(bgImage, getLogicRect(previewRect.value));
-        canvasRef.value.requestRenderAll();
+        // 【核心升级】使用带动画的弹性回弹
+        animateRebound(bgImage, previewRect.value, canvasRef.value);
       }
     }
     isDraggingImage = false;
     if (canvasRef?.value) canvasRef.value.defaultCursor = 'default';
   }
 };
+
+// --- 辅助函数 ---
 
 const restoreImageState = (bgImage) => {
   if (originalTransform && bgImage) {
@@ -132,6 +106,8 @@ const restoreImageState = (bgImage) => {
   }
 };
 
+// --- 预览逻辑 ---
+
 export const startPreview = (targetW, targetH, isStretch = false) => {
   const canvas = unref(canvasRef);
   if (!canvas || !targetW || !targetH) return;
@@ -141,6 +117,7 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
 
   const currentImgCenter = bgImage.getCenterPoint();
 
+  // 第一次进入时备份状态
   if (!originalTransform) {
     originalSelectable = bgImage.selectable;
     originalEvented = bgImage.evented;
@@ -159,6 +136,7 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
     };
   }
 
+  // 清除旧的预览框
   if (previewRect.value) {
     canvas.remove(toRaw(previewRect.value));
     previewRect.value = null;
@@ -169,16 +147,19 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
   if (!isStretch) {
     restoreImageState(bgImage);
   } else {
+    // 拉伸模式下禁用图片交互
     bgImage.selectable = false;
     bgImage.evented = false;
   }
 
+  // 计算预览框尺寸（保持宽高比）
   const imgW = originalTransform.width * originalTransform.scaleX;
   const imgH = originalTransform.height * originalTransform.scaleY;
   const targetRatio = targetW / targetH;
   const imgRatio = imgW / imgH;
 
   let previewW, previewH;
+  // 逻辑：预览框是“选区”，通常最大不超过图片原尺寸，或者根据比例适配
   if (targetRatio > imgRatio) {
     previewW = imgW;
     previewH = imgW / targetRatio;
@@ -187,6 +168,7 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
     previewW = imgH * targetRatio;
   }
 
+  // 创建预览框
   const rect = new fabric.Rect({
     width: previewW,
     height: previewH,
@@ -209,12 +191,15 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
   canvas.bringToFront(rect);
 
   if (!isStretch) {
-    const rectLogic = getLogicRect(rect);
-    constrainImageToRect(bgImage, rectLogic);
+    // 【核心升级】初始约束：确保图片不留白（使用通用硬约束）
+    constrainObjectToRect(bgImage, rect, canvas);
+
+    // 绑定拖拽事件
     canvas.on('mouse:down', onPreviewMouseDown);
     canvas.on('mouse:move', onPreviewMouseMove);
     canvas.on('mouse:up', onPreviewMouseUp);
   } else {
+    // 拉伸模式：直接让图片填满预览框（视觉预览）
     bgImage.set({
       scaleX: previewW / originalTransform.width,
       scaleY: previewH / originalTransform.height,
@@ -223,6 +208,7 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
       originX: 'center',
       originY: 'center'
     });
+    // 解绑事件
     canvas.off('mouse:down', onPreviewMouseDown);
     canvas.off('mouse:move', onPreviewMouseMove);
     canvas.off('mouse:up', onPreviewMouseUp);
@@ -242,26 +228,28 @@ export const stopPreview = () => {
     canvas.off('mouse:down', onPreviewMouseDown);
     canvas.off('mouse:move', onPreviewMouseMove);
     canvas.off('mouse:up', onPreviewMouseUp);
+
     if (previewRect.value) {
       canvas.remove(toRaw(previewRect.value));
       previewRect.value = null;
     }
+
     const bgImage = canvas.getObjects().find(o => o.type === 'image');
     if (bgImage) {
       restoreImageState(bgImage);
       bgImage.selectable = originalSelectable;
       bgImage.evented = originalEvented;
     }
+
     canvas.discardActiveObject();
     originalTransform = null;
     canvas.requestRenderAll();
   }
 };
 
-/**
- * 应用尺寸调整：修复二次偏移跑偏，保持逻辑与剪裁模块高度统一
- */
-export const applyResize = (width, height, isStretch = false) => {
+// --- 核心应用逻辑 (高清重制) ---
+
+export const applyResize = async (width, height, isStretch = false) => {
   const canvas = unref(canvasRef);
   if (!canvas || !previewRect.value) return;
 
@@ -272,35 +260,31 @@ export const applyResize = (width, height, isStretch = false) => {
   const bgImage = canvas.getObjects().find(o => o.type === 'image');
   if (!bgImage) return;
 
-  // 1. 【核心修复】：基于 getCenterPoint 捕获精准视觉状态，不受 Origin 干扰
+  // 1. 锁定现场
   const rect = previewRect.value;
   const prevVpt = [...canvas.viewportTransform];
   const prevZoom = canvas.getZoom();
-  
+
   const rectCenterLogic = rect.getCenterPoint();
+  // 计算预览框中心在当前屏幕上的绝对位置
   const rectCenterScreen = {
     x: rectCenterLogic.x * prevVpt[0] + prevVpt[4],
     y: rectCenterLogic.y * prevVpt[3] + prevVpt[5]
   };
 
-  const finalPos = { 
+  const finalPos = {
     logicalW: rect.width * rect.scaleX,
     logicalH: rect.height * rect.scaleY
   };
 
-  const originalSrc = bgImage.getSrc();
-  originalTransform = null; 
+  originalTransform = null;
 
-  fabric.Image.fromURL(originalSrc, (highResImg) => {
-    const tempCanvas = new fabric.StaticCanvas(null, {
-      width: targetW,
-      height: targetH,
-      backgroundColor: 'transparent'
-    });
-
+  // 2. 【核心升级】使用通用离屏工具生成高清图
+  const dataURL = await renderHighResSnapshot(bgImage, targetW, targetH, (highResImg, tempCanvas) => {
     const multiplier = targetW / finalPos.logicalW;
 
     if (isStretch) {
+      // 拉伸模式
       highResImg.set({
         originX: 'center', originY: 'center',
         left: targetW / 2, top: targetH / 2,
@@ -308,7 +292,7 @@ export const applyResize = (width, height, isStretch = false) => {
         scaleY: targetH / highResImg.height
       });
     } else {
-      // ✅ 核心修复：计算“图片中心”相对于“预览框中心”的逻辑偏移
+      // 保持相对位置模式
       const imgCenter = bgImage.getCenterPoint();
       const relCenterX = imgCenter.x - rectCenterLogic.x;
       const relCenterY = imgCenter.y - rectCenterLogic.y;
@@ -324,39 +308,37 @@ export const applyResize = (width, height, isStretch = false) => {
         flipY: bgImage.flipY
       });
     }
+  });
 
-    tempCanvas.add(highResImg);
-    tempCanvas.renderAll();
-    const dataURL = tempCanvas.toDataURL({ format: 'png', quality: 1 });
-    tempCanvas.dispose();
+  // 3. 应用回主画布并修正视口
+  bgImage.setSrc(dataURL, () => {
+    // 计算视口缩放补偿
+    const multiplier = targetW / finalPos.logicalW;
+    const newZoom = prevZoom / multiplier;
 
-    bgImage.setSrc(dataURL, () => {
-      // ✅ 核心修复：应用后将图片物理重置到画布中心，配合视口补偿
-      const newZoom = prevZoom / multiplier;
-
-      bgImage.set({
-        originX: "center", originY: "center",
-        angle: 0, flipX: false, flipY: false,
-        scaleX: 1, scaleY: 1, // 结果图已经是目标尺寸，缩放设为 1
-        left: canvas.width / 2, 
-        top: canvas.height / 2,
-      });
-      
-      bgImage.setCoords();
-      canvas.centerObject(bgImage);
-
-      // ✅ 核心修复：计算视口补偿，确保视觉位置精准对齐
-      const newCenterLogic = { x: canvas.width / 2, y: canvas.height / 2 };
-      const newPanX = rectCenterScreen.x - newCenterLogic.x * newZoom;
-      const newPanY = rectCenterScreen.y - newCenterLogic.y * newZoom;
-
-      canvas.setViewportTransform([newZoom, 0, 0, newZoom, newPanX, newPanY]);
-      
-      stopPreview();
-      canvas.requestRenderAll();
-      canvas.fire('zoom:change', { from: 'resize-apply' });
-
-      if (saveHistoryFn) saveHistoryFn();
+    // 物理重置图片到画布中心
+    bgImage.set({
+      originX: "center", originY: "center",
+      angle: 0, flipX: false, flipY: false,
+      scaleX: 1, scaleY: 1,
+      left: canvas.width / 2,
+      top: canvas.height / 2,
     });
-  }, { crossOrigin: 'anonymous' });
+
+    bgImage.setCoords();
+    canvas.centerObject(bgImage);
+
+    // 视口补偿：对齐视觉中心
+    const newCenterLogic = { x: canvas.width / 2, y: canvas.height / 2 };
+    const newPanX = rectCenterScreen.x - newCenterLogic.x * newZoom;
+    const newPanY = rectCenterScreen.y - newCenterLogic.y * newZoom;
+
+    canvas.setViewportTransform([newZoom, 0, 0, newZoom, newPanX, newPanY]);
+
+    stopPreview();
+    canvas.requestRenderAll();
+    canvas.fire('zoom:change', { from: 'resize-apply' });
+
+    if (saveHistoryFn) saveHistoryFn();
+  });
 };

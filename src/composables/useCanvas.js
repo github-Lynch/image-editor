@@ -102,6 +102,7 @@ export function useCanvas() {
 
   // === 初始化与事件 ===
   const init = (id, width, height) => {
+    console.log("init canvas", id, width, height);
     const c = new fabric.Canvas(id, {
       width: width,
       height: height,
