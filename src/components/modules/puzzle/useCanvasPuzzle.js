@@ -10,7 +10,7 @@ import { constrainObjectToRect, animateRebound, getLogicRect } from '@/composabl
 let canvasRef = null;
 let saveHistoryFn = null;
 let uiCallbacks = { onCellClick: null };
-
+let prePuzzleSnapshot = null;
 // 交互状态
 let isDragging = false;
 let dragOriginPoint = null;
@@ -40,7 +40,9 @@ const puzzleState = reactive({
   radius: DEFAULTS.radius,
   width: DEFAULTS.width,
   height: DEFAULTS.height,
-  bgColor: DEFAULTS.bgColor
+  bgColor: DEFAULTS.bgColor,
+  startX: 0, // 新增：拼图区域的左上角逻辑坐标
+  startY: 0  // 新增
 });
 
 export const registerPuzzleModule = (canvas, saveHistory, callbacks = {}) => {
@@ -49,29 +51,33 @@ export const registerPuzzleModule = (canvas, saveHistory, callbacks = {}) => {
   uiCallbacks = { ...uiCallbacks, ...callbacks };
 };
 
-// === 初始化 ===
 export const initPuzzleMode = (initialTemplate = null) => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
-
-  // 如果有存档，恢复存档（restorePuzzleData 内部会自己处理 fitToScreen）
+  prePuzzleSnapshot = JSON.stringify(canvas.toJSON(["id", "selectable", "name"]));
   if (puzzleState.savedHistoryData && puzzleState.savedHistoryData.length > 0) {
     restorePuzzleData();
     bindEvents();
-    return; // 直接返回，把控制权交给 restorePuzzleData
+    return;
   }
 
-  // === 下面是“第一次进入”的逻辑 (保持不变) ===
   puzzleState.isActive = true;
 
-  // ... 捕获 activeImg 逻辑 ...
+  // 【优化】计算拼图区域的位置：使其与原图位置重合或在画布中心
   const activeImg = canvas.getObjects().find(o => o.type === 'image');
   if (activeImg) {
-    puzzleState.width = activeImg.width * activeImg.scaleX;
-    puzzleState.height = activeImg.height * activeImg.scaleY;
+    const rect = activeImg.getBoundingRect();
+    puzzleState.width = rect.width;
+    puzzleState.height = rect.height;
+    puzzleState.startX = rect.left;
+    puzzleState.startY = rect.top;
   } else {
-    puzzleState.width = canvas.width;
-    puzzleState.height = canvas.height;
+    // 如果没有原图，则在画布中心开启 1000x1000 的区域
+    const center = canvas.getCenter();
+    puzzleState.width = 1000;
+    puzzleState.height = 1000;
+    puzzleState.startX = center.left - 500;
+    puzzleState.startY = center.top - 500;
   }
 
   bindEvents();
@@ -79,8 +85,64 @@ export const initPuzzleMode = (initialTemplate = null) => {
   const cells = initialTemplate ? parseTemplateToCells(initialTemplate) : generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
   updateLayout(cells);
 
-  // 对于第一次进入，也直接调用这个新函数即可
-  fitPuzzleToScreen();
+};
+
+/**
+ * 唯一的业务出口函数
+ * @param {string} action 'save' | 'discard'
+ */
+export const completeExitPuzzle = (action = 'save') => {
+  const canvas = unref(canvasRef);
+  if (!canvas) return;
+
+  // 记录视角，防止切换模块后画面“瞬移”
+  const savedVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+
+  // 先执行一次通用退出清理
+  exitPuzzleMode();
+
+  if (action === 'save') {
+    // --- 保存逻辑：生成并固化图片 ---
+    const auxObjs = canvas.getObjects().filter(o =>
+      o.isPuzzleController || o.isDeleteBtn || o.isPlaceholder || o.isGhost
+    );
+    auxObjs.forEach(o => o.visible = false);
+
+    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    canvas.renderAll();
+
+    const dataURL = canvas.toDataURL({
+      format: 'png', quality: 1, multiplier: 2,
+      left: puzzleState.startX, top: puzzleState.startY,
+      width: puzzleState.width, height: puzzleState.height
+    });
+
+    const allPuzzleObjs = canvas.getObjects().filter(o => o.isPuzzleItem);
+    canvas.remove(...allPuzzleObjs);
+
+    fabric.Image.fromURL(dataURL, (img) => {
+      img.set({
+        left: puzzleState.startX, top: puzzleState.startY,
+        originX: 'left', originY: 'top',
+        selectable: true
+      });
+      img.scaleToWidth(puzzleState.width);
+      canvas.add(img);
+      canvas.setViewportTransform(savedVpt);
+      if (saveHistoryFn) saveHistoryFn();
+      canvas.requestRenderAll();
+    }, { crossOrigin: 'anonymous' });
+
+  } else {
+    // --- 【不保存逻辑】直接通过快照还原 ---
+    if (prePuzzleSnapshot) {
+      // loadFromJSON 会自动调用 clear() 清空当前所有（拼图后的）图片
+      canvas.loadFromJSON(prePuzzleSnapshot, () => {
+        canvas.setViewportTransform(savedVpt);
+        canvas.requestRenderAll();
+      });
+    }
+  }
 };
 
 // === 模块级重置 ===
@@ -106,130 +168,7 @@ export const exitPuzzleMode = () => {
   if (!canvas) return;
 
   puzzleState.isActive = false;
-  unbindEvents();
-
-  const hasContent = canvas.getObjects().some(o => o.isPuzzleImage && !o.isGhost);
-
-  if (hasContent) {
-    // 1. 隐藏辅助控件
-    const auxObjs = canvas.getObjects().filter(o =>
-      o.isPuzzleController || o.isDeleteBtn || o.isPlaceholder || o.isGhost
-    );
-    auxObjs.forEach(o => o.visible = false);
-
-    // 2. 重置视口 (这步保留，为了截图准确)
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    canvas.renderAll();
-
-    // =======================================================
-    // 【核心修改 START】：保存“真身”数据，防止画质丢失
-    // =======================================================
-    // 我们找出所有的拼图对象，把它们的坐标、大小、最重要的是“原图URL”存起来
-    const puzzleRawData = canvas.getObjects()
-      .filter(o => o.isPuzzleImage && !o.isGhost)
-      .map(o => ({
-        id: o.id,
-        src: o.originalSrc || (o.getSrc ? o.getSrc() : ''),
-        left: o.left,
-        top: o.top,
-        scaleX: o.scaleX,
-        scaleY: o.scaleY,
-        angle: o.angle,
-        // 【新增 1】保存锚点信息
-        originX: o.originX,
-        originY: o.originY,
-        // 【新增 2】保存它属于哪个格子 (非常重要！)
-        cellIndex: o.cellIndex,
-
-        // ... 其他属性保持不变
-        flipX: o.flipX,
-        flipY: o.flipY,
-        cropX: o.cropX,
-        cropY: o.cropY,
-        isPuzzleItem: true
-      }));
-
-    // 将这份数据存到你的状态管理里
-    puzzleState.savedHistoryData = puzzleRawData;
-
-    // 【新增】保存当前的画布配置尺寸
-    puzzleState.savedSettings = {
-      width: puzzleState.width,
-      height: puzzleState.height,
-      padding: puzzleState.padding,
-      spacing: puzzleState.spacing,
-      radius: puzzleState.radius,
-      bgColor: puzzleState.bgColor
-    };
-
-    // =======================================================
-    // 【核心修改 END】
-    // =======================================================
-
-
-    // 3. 导出预览图 (这一步保留，用于展示给用户看，但不再用于下次编辑)
-    const dataURL = canvas.toDataURL({
-      format: 'png',
-      quality: 1,
-      multiplier: 2,
-      left: 0,
-      top: 0,
-      width: puzzleState.width,
-      height: puzzleState.height
-    });
-
-    // 4. 清理所有拼图对象 (真身离场)
-    const allPuzzleObjs = canvas.getObjects().filter(o => o.isPuzzleItem);
-    canvas.remove(...allPuzzleObjs);
-
-    // 5. 加回合成图 (替身上场，仅供观看)
-    fabric.Image.fromURL(dataURL, (img) => {
-      // 给替身打个标记，下次编辑时方便找到它并删掉
-      img.set({
-        left: 0,
-        top: 0,
-        originX: 'left',
-        originY: 'top',
-        selectable: true, // 虽然可选中，但在非编辑模式下通常只是用来整体移动
-        evented: true,
-        isPreviewSnapshot: true // 【重要标记】告诉系统这是张预览截图
-      });
-
-      // 恢复视觉尺寸
-      img.scaleToWidth(puzzleState.width);
-      canvas.add(img);
-
-      // --- 下面是原本的 Zoom/Pan 逻辑，保持不变 ---
-      const paddingFactor = 0.9;
-      const zoomToFit = Math.min(
-        (canvas.width * paddingFactor) / puzzleState.width,
-        (canvas.height * paddingFactor) / puzzleState.height
-      );
-      const finalZoom = Math.min(zoomToFit, 1);
-
-      canvas.setZoom(finalZoom);
-
-      const imageCenterX = puzzleState.width / 2;
-      const imageCenterY = puzzleState.height / 2;
-      const viewportHalfW = canvas.width / (2 * finalZoom);
-      const viewportHalfH = canvas.height / (2 * finalZoom);
-      const panX = imageCenterX - viewportHalfW;
-      const panY = imageCenterY - viewportHalfH;
-
-      canvas.absolutePan({ x: panX, y: panY });
-      canvas.requestRenderAll();
-
-      if (saveHistoryFn) saveHistoryFn();
-      canvas.fire('zoom:change', { from: 'puzzle-exit' });
-    });
-
-  } else {
-    // 没内容的情况
-    const allPuzzleObjs = canvas.getObjects().filter(o => o.isPuzzleItem);
-    canvas.remove(...allPuzzleObjs);
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    canvas.requestRenderAll();
-  }
+  unbindEvents(); // 仅执行解绑，不操作画布对象
 };
 
 // === 修改后的辅助函数：智能适配屏幕 ===
@@ -349,7 +288,7 @@ export const restorePuzzleData = () => {
         refreshPuzzleObjects(false);
 
         // 【关键修复】所有元素就位后，执行一次镜头对齐！
-        fitPuzzleToScreen();
+        // fitPuzzleToScreen();
 
         canvas.requestRenderAll();
       }
@@ -716,13 +655,14 @@ export const updateLayout = (cellDefinitions = null, config = {}) => {
   }
   const isTemplateChange = !!cellDefinitions;
   if (cellDefinitions) puzzleState.rawCells = cellDefinitions;
-  const { width, height, padding, spacing } = puzzleState;
+  const { width, height, padding, spacing, startX, startY } = puzzleState;
   const availW = width - (padding * 2);
   const availH = height - (padding * 2);
+
   puzzleState.cells = puzzleState.rawCells.map(cell => ({
     index: cell.index,
-    left: padding + cell.x * availW + spacing / 2,
-    top: padding + cell.y * availH + spacing / 2,
+    left: startX + padding + cell.x * availW + spacing / 2,
+    top: startY + padding + cell.y * availH + spacing / 2,
     width: cell.w * availW - spacing,
     height: cell.h * availH - spacing
   }));

@@ -191,8 +191,8 @@ export function useCanvas() {
   const initImage = (url) => {
     if (!canvas.value) return;
     // 重置相机视角
-    canvas.value.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    zoom.value = 1;
+    // canvas.value.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    // zoom.value = 1;
     historyProcessing = true;
     canvas.value.clear();
     canvas.value.setBackgroundColor("#f3f3f3", () => {
