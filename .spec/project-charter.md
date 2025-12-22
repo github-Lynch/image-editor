@@ -115,15 +115,16 @@
 
 所有功能面板 (`.vue`) 必须复用以下标准类名，保持布局一致：
 
-| 组件部分     | 标准类名              | 样式特征                                       |
-| :----------- | :-------------------- | :--------------------------------------------- |
-| **面板容器** | `.tool-panel-content` | 统一的 Padding (16px)                          |
-| **模块标题** | `.panel-title`        | 14px, 600 weight, 底部 Margin                  |
-| **控制组**   | `.control-group`      | 包含标签和控件的容器，底部 Margin (24px)       |
-| **属性行**   | `.label-row`          | Flex 布局 (两端对齐)，用于显示 "属性名 - 数值" |
-| **主要按钮** | `.btn-primary`        | 100% 宽度，主色背景，圆角 (4px)                |
-| **次要按钮** | `.btn-secondary`      | 灰色背景/描边，用于取消或次要操作              |
-| **滑动条**   | `.slider-input`       | 统一宽度的 range input                         |
+| 组件部分 | 标准类名 | 样式特征 |
+| :--- | :--- | :--- |
+| **面板容器** | `.tool-panel-content` | 统一的 Padding (16px) |
+| **模块标题** | `.panel-title` | 14px, 600 weight, 底部 Margin |
+| **控制组** | `.control-group` | 包含标签和控件的容器，底部 Margin (24px) |
+| **属性行** | `.label-row` | Flex 布局 (两端对齐)，用于显示 "属性名 - 数值" |
+| **主要按钮** | `.btn-primary` | 100% 宽度，主色背景，圆角 (4px) |
+| **次要按钮** | `.btn-secondary` | 灰色背景/描边，用于取消或次要操作 |
+| **滑动条** | `.slider-input` | 统一宽度的 range input |
+| **数值输入框** | `.ie-input-number` | 固定宽 50px，高 28px，居中对齐，无原生箭头，常配合 Slider 使用 |
 
 ## 7. 开发工作流 (OpenSpec Workflow)
 

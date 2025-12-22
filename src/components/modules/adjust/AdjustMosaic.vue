@@ -31,7 +31,7 @@
       <div class="intensity-section">
         <div class="label-row">
           <span>强度</span>
-          <input type="number" v-model.number="intensity" class="ie-small-input" @change="updateConfig">
+          <input type="number" v-model.number="intensity" class="ie-input-number" @change="updateConfig">
         </div>
         <input type="range" v-model.number="intensity" min="4" max="100" class="ie-slider" @input="updateConfig">
       </div>
@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { ref, inject, watch, onMounted } from 'vue';
+import { ref, inject, watch, onMounted, onUnmounted } from 'vue';
 import { registerMosaicModule, startMosaicInteraction, applyMosaic, cancelMosaic } from './useCanvasMosaic';
 
 const props = defineProps({ isExpanded: Boolean });
@@ -64,7 +64,6 @@ const setMode = (mode) => {
 };
 
 const updateConfig = () => {
-  // 如果强度改变，需要重新初始化预览层以应用新强度
   startMosaicInteraction(activeMode.value, intensity.value);
 };
 
@@ -88,6 +87,11 @@ watch(() => props.isExpanded, (val) => {
 onMounted(() => {
   if (canvasAPI?.canvas) registerMosaicModule(canvasAPI.canvas, canvasAPI.saveHistory);
 });
+
+// 组件销毁时确保清理交互状态
+onUnmounted(() => {
+  cancelMosaic();
+});
 </script>
 
 <style scoped>
@@ -97,9 +101,11 @@ onMounted(() => {
   flex: 1; height: 44px; display: flex; align-items: center; justify-content: center; 
   border-radius: 8px; background: #f5f7fa; cursor: pointer; border: 1px solid transparent; transition: 0.2s; 
 }
+.mode-btn:hover { background: #eef1f6; color: #333; }
 .mode-btn.active { background: #ecf5ff; border-color: var(--ie-primary-color); color: var(--ie-primary-color); }
 
 .intensity-section { margin-bottom: 24px; }
+/* label-row 继承宪法规范，这里微调间距 */
 .label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px; color: #606266; }
 
 .action-buttons { display: flex; gap: 10px; }
