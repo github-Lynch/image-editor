@@ -44,6 +44,11 @@
 * **画布工作区 (Workspace)** `Workspace.vue`:
     * [x] **动态画布**: 基于 `canvasAPI` 注入，实现了响应式宽高的 Fabric.js 画布初始化。
     * [x] **双向缩放 (Zoom)**: 实现了 Canvas 缩放与 UI 百分比的实时同步，监听 `zoom:change` 和 `mouse:wheel` 事件。
+* **快捷键系统 (Keyboard Shortcuts)** `New!`:
+    * [x] **配置化驱动**: 建立了 `src/config/shortcuts.js` 作为单一数据源，统一管理键位映射。
+    * [x] **全局监听**: 实现了 `useKeyboardShortcuts`，支持通用快捷键 (Ctrl+C/V/Z, Delete) 和图层操作 ( `[` `]` )。
+    * [x] **可视化面板**: 新增 **侧边抽屉组件 (ShortcutsPanel)**，采用 Keycap 风格展示快捷键列表，支持点击导航栏 **Command图标** 唤起。
+    * [x] **UI 集成**: 悬浮菜单 (`FloatingObjectMenu`) 新增了快捷键文字提示 (Tooltips)。
 * **右键菜单 (Context Menu)** `CanvasContextMenu.vue`:
     * [x] **坐标修正**: 修复了粘贴位置偏移问题，现在鼠标指针即为粘贴对象的**左上角 (Top-Left)**。
     * [x] **交互互斥**: 实现了点击画布空白处或菜单外区域自动关闭菜单的逻辑。
@@ -74,14 +79,24 @@
 * **快照恢复**: 使用 `canvas.toJSON(['id', 'selectable', 'name'])` 保存轻量级快照。恢复时需重新应用锁定状态。
 * **锁定机制**: 见 **ADR-005**，通过遍历对象设置 `evented: false` 实现事件穿透。
 
-### 3.4 坐标系与交互事件 (Coordinates & Events)
+### 3.4 剪贴板与粘贴策略 (Clipboard & Paste Strategy) `New!`
+* **单例模式 (Singleton)**: 废弃了函数内部的局部变量，改用 `clipboardState` (Reactive Object) 存储剪贴板数据。
+    * **目的**: 解决了跨组件（如右键菜单 vs 快捷键监听器）调用时数据不互通的问题。
+* **双模粘贴逻辑 (Dual Mode)**:
+    * **右键粘贴**: 传入 `pointer` 坐标，强制对象 `left/top` 等于鼠标位置 (Origin: Top-Left)。
+    * **键盘粘贴 (Ctrl+V)**: 不传坐标，逻辑自动应用 `offset (+20px)`，防止新对象完全覆盖旧对象，符合桌面软件习惯。
+
+### 3.5 快捷键架构 (Shortcut Architecture) `New!`
+* **防误触**: 在 `handleKeydown` 中严格检测 `document.activeElement`，若为 `INPUT` 或 `TEXTAREA` 则自动阻断快捷键触发。
+* **行业标准键位**:
+    * **图层移动**: 采用 Figma/PS 标准，`[` (下移)、`]` (上移)、`Shift + [` (置底)、`Shift + ]` (置顶)。
+    * **锁定**: 采用 `Ctrl + Shift + L`，避免与浏览器地址栏快捷键冲突。
+* **数据源**: `ShortcutsPanel` 和 `useKeyboardShortcuts` 共享同一份 `config/shortcuts.js` 配置，确保文档与行为永远同步。
+
+### 3.6 坐标系与交互事件 (Coordinates & Events)
 * **坐标获取 (Pointer Capture)**:
     * **原则**: 必须使用 `canvas.getPointer(e)` 获取鼠标坐标。
     * **原因**: `e.clientX/Y` 是屏幕物理坐标，无法响应 Canvas 的 `setZoom` (缩放) 和 `viewportTransform` (平移)。`getPointer` 能自动转换为 Canvas 内部逻辑坐标。
-* **粘贴对齐逻辑 (Paste Alignment)**:
-    * **旧逻辑**: `x = pointer.x - width/2` (居中对齐，导致视觉偏移)。
-    * **新逻辑**: 直接使用 `left: pointer.x`, `top: pointer.y`，并强制设置 `originX: 'left'`, `originY: 'top'`。
-    * **目的**: 符合用户“指哪打哪”的直觉，特别是配合右键菜单使用时。
 * **事件监听生命周期**:
     * **Zoom 同步**: `fabricCanvas.on('zoom:change', updateZoomState)` 必须在 `onUnmounted` 中通过 `.off()` 移除，否则组件销毁后会导致内存泄漏或控制台报错。
     * **菜单隔离**: `handleRightClick` 中使用 `e.target.closest('.floating-wrapper')` 判断点击源，实现 UI 层级事件过滤。
@@ -89,5 +104,10 @@
 ---
 
 ## 4. 下一步计划 (Next Steps)
-* **快捷键支持**:
-    * [ ] 绑定通用快捷键 (Ctrl+C/V/Z/Y) 到 `useObjectActions`。
+### 📅 阶段二：标尺核心 (Ruler Core)
+* [ ] `useCanvasRuler.js`: 标尺对象模型与绘制逻辑。
+* [ ] `AdjustRuler.vue`: 标尺面板与预设系统。
+
+### 📅 阶段三：全局集成 (Global Integration)
+* [ ] `useCanvas.js`: 全局智能跳转侦听器。
+* [ ] `NavBar.vue`: 全局标尺开关。
