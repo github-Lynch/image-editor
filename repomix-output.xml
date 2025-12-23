@@ -33,7 +33,7 @@ The content is organized as follows:
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
 - Only files matching these patterns are included: src/**/*, package.json, index.html, vite.config.js, src/config/theme.js, style.css, .spec/**/*
-- Files matching these patterns are excluded: **/*.log, dist/**, public/**, src/assets/**
+- Files matching these patterns are excluded: **/*.log, dist/**, public/**, src/assets/**, .spec/prompt.md
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -45,7 +45,6 @@ The content is organized as follows:
 .spec/active-context.md
 .spec/feature-ruler-interaction.md
 .spec/project-charter.md
-.spec/prompt.md
 .spec/system-patterns.md
 index.html
 package.json
@@ -113,52 +112,6 @@ vite.config.js
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path=".spec/feature-ruler-interaction.md">
-# Feature Spec: High-Precision Ruler & Global Interaction System
-# 功能确认书：高精标尺与通用交互系统
-
-> **Version**: 1.0
-> **Status**: Execution Phase 1 (Infrastructure)
-> **Goal**: 建立以“对象”为中心的全局导航体验，并实现工程级测量标注。
-
-## 1. 核心功能规格 (Core Specifications)
-
-### 1.1 高精测量标尺 (Measurement Ruler)
-* **定位**: 全局常驻的标注对象，数值与物理长度解耦（定标逻辑）。
-* **交互**:
-    * **创建模式**: 全屏锁定，拦截点击用于画线。
-    * **编辑模式**: 选中后面板显示属性，支持端点/样式修改。
-* **样式**: 提供“实心圆/箭头”预设，支持颜色、字号、背景自定义。
-
-### 1.2 上下文感知导航 (Context-Aware Navigation)
-* **智能路由**: 点击画布对象（标尺/文字/贴纸） -> 侧边栏自动跳转对应模块。
-* **防误触**: 拖拽不跳转，仅纯点击（Click）跳转；多选不跳转。
-* **全局开关**: 顶部 NavBar 增加标尺显隐按钮。
-
-### 1.3 通用悬浮菜单 (Floating Object Menu)
-* **形态**: HTML DOM 悬浮层，跟随选中对象移动。
-* **功能**:
-    * **通用**: 复制、删除、锁定、图层调整 (置顶/底/上/下)。
-    * **扩展**: 提供 Slot 插槽，允许标尺（切换单位）或文字（编辑）插入特有按钮。
-
----
-
-## 2. 实施路线图 (Implementation Roadmap)
-
-### ✅ 阶段一：基础设施 (Infrastructure)
-* [ ] `useObjectActions.js`: 封装通用的对象操作逻辑 (Copy/Paste/Lock/Layer)。
-* [ ] `FloatingObjectMenu.vue`: 实现 DOM 跟随算法与通用 UI。
-* [ ] `Workspace.vue`: 集成悬浮菜单。
-
-### 📅 阶段二：标尺核心 (Ruler Core)
-* [ ] `useCanvasRuler.js`: 标尺对象模型与绘制逻辑。
-* [ ] `AdjustRuler.vue`: 标尺面板与预设系统。
-
-### 📅 阶段三：全局集成 (Global Integration)
-* [ ] `useCanvas.js`: 全局智能跳转侦听器。
-* [ ] `NavBar.vue`: 全局标尺开关。
-</file>
 
 <file path=".spec/system-patterns.md">
 "注意：在大秘美图中，Fabric 的 Canvas 必须用 markRaw 包装，否则会导致 Vue 响应式卡死。之前在 2024-12 遇到过这个问题。"
@@ -1595,276 +1548,6 @@ export const cancelMosaic = () => {
 };
 </file>
 
-<file path="src/components/modules/adjust/useCanvasRuler.js">
-import { ref, unref, watch, nextTick } from 'vue';
-import { fabric } from 'fabric';
-
-// === 模块级单例状态 ===
-let canvasRef = null;
-let saveHistoryFn = null;
-
-// 响应式状态 (供 UI 双向绑定)
-const isDrawing = ref(false);
-const rulerConfig = ref({
-    value: 20,
-    unit: 'cm',
-    color: '#ff0000',
-    opacity: 100,
-    fontSize: 24,
-    fontFamily: 'Arial',
-    strokeWidth: 4,
-    showBg: true,
-    capStyle: 'line'
-});
-
-// === 1. 注册与初始化 ===
-export const registerRulerModule = (canvas, saveHistory) => {
-    canvasRef = canvas;
-    saveHistoryFn = saveHistory;
-
-    const c = unref(canvas);
-    if (c) {
-        // 绑定选择事件，实现“点击标尺回显属性”
-        c.on('selection:created', onSelectionChanged);
-        c.on('selection:updated', onSelectionChanged);
-        c.on('selection:cleared', onSelectionCleared);
-    }
-};
-
-// === 2. 事件监听逻辑 ===
-const onSelectionChanged = (e) => {
-    const activeObj = e.selected?.[0];
-    if (activeObj && activeObj.isRuler) {
-        // 回显属性到面板
-        const items = activeObj.getObjects();
-        rulerConfig.value.value = activeObj._rulerValue ?? 20;
-        rulerConfig.value.unit = activeObj._rulerUnit ?? 'cm';
-        rulerConfig.value.opacity = (activeObj.opacity || 1) * 100;
-        
-        // 线条样式回显 (取 Line 对象)
-        if (items[0]) {
-            rulerConfig.value.color = items[0].stroke;
-            rulerConfig.value.strokeWidth = items[0].strokeWidth;
-        }
-        // 文字样式回显 (取 Text 对象)
-        if (items[3]) {
-            rulerConfig.value.fontSize = items[3].fontSize;
-            rulerConfig.value.fontFamily = items[3].fontFamily;
-            rulerConfig.value.showBg = !!items[3].backgroundColor;
-        }
-    }
-};
-
-const onSelectionCleared = () => {
-    // 可选：清空或保持最后一次配置
-    // rulerConfig.value.value = 20; 
-};
-
-// === 3. 绘制交互流程 ===
-let startPoint = null;
-let activeLine = null;
-
-export const startDrawMode = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-    
-    isDrawing.value = true;
-    
-    // 锁定所有对象，防止误触
-    canvas.discardActiveObject();
-    canvas.selection = false;
-    canvas.defaultCursor = 'crosshair';
-    canvas.hoverCursor = 'crosshair';
-    
-    // 临时锁定其他对象
-    canvas.getObjects().forEach(obj => {
-        obj._prevSelectable = obj.selectable;
-        obj.selectable = false;
-    });
-
-    canvas.on('mouse:down', onMouseDown);
-};
-
-export const stopDrawMode = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-
-    isDrawing.value = false;
-    
-    canvas.selection = true;
-    canvas.defaultCursor = 'default';
-    canvas.hoverCursor = 'move';
-    
-    // 恢复对象可选中
-    canvas.getObjects().forEach(obj => {
-        if (obj._prevSelectable !== undefined) {
-            obj.selectable = obj._prevSelectable;
-            delete obj._prevSelectable;
-        }
-    });
-
-    canvas.off('mouse:down', onMouseDown);
-    canvas.off('mouse:move', onMouseMove);
-    canvas.off('mouse:up', onMouseUp);
-};
-
-const onMouseDown = (opt) => {
-    const canvas = unref(canvasRef);
-    const pointer = canvas.getPointer(opt.e);
-    startPoint = { x: pointer.x, y: pointer.y };
-    
-    activeLine = new fabric.Line([startPoint.x, startPoint.y, startPoint.x, startPoint.y], {
-        stroke: rulerConfig.value.color,
-        strokeWidth: rulerConfig.value.strokeWidth,
-        strokeDashArray: [5, 5],
-        selectable: false,
-        evented: false
-    });
-    
-    canvas.add(activeLine);
-    canvas.on('mouse:move', onMouseMove);
-    canvas.on('mouse:up', onMouseUp);
-};
-
-const onMouseMove = (opt) => {
-    if (!activeLine) return;
-    const canvas = unref(canvasRef);
-    const pointer = canvas.getPointer(opt.e);
-    activeLine.set({ x2: pointer.x, y2: pointer.y });
-    canvas.requestRenderAll();
-};
-
-const onMouseUp = () => {
-    const canvas = unref(canvasRef);
-    canvas.off('mouse:move', onMouseMove);
-    canvas.off('mouse:up', onMouseUp);
-
-    if (!activeLine) return;
-
-    const endPoint = { x: activeLine.x2, y: activeLine.y2 };
-    canvas.remove(activeLine);
-    activeLine = null;
-
-    // 防止误触点击
-    const dist = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
-    if (dist > 10) {
-        createRulerObject(startPoint, endPoint);
-    }
-    
-    // 绘制一次后自动退出
-    stopDrawMode();
-};
-
-// === 4. 创建标尺对象 (Group) ===
-const createRulerObject = (start, end) => {
-    const canvas = unref(canvasRef);
-    const cfg = rulerConfig.value;
-    const color = cfg.color;
-    
-    // 1. 主线条
-    const line = new fabric.Line([start.x, start.y, end.x, end.y], {
-        stroke: color,
-        strokeWidth: cfg.strokeWidth,
-        originX: 'center', originY: 'center'
-    });
-
-    // 2. 计算几何
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    const midX = (start.x + end.x) / 2;
-    const midY = (start.y + end.y) / 2;
-
-    // 3. 端点 (Cap)
-    const capSize = 10 + cfg.strokeWidth;
-    const startCap = new fabric.Line([0, -capSize, 0, capSize], {
-        stroke: color, strokeWidth: cfg.strokeWidth,
-        left: start.x, top: start.y,
-        angle: angle,
-        originX: 'center', originY: 'center'
-    });
-    const endCap = new fabric.Line([0, -capSize, 0, capSize], {
-        stroke: color, strokeWidth: cfg.strokeWidth,
-        left: end.x, top: end.y,
-        angle: angle,
-        originX: 'center', originY: 'center'
-    });
-
-    // 4. 文字
-    const textStr = `${cfg.value} ${cfg.unit}`;
-    const textObj = new fabric.Text(textStr, {
-        fontSize: cfg.fontSize,
-        fontFamily: cfg.fontFamily,
-        fill: color,
-        backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : '',
-        originX: 'center', originY: 'bottom',
-        left: midX,
-        top: midY - 10,
-        angle: angle > 90 || angle < -90 ? angle + 180 : angle
-    });
-
-    // 5. 组合 Group
-    const group = new fabric.Group([line, startCap, endCap, textObj], {
-        left: midX, top: midY,
-        originX: 'center', originY: 'center',
-        opacity: cfg.opacity / 100,
-        id: 'ruler-group',
-        isRuler: true, // 关键标识
-        _rulerValue: cfg.value, // 持久化数据
-        _rulerUnit: cfg.unit,
-        lockScalingY: true, 
-        lockUniScaling: true 
-    });
-
-    group.setControlsVisibility({
-        mt: false, mb: false, ml: true, mr: true, 
-        bl: false, br: false, tl: false, tr: false,
-        mtr: true 
-    });
-
-    canvas.add(group);
-    canvas.setActiveObject(group);
-    if (saveHistoryFn) saveHistoryFn();
-};
-
-// === 5. 更新选中标尺 ===
-export const updateActiveRuler = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-
-    const obj = canvas.getActiveObject();
-    if (!obj || !obj.isRuler) return;
-
-    const cfg = rulerConfig.value;
-    const items = obj.getObjects();
-    
-    // 更新内部子对象
-    [0, 1, 2].forEach(i => {
-        if (items[i]) items[i].set({ stroke: cfg.color, strokeWidth: cfg.strokeWidth });
-    });
-    
-    if (items[3]) { // Text
-        items[3].set({ 
-            text: `${cfg.value} ${cfg.unit}`,
-            fill: cfg.color,
-            fontSize: cfg.fontSize,
-            fontFamily: cfg.fontFamily,
-            backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : ''
-        });
-    }
-
-    obj.set({ opacity: cfg.opacity / 100 });
-    obj._rulerValue = cfg.value;
-    obj._rulerUnit = cfg.unit;
-
-    canvas.requestRenderAll();
-    if (saveHistoryFn) saveHistoryFn();
-};
-
-// 导出 Vue 响应式数据
-export { rulerConfig, isDrawing };
-</file>
-
 <file path="src/components/modules/ai/AiExpand.vue">
 
 </file>
@@ -2472,59 +2155,8 @@ export { EditorLayout };
 export default EditorLayout;
 </file>
 
-<file path=".spec/prompt.md">
-# 终端运行 npx repomix
+<file path=".spec/feature-ruler-interaction.md">
 
-# 规范化提问
-
-扔第一段 -> AI 变身架构师。（新窗口）
-
-扔第二段 -> AI 帮你写文档、查漏补缺。
-
-扔第三段 -> AI 帮你写出高质量、无 Bug 的代码。
-
-# 第一步 初始化
-
-你好，你是“大秘美图 (Dami Meitu)”项目的首席架构师。
-
-我将发给你一份项目的 **核心宪法 (Project Charter)**。在接下来的对话中，你生成的所有代码和建议必须**严格遵守**这份文档中的技术约束。
-
-请阅读我上传的repomix-output.xml 文件。如果你准备好了，请回复：“**已加载项目宪法，架构师就位。**”
-
-# 第二步 清空画布按钮功能（举例）
-
-我想要开发一个新功能：在顶部导航栏加一个“清空画布”的按钮。
-请根据宪法 **第 7.1 节 (OpenSpec Workflow)**，为我起草一份 **实施提议 (Proposal)**。
-
-**请回答“灵魂三问”并规划：**
-
-1.  **复用检查**：
-    - 确认弹窗是否复用 `src/components/common/Modal.vue`？
-    - 错误提示是否复用 `src/utils/toast.js`？
-2.  **UI 位置**：应该修改哪个文件？是否符合 UI 规范？
-3.  **核心逻辑**：
-    - `clearCanvas` 方法应放在 `useCanvas.js` 还是独立 Hook？
-    - 清空后是否需要重置 `history` 堆栈？
-
-请输出 Markdown 格式的 Proposal 文档。
-
-# 第三步 清空画布按钮功能（实现）
-
-提议通过。请生成代码。
-
-**🛑 重要：在输出代码块之前，请先执行“宪法 7.2 黄金检查清单”的自我审查：**
-
-1.  [ ] 检查是否用了 `markRaw`？
-2.  [ ] 检查是否用了 Fabric v5 API？
-3.  [ ] 检查是否复用了 CSS 变量（无硬编码颜色）？
-4.  [ ] 检查通用逻辑是否提取到了 `src/utils`？
-
-**如果检查通过，请输出最终的 Vue/JS 代码。**
-
-# 第四步 更新 active-context.md
-
-这是我最新的 active-context.md（文件上传每个新窗口只用传一次）
-“代码写得不错。请帮我更新 .spec/active-context.md，把刚才完成的任务勾选掉，并记录下这次的变更点。”
 </file>
 
 <file path="index.html">
@@ -2575,105 +2207,6 @@ body {
   /* 强制视口高度 */
   display: flex;
   flex-direction: column;
-}
-</style>
-</file>
-
-<file path="src/components/common/Modal.vue">
-<template>
-    <Teleport to="body">
-        <Transition name="fade">
-            <div v-if="modelValue" class="modal-mask" @click.self="$emit('cancel')">
-                <div class="modal-container">
-                    <div class="modal-header">
-                        <h3>{{ title }}</h3>
-                    </div>
-                    <div class="modal-body">
-                        <slot>{{ content }}</slot>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="ie-btn btn-secondary" @click="$emit('discard')">不保存</button>
-                        <button class="ie-btn btn-primary" @click="$emit('confirm')">保存并退出</button>
-                    </div>
-                </div>
-            </div>
-        </Transition>
-    </Teleport>
-</template>
-
-<script setup>
-defineProps({
-    modelValue: Boolean,
-    title: { type: String, default: '提示' },
-    content: String
-});
-defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
-</script>
-
-<style scoped>
-.modal-mask {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-.modal-container {
-    background: white;
-    border-radius: 12px;
-    width: 320px;
-    padding: 24px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.modal-header h3 {
-    margin: 0 0 16px;
-    font-size: 18px;
-    color: #333;
-}
-
-.modal-body {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 24px;
-    line-height: 1.5;
-}
-
-.modal-footer {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-}
-
-.ie-btn {
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    border: none;
-    font-size: 14px;
-}
-
-.btn-primary {
-    background: var(--ie-primary-color);
-    color: white;
-}
-
-.btn-secondary {
-    background: #f4f4f5;
-    color: #606266;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
 }
 </style>
 </file>
@@ -2985,6 +2518,283 @@ export const commitColorOverlay = () => {
 };
 </file>
 
+<file path="src/components/modules/adjust/useCanvasRuler.js">
+import { ref, unref, watch, nextTick } from 'vue';
+import { fabric } from 'fabric';
+
+// === 模块级单例状态 ===
+let canvasRef = null;
+let saveHistoryFn = null;
+
+// 响应式状态 (供 UI 双向绑定)
+const isDrawing = ref(false);
+const rulerConfig = ref({
+    value: 20,
+    unit: 'cm',
+    color: '#ff0000',
+    opacity: 100,
+    fontSize: 24,
+    fontFamily: 'Arial',
+    strokeWidth: 4,
+    showBg: true,
+    capStyle: 'line'
+});
+
+// === 1. 注册与初始化 ===
+export const registerRulerModule = (canvas, saveHistory) => {
+    canvasRef = canvas;
+    saveHistoryFn = saveHistory;
+
+    const c = unref(canvas);
+    if (c) {
+        // 绑定选择事件，实现“点击标尺回显属性”
+        c.on('selection:created', onSelectionChanged);
+        c.on('selection:updated', onSelectionChanged);
+        c.on('selection:cleared', onSelectionCleared);
+    }
+};
+
+// === 2. 事件监听逻辑 ===
+const onSelectionChanged = (e) => {
+    const activeObj = e.selected?.[0];
+    if (activeObj && activeObj.isRuler) {
+        // 回显属性到面板
+        const items = activeObj.getObjects();
+        rulerConfig.value.value = activeObj._rulerValue ?? 20;
+        rulerConfig.value.unit = activeObj._rulerUnit ?? 'cm';
+        rulerConfig.value.opacity = (activeObj.opacity || 1) * 100;
+        
+        // 线条样式回显 (取 Line 对象)
+        if (items[0]) {
+            rulerConfig.value.color = items[0].stroke;
+            rulerConfig.value.strokeWidth = items[0].strokeWidth;
+        }
+        // 文字样式回显 (取 Text 对象)
+        if (items[3]) {
+            rulerConfig.value.fontSize = items[3].fontSize;
+            rulerConfig.value.fontFamily = items[3].fontFamily;
+            rulerConfig.value.showBg = !!items[3].backgroundColor;
+        }
+    }
+};
+
+const onSelectionCleared = () => {
+    // 可选：清空或保持最后一次配置
+    // rulerConfig.value.value = 20; 
+};
+
+// === 3. 绘制交互流程 ===
+let startPoint = null;
+let activeLine = null;
+
+export const startDrawMode = () => {
+    const canvas = unref(canvasRef);
+    if (!canvas) return;
+    
+    isDrawing.value = true;
+    
+    // 锁定所有对象，防止误触
+    canvas.discardActiveObject();
+    canvas.selection = false;
+    canvas.defaultCursor = 'crosshair';
+    canvas.hoverCursor = 'crosshair';
+    
+    // 临时锁定其他对象
+    canvas.getObjects().forEach(obj => {
+        obj._prevSelectable = obj.selectable;
+        obj.selectable = false;
+    });
+
+    canvas.on('mouse:down', onMouseDown);
+};
+
+export const stopDrawMode = () => {
+    const canvas = unref(canvasRef);
+    if (!canvas) return;
+
+    isDrawing.value = false;
+    
+    canvas.selection = true;
+    canvas.defaultCursor = 'default';
+    canvas.hoverCursor = 'move';
+    
+    // 恢复对象可选中
+    canvas.getObjects().forEach(obj => {
+        if (obj._prevSelectable !== undefined) {
+            obj.selectable = obj._prevSelectable;
+            delete obj._prevSelectable;
+        }
+    });
+
+    canvas.off('mouse:down', onMouseDown);
+    canvas.off('mouse:move', onMouseMove);
+    canvas.off('mouse:up', onMouseUp);
+};
+
+const onMouseDown = (opt) => {
+    const canvas = unref(canvasRef);
+    const pointer = canvas.getPointer(opt.e);
+    startPoint = { x: pointer.x, y: pointer.y };
+    
+    activeLine = new fabric.Line([startPoint.x, startPoint.y, startPoint.x, startPoint.y], {
+        stroke: rulerConfig.value.color,
+        strokeWidth: rulerConfig.value.strokeWidth,
+        strokeDashArray: [5, 5],
+        selectable: false,
+        evented: false
+    });
+    
+    canvas.add(activeLine);
+    canvas.on('mouse:move', onMouseMove);
+    canvas.on('mouse:up', onMouseUp);
+};
+
+const onMouseMove = (opt) => {
+    if (!activeLine) return;
+    const canvas = unref(canvasRef);
+    const pointer = canvas.getPointer(opt.e);
+    activeLine.set({ x2: pointer.x, y2: pointer.y });
+    canvas.requestRenderAll();
+};
+
+const onMouseUp = () => {
+    const canvas = unref(canvasRef);
+    canvas.off('mouse:move', onMouseMove);
+    canvas.off('mouse:up', onMouseUp);
+
+    if (!activeLine) return;
+
+    const endPoint = { x: activeLine.x2, y: activeLine.y2 };
+    canvas.remove(activeLine);
+    activeLine = null;
+
+    // 防止误触点击
+    const dist = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
+    if (dist > 10) {
+        createRulerObject(startPoint, endPoint);
+    }
+    
+    // 绘制一次后自动退出
+    stopDrawMode();
+};
+
+// === 4. 创建标尺对象 (Group) ===
+const createRulerObject = (start, end) => {
+    const canvas = unref(canvasRef);
+    const cfg = rulerConfig.value;
+    const color = cfg.color;
+    
+    // 1. 主线条
+    const line = new fabric.Line([start.x, start.y, end.x, end.y], {
+        stroke: color,
+        strokeWidth: cfg.strokeWidth,
+        originX: 'center', originY: 'center'
+    });
+
+    // 2. 计算几何
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    const midX = (start.x + end.x) / 2;
+    const midY = (start.y + end.y) / 2;
+
+    // 3. 端点 (Cap)
+    const capSize = 10 + cfg.strokeWidth;
+    const startCap = new fabric.Line([0, -capSize, 0, capSize], {
+        stroke: color, strokeWidth: cfg.strokeWidth,
+        left: start.x, top: start.y,
+        angle: angle,
+        originX: 'center', originY: 'center'
+    });
+    const endCap = new fabric.Line([0, -capSize, 0, capSize], {
+        stroke: color, strokeWidth: cfg.strokeWidth,
+        left: end.x, top: end.y,
+        angle: angle,
+        originX: 'center', originY: 'center'
+    });
+
+    // 4. 文字
+    const textStr = `${cfg.value} ${cfg.unit}`;
+    const textObj = new fabric.Text(textStr, {
+        fontSize: cfg.fontSize,
+        fontFamily: cfg.fontFamily,
+        fill: color,
+        backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : '',
+        originX: 'center', originY: 'bottom',
+        left: midX,
+        top: midY - 10,
+        angle: angle > 90 || angle < -90 ? angle + 180 : angle
+    });
+
+    // 5. 组合 Group
+    const group = new fabric.Group([line, startCap, endCap, textObj], {
+        left: midX, top: midY,
+        originX: 'center', originY: 'center',
+        opacity: cfg.opacity / 100,
+        id: 'ruler-group',
+        
+        // ✨✨✨ 这里是关键修改 ✨✨✨
+        // 1. 告诉路由系统：选中我时，请自动打开 'ruler' 这个二级折叠面板
+        customTab: 'ruler', 
+        // 2. (可选) 强制指定一级面板为 'adjust' (防止被误判为 border)
+        customTool: 'adjust', 
+
+        isRuler: true, // 关键标识
+        _rulerValue: cfg.value, // 持久化数据
+        _rulerUnit: cfg.unit,
+        lockScalingY: true, 
+        lockUniScaling: true 
+    });
+
+    group.setControlsVisibility({
+        mt: false, mb: false, ml: true, mr: true, 
+        bl: false, br: false, tl: false, tr: false,
+        mtr: true 
+    });
+
+    canvas.add(group);
+    canvas.setActiveObject(group);
+    if (saveHistoryFn) saveHistoryFn();
+};
+
+// === 5. 更新选中标尺 ===
+export const updateActiveRuler = () => {
+    const canvas = unref(canvasRef);
+    if (!canvas) return;
+
+    const obj = canvas.getActiveObject();
+    if (!obj || !obj.isRuler) return;
+
+    const cfg = rulerConfig.value;
+    const items = obj.getObjects();
+    
+    // 更新内部子对象
+    [0, 1, 2].forEach(i => {
+        if (items[i]) items[i].set({ stroke: cfg.color, strokeWidth: cfg.strokeWidth });
+    });
+    
+    if (items[3]) { // Text
+        items[3].set({ 
+            text: `${cfg.value} ${cfg.unit}`,
+            fill: cfg.color,
+            fontSize: cfg.fontSize,
+            fontFamily: cfg.fontFamily,
+            backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : ''
+        });
+    }
+
+    obj.set({ opacity: cfg.opacity / 100 });
+    obj._rulerValue = cfg.value;
+    obj._rulerUnit = cfg.unit;
+
+    canvas.requestRenderAll();
+    if (saveHistoryFn) saveHistoryFn();
+};
+
+// 导出 Vue 响应式数据
+export { rulerConfig, isDrawing };
+</file>
+
 <file path="src/config/theme.js">
 // src/config/theme.js
 
@@ -3266,141 +3076,123 @@ export const aiApi = {
 };
 </file>
 
-<file path="src/components/layout/LeftSidebar.vue">
+<file path="src/components/common/Modal.vue">
 <template>
-  <div class="left-sidebar">
-    <div v-for="item in menuItems" :key="item.id" class="menu-item" :class="{ active: state.activeTool === item.id }"
-      @click="setActiveTool(item.id)">
-      <svg class="menu-icon" viewBox="0 0 1024 1024" width="20" height="20">
-        <path :d="item.iconPath" fill="currentColor" />
-      </svg>
-      <span class="label">{{ item.label }}</span>
-    </div>
-  </div>
+    <Teleport to="body">
+        <Transition name="fade">
+            <div v-if="modelValue" class="modal-mask" @click.self="$emit('cancel')">
+                <div class="modal-container">
+                    <button class="modal-close" title="关闭" @click="$emit('cancel')">×</button>
+
+                    <div class="modal-header">
+                        <h3>{{ title }}</h3>
+                    </div>
+                    <div class="modal-body">
+                        <slot>{{ content }}</slot>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ie-btn btn-secondary" @click="$emit('discard')">不保存</button>
+                        <button class="ie-btn btn-primary" @click="$emit('confirm')">保存并退出</button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
 
 <script setup>
-import { useEditorState } from '../../composables/useEditorState';
-
-// 1. 替代 Pinia
-const { state, setActiveTool } = useEditorState();
-
-// 2. 定义菜单配置 (含 SVG 路径)
-// 这里的路径数据对应原有的图标隐喻
-const menuItems = [
-  {
-    id: 'adjust',
-    label: '调整',
-    // Operation (Sliders)
-    iconPath: 'M192 128v768h128V672h192v224h128V672h192V544H512V128H192zm128 128h192v160H320V256z'
-  },
-  {
-    id: 'draw',
-    label: '绘制',
-    // Brush
-    iconPath: 'M853.504 192.064l-235.008 235.008-60.352-60.352 235.008-235.008a64 64 0 0 1 90.496 0l-30.144 30.144 30.144 30.208z m-467.2 491.52l60.352-60.352L249.408 425.984l-60.352 60.352 197.248 197.248zM189.056 365.632l60.352-60.352 384.896 384.896-60.352 60.352L189.056 365.632zM128 896a64 64 0 0 1-64-64c0-68.992 48.128-196.608 107.52-256l192 192C304.128 827.392 192 896 128 896z'
-  },
-  {
-    id: 'text',
-    label: '文本',
-    // Document
-    iconPath: 'M832 64H192a64 64 0 0 0-64 64v768a64 64 0 0 0 64 64h640a64 64 0 0 0 64-64V128a64 64 0 0 0-64-64zM256 256h512v64H256v-64zm512 448H256v-64h512v64zm0-192H256v-64h512v64z'
-  },
-  {
-    id: 'border',
-    label: '边框',
-    // FullScreen (Frame)
-    iconPath: 'M160 160v192h-64V96h256v64H160z m0 704h192v64H96V672h64v192z m704-192v192H672v64h256V672h-64z m0-288V160H672V96h256v288h-64z'
-  },
-  {
-    id: 'material',
-    label: '素材',
-    // Grid
-    iconPath: 'M448 128H128v320h320V128zm-64 256H192V192h192v192z m448-256H576v320h256V128zm-64 256H640V192h192v192z M448 576H128v320h320V576zm-64 256H192V640h192v192z m448-256H576v320h256V576zm-64 256H640V640h192v192z'
-  },
-  {
-    id: 'watermark',
-    label: '水印',
-    // Stamp
-    iconPath: 'M832 320H608V128h-64a96 96 0 0 0-96-96h-64a96 96 0 0 0-96 96h-64v192H192a64 64 0 0 0-64 64v512h768V384a64 64 0 0 0-64-64z m-320-96h64v96h-64v-96z m0-128h64a32 32 0 0 1 32 32v32h-128V128a32 32 0 0 1 32-32zM256 704a64 64 0 1 1 0-128 64 64 0 0 1 0 128zm256 128a64 64 0 1 1 0-128 64 64 0 0 1 0 128zm256-128a64 64 0 1 1 0-128 64 64 0 0 1 0 128z'
-  },
-  {
-    id: 'puzzle',
-    label: '拼图',
-    // Connection
-    iconPath: 'M704 576a128 128 0 0 1-128 128h-64v256h-64V704h-64a128 128 0 1 1 0-256h64V192h64v256h64a128 128 0 0 1 128 128z m-256-64h64V256h-64v256zM320 576a64 64 0 1 0 64-64h-64v64zm384 0a64 64 0 1 0-64-64h64v64z'
-  },
-  {
-    id: 'ai',
-    label: 'AI',
-    // Cpu/Chip
-    iconPath: 'M832 192H192v640h640V192z m64-64v768H128V128h768z M320 320h128v128H320V320z m0 256h128v128H320V576z m256-256h128v128H576V320z m0 256h128v128H576V576z'
-  },
-];
+defineProps({
+    modelValue: Boolean,
+    title: { type: String, default: '提示' },
+    content: String
+});
+defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
 </script>
 
 <style scoped>
-.left-sidebar {
-  width: 72px;
-  background-color: #fff;
-  border-right: 1px solid #e4e7ed;
-  display: flex;
-  flex-direction: column;
-  padding-top: 12px;
-  overflow-y: auto;
+.modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
 }
 
-.left-sidebar::-webkit-scrollbar {
-  display: none;
+.modal-container {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    width: 320px;
+    padding: 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-.menu-item {
-  height: 68px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #606266;
-  gap: 6px;
-  transition: all 0.2s;
-  flex-shrink: 0;
+.modal-header h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+    color: #333;
 }
 
-.menu-item:hover {
-  color: var(--ie-primary-color);
-  background-color: #f5f7fa;
+.modal-close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: #909399;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    line-height: 1;
 }
 
-.menu-item.active {
-  color: var(--ie-primary-color);
-  font-weight: 500;
-  background-color: #ecf5ff;
-  position: relative;
+.modal-close:hover {
+    color: #606266;
 }
 
-.menu-item.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 24px;
-  background-color: var(--ie-primary-color);
-  border-radius: 0 2px 2px 0;
+.modal-body {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 24px;
+    line-height: 1.5;
 }
 
-.label {
-  font-size: 12px;
-  line-height: 1;
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
 }
 
-/* 确保 SVG 颜色跟随文字颜色变化 */
-.menu-icon {
-  fill: currentColor;
-  display: block;
-  /* 消除 baseline 间隙 */
+.ie-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+}
+
+.btn-primary {
+    background: var(--ie-primary-color);
+    color: white;
+}
+
+.btn-secondary {
+    background: #f4f4f5;
+    color: #606266;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>
 </file>
@@ -4000,716 +3792,161 @@ watch(brushSize, (val) => {
 });
 </file>
 
-<file path="src/components/modules/puzzle/config.js">
-// src/components/modules/puzzle/config.js
+<file path="src/components/layout/LeftSidebar.vue">
+<template>
+  <div class="left-sidebar">
+    <div 
+      v-for="item in menuItems" 
+      :key="item.id" 
+      class="menu-item" 
+      :class="{ 
+        active: state.activeTool === item.id,
+        'auto-activated': state.activeTool === item.id && state.navigationSource === 'canvas'
+      }"
+      @click="handleToolClick(item.id)"
+    >
+      <svg class="menu-icon" viewBox="0 0 1024 1024" width="20" height="20">
+        <path :d="item.iconPath" fill="currentColor" />
+      </svg>
+      <span class="label">{{ item.label }}</span>
+    </div>
+  </div>
+</template>
 
-// =========================================================================
-// 1. 网格模板数据 - 按图片数量分组
-// =========================================================================
-export const gridTemplates = {
-  1: [
-    {
-      id: '1-1',
-      label: '全屏单图',
-      wrapStyle: { 'grid-template-columns': '1fr', 'grid-template-rows': '1fr' },
-      gridAreas: ['1 / 1 / 2 / 2'],
-    }
-  ],
-  2: [
-    {
-      id: '2-1',
-      label: '左右均分',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': '1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '1 / 2 / 2 / 3'],
-    },
-    {
-      id: '2-2',
-      label: '上下均分',
-      wrapStyle: { 'grid-template-columns': '1fr', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '2 / 1 / 3 / 2'],
-    },
-    {
-      id: '2-3',
-      label: '左2右1',
-      wrapStyle: { 'grid-template-columns': '2fr 1fr', 'grid-template-rows': '1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '1 / 2 / 2 / 3'],
-    },
-    {
-      id: '2-4',
-      label: '上2下1',
-      wrapStyle: { 'grid-template-columns': '1fr', 'grid-template-rows': '2fr 1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '2 / 1 / 3 / 2'],
-    }
-  ],
-  3: [
-    {
-      id: '3-1',
-      label: '三列均分',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr 1fr', 'grid-template-rows': '1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4'],
-    },
-    {
-      id: '3-2',
-      label: '三行均分',
-      wrapStyle: { 'grid-template-columns': '1fr', 'grid-template-rows': '1fr 1fr 1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '2 / 1 / 3 / 2', '3 / 1 / 4 / 2'],
-    },
-    {
-      id: '3-3',
-      label: '左主右副',
-      wrapStyle: { 'grid-template-columns': '2fr 1fr', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: ['1 / 1 / 3 / 2', '1 / 2 / 2 / 3', '2 / 2 / 3 / 3'],
-    },
-    {
-      id: '3-4',
-      label: '上主下副',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': '2fr 1fr' },
-      gridAreas: ['1 / 1 / 2 / 3', '2 / 1 / 3 / 2', '2 / 2 / 3 / 3'],
-    }
-  ],
-  4: [
-    {
-      id: '4-1',
-      label: '田字格',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '2 / 1 / 3 / 2', '2 / 2 / 3 / 3'],
-    },
-    {
-      id: '4-2',
-      label: '四列胶片',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr 1fr 1fr', 'grid-template-rows': '1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5'],
-    },
-    {
-      id: '4-3',
-      label: '左一右三',
-      wrapStyle: { 'grid-template-columns': '1.5fr 1fr', 'grid-template-rows': '1fr 1fr 1fr' },
-      gridAreas: ['1 / 1 / 4 / 2', '1 / 2 / 2 / 3', '2 / 2 / 3 / 3', '3 / 2 / 4 / 3'],
-    },
-    {
-      id: '4-4',
-      label: '上一下三',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr 1fr', 'grid-template-rows': '2fr 1fr' },
-      gridAreas: ['1 / 1 / 2 / 4', '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4'],
-    },
-    {
-      id: '4-5',
-      label: '错位布局',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': '1fr 1fr 1fr' },
-      gridAreas: ['1 / 1 / 2 / 2', '1 / 2 / 3 / 3', '2 / 1 / 4 / 2', '3 / 2 / 4 / 3'],
-    }
-  ],
-  5: [
-    {
-      id: '5-1',
-      label: '上二下三',
-      wrapStyle: { 'grid-template-columns': 'repeat(6, 1fr)', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 4', '1 / 4 / 2 / 7',
-        '2 / 1 / 3 / 3', '2 / 3 / 3 / 5', '2 / 5 / 3 / 7'
-      ],
-    },
-    {
-      id: '5-2',
-      label: '左一右四',
-      wrapStyle: { 'grid-template-columns': '1.5fr 1fr 1fr', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 3 / 2',
-        '1 / 2 / 2 / 3', '1 / 3 / 2 / 4',
-        '2 / 2 / 3 / 3', '2 / 3 / 3 / 4'
-      ],
-    },
-    {
-      id: '5-3',
-      label: '中心环绕',
-      wrapStyle: { 'grid-template-columns': '1fr 2fr 1fr', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 3 / 3', '1 / 3 / 2 / 4',
-        '2 / 1 / 3 / 2', '2 / 3 / 3 / 4'
-      ],
-    },
-    {
-      id: '5-4',
-      label: '砌砖布局',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': '1fr 1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 3',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3'
-      ]
-    }
-  ],
-  6: [
-    {
-      id: '6-1',
-      label: '标准2x3',
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4'
-      ],
-    },
-    {
-      id: '6-2',
-      label: '标准3x2',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3'
-      ],
-    },
-    {
-      id: '6-3',
-      label: '左大右碎',
-      wrapStyle: { 'grid-template-columns': '2fr 1fr', 'grid-template-rows': 'repeat(5, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 6 / 2',
-        '1 / 2 / 2 / 3', '2 / 2 / 3 / 3', '3 / 2 / 4 / 3', '4 / 2 / 5 / 3', '5 / 2 / 6 / 3'
-      ],
-    },
-    {
-      id: '6-4',
-      label: '上大下碎',
-      wrapStyle: { 'grid-template-columns': 'repeat(5, 1fr)', 'grid-template-rows': '2fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 6',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4', '2 / 4 / 3 / 5', '2 / 5 / 3 / 6'
-      ],
-    }
-  ],
-  7: [
-    {
-      id: '7-1',
-      label: '上三中四',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(2, 1fr)' },
-      // 为了对齐，使用 12 列网格 (3和4的公倍数)
-      wrapStyle: { 'grid-template-columns': 'repeat(12, 1fr)', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 5', '1 / 5 / 2 / 9', '1 / 9 / 2 / 13', // 上3 (每格4列)
-        '2 / 1 / 3 / 4', '2 / 4 / 3 / 7', '2 / 7 / 3 / 10', '2 / 10 / 3 / 13' // 下4 (每格3列)
-      ],
-    },
-    {
-      id: '7-2',
-      label: '主图环绕',
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 3 / 3', // 左上大图 2x2
-        '1 / 3 / 2 / 4', '2 / 3 / 3 / 4',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3', '3 / 3 / 4 / 4',
-        '2 / 2 / 2 / 2' // (修正：补充缺口) -> 下面这种布局更稳
-      ],
-      // 修正版：左大 + 右3 + 下3
-      wrapStyle: { 'grid-template-columns': '2fr 1fr', 'grid-template-rows': 'repeat(6, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 5 / 2', // 左大
-        '1 / 2 / 2 / 3', '2 / 2 / 3 / 3', '3 / 2 / 4 / 3', '4 / 2 / 5 / 3', // 右4
-        '5 / 1 / 7 / 2', '5 / 2 / 7 / 3' // 下2? 这样是7张
-      ],
-      // 简单且好看的7张：1大 + 6小
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 3 / 3', // 左上大图 2x2
-        '1 / 3 / 2 / 4', // 右1
-        '2 / 3 / 3 / 4', // 右2
-        '3 / 1 / 4 / 2', // 下1
-        '3 / 2 / 4 / 3', // 下2
-        '3 / 3 / 4 / 4', // 下3
-        // 缺了一张? 上面只有6张。
-        // 重来：3x3网格，1个占2x2(4格)，剩下5格放5张。共6张。
-        // 7张图方案：上1大(全宽)，下2行3列
-      ],
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': '2fr 1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 4', // 上大
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3', '3 / 3 / 4 / 4'
-      ]
-    },
-    {
-      id: '7-3',
-      label: '非对称拼贴',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 3 / 3', // 左上 2x2
-        '3 / 3 / 5 / 5', // 右下 2x2
-        '1 / 3 / 2 / 5', // 右上长条
-        '2 / 3 / 3 / 5',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3',
-        '4 / 1 / 5 / 3'  // 左下长条
-      ]
-    }
-  ],
-  8: [
-    {
-      id: '8-1',
-      label: '4x2网格',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4', '2 / 4 / 3 / 5'
-      ],
-    },
-    {
-      id: '8-2',
-      label: '2x4网格',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3',
-        '4 / 1 / 5 / 2', '4 / 2 / 5 / 3'
-      ],
-    },
-    {
-      id: '8-3',
-      label: '双主图对角',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 3 / 3', // 左上大图
-        '2 / 3 / 4 / 5', // 右下大图
-        '1 / 3 / 2 / 4', '1 / 4 / 2 / 5',
-        '2 / 3 / 3 / 4', '2 / 4 / 3 / 5', // 这里的2/3/4/5其实就是右下大图
-        // 修正：
-        '1 / 3 / 2 / 4', '1 / 4 / 2 / 5', // 右上两张
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3', // 左下两张
-        '2 / 3 / 2 / 4', '2 / 4 / 2 / 5'  // 补位? 复杂了，换简单方案：
-      ],
-      // 8图方案：中间2大，两边各3
-      wrapStyle: { 'grid-template-columns': '1fr 2fr 1fr', 'grid-template-rows': '1fr 1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '2 / 1 / 3 / 2', '3 / 1 / 4 / 2', // 左3
-        '1 / 2 / 2.5 / 3', '2.5 / 2 / 4 / 3', // 中2 (横向切分? 不支持小数) -> 改为上下各占1.5
-        // 修正：用 6行
-        '1 / 3 / 2 / 4', '2 / 3 / 3 / 4', '3 / 3 / 4 / 4'  // 右3
-      ],
-      // 稳妥方案：上3 中2 下3
-      wrapStyle: { 'grid-template-columns': 'repeat(6, 1fr)', 'grid-template-rows': '1fr 1.5fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 3', '1 / 3 / 2 / 5', '1 / 5 / 2 / 7', // 上3 (每格2列)
-        '2 / 1 / 3 / 4', '2 / 4 / 3 / 7',                  // 中2 (每格3列)
-        '3 / 1 / 4 / 3', '3 / 3 / 4 / 5', '3 / 5 / 4 / 7'  // 下3 (每格2列)
-      ]
-    }
-  ],
-  9: [
-    {
-      id: '9-1',
-      label: '九宫格',
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3', '3 / 3 / 4 / 4'
-      ],
-    },
-    {
-      id: '9-2',
-      label: '中心聚焦',
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3', '3 / 3 / 4 / 4'
-      ],
-      // 修正：9图布局，中间大图，四周8图，需要 4x4 网格
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: [
-        '2 / 2 / 4 / 4', // 中间大图 2x2
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5', // 上4
-        '2 / 1 / 3 / 2', // 左中
-        '2 / 4 / 3 / 5', // 右中
-        '3 / 1 / 4 / 2', // 左下
-        '3 / 4 / 4 / 5', // 右下
-        // 哎呀，下面还缺一行？4x4是16格。大图占4格，剩12格。我们只有8张小图。
-        // 所以这个布局是 9 张图，中间大图占 2x2，周围需要12格？不对。
-        // 3x3网格，中间大图占1格？那就是九宫格。
-        // 正确的“中心大图+周围”通常是 1大8小 = 9图。
-        // 布局：3x3，中间格分裂为4小格？不，是反过来：3x3，周围格分裂。
-        // 方案：4x4网格。中间 2x2 占4格。剩余 16-4 = 12 格。
-        // 如果要放8张小图，有些小图要占 1.5格？
-        // 简单方案：3行错位。
-      ],
-      wrapStyle: { 'grid-template-columns': 'repeat(6, 1fr)', 'grid-template-rows': 'repeat(6, 1fr)' },
-      gridAreas: [
-        '2 / 2 / 6 / 6', // 中间极大 4x4
-        '1 / 1 / 2 / 3', '1 / 3 / 2 / 5', '1 / 5 / 2 / 7', // 上3
-        '2 / 1 / 4 / 2', // 左1
-        '4 / 1 / 6 / 2', // 左2
-        '2 / 6 / 4 / 7', // 右1
-        '4 / 6 / 6 / 7', // 右2
-        '6 / 1 / 7 / 4', // 下1
-        '6 / 4 / 7 / 7'  // 下2
-      ]
-    }
-  ],
-  10: [
-    {
-      id: '10-1',
-      label: '5x2均分',
-      wrapStyle: { 'grid-template-columns': 'repeat(5, 1fr)', 'grid-template-rows': '1fr 1fr' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5', '1 / 5 / 2 / 6',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4', '2 / 4 / 3 / 5', '2 / 5 / 3 / 6'
-      ]
-    },
-    {
-      id: '10-2',
-      label: '2x5均分',
-      wrapStyle: { 'grid-template-columns': '1fr 1fr', 'grid-template-rows': 'repeat(5, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3',
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3',
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3',
-        '4 / 1 / 5 / 2', '4 / 2 / 5 / 3',
-        '5 / 1 / 6 / 2', '5 / 2 / 6 / 3'
-      ]
-    },
-    {
-      id: '10-3',
-      label: '4-3-3布局',
-      wrapStyle: { 'grid-template-columns': 'repeat(12, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 4', '1 / 4 / 2 / 7', '1 / 7 / 2 / 10', '1 / 10 / 2 / 13', // 第一行4张
-        '2 / 1 / 3 / 5', '2 / 5 / 3 / 9', '2 / 9 / 3 / 13', // 第二行3张
-        '3 / 1 / 4 / 5', '3 / 5 / 4 / 9', '3 / 9 / 4 / 13'  // 第三行3张
-      ]
-    }
-  ],
-  11: [
-    {
-      id: '11-1',
-      label: '4-4-3布局',
-      wrapStyle: { 'grid-template-columns': 'repeat(12, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 4', '1 / 4 / 2 / 7', '1 / 7 / 2 / 10', '1 / 10 / 2 / 13', // 上4
-        '2 / 1 / 3 / 4', '2 / 4 / 3 / 7', '2 / 7 / 3 / 10', '2 / 10 / 3 / 13', // 中4
-        '3 / 1 / 4 / 5', '3 / 5 / 4 / 9', '3 / 9 / 4 / 13' // 下3
-      ]
-    },
-    {
-      id: '11-2',
-      label: '3-4-4布局',
-      wrapStyle: { 'grid-template-columns': 'repeat(12, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 5', '1 / 5 / 2 / 9', '1 / 9 / 2 / 13', // 上3
-        '2 / 1 / 3 / 4', '2 / 4 / 3 / 7', '2 / 7 / 3 / 10', '2 / 10 / 3 / 13', // 中4
-        '3 / 1 / 4 / 4', '3 / 4 / 4 / 7', '3 / 7 / 4 / 10', '3 / 10 / 4 / 13'  // 下4
-      ]
-    }
-  ],
-  12: [
-    {
-      id: '12-1',
-      label: '3x4网格',
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: Array.from({ length: 12 }, (_, i) => {
-        const r = Math.floor(i / 3) + 1;
-        const c = (i % 3) + 1;
-        return `${r} / ${c} / ${r + 1} / ${c + 1}`;
-      })
-    },
-    {
-      id: '12-2',
-      label: '4x3网格',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: Array.from({ length: 12 }, (_, i) => {
-        const r = Math.floor(i / 4) + 1;
-        const c = (i % 4) + 1;
-        return `${r} / ${c} / ${r + 1} / ${c + 1}`;
-      })
-    },
-    {
-      id: '12-3',
-      label: '中心聚焦',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5', // 上4
-        '2 / 1 / 3 / 2', /* 中间空2格 */  '2 / 4 / 3 / 5', // 中2
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3', '3 / 3 / 4 / 4', '3 / 4 / 4 / 5', // 下4
-        // 补中间大图 (2x2)
-        '2 / 2 / 3 / 4' // 注意：这里只占了1行高度(Row 2)，宽度占2列。如果想是正方形大图需调整行高
-      ],
-      // 修正：1大 + 11小 = 12图
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: [
-        '2 / 2 / 4 / 4', // 中间大图 2x2
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5', // Row 1 (4)
-        '2 / 1 / 3 / 2', '2 / 4 / 3 / 5', // Row 2 sides (2)
-        '3 / 1 / 4 / 2', '3 / 4 / 4 / 5', // Row 3 sides (2)
-        '4 / 1 / 5 / 2', '4 / 2 / 5 / 3', '4 / 3 / 5 / 4' // Row 4 (3, 缺一个？)
-        // 4+2+2+3 = 11小图。正好。
-      ]
-    }
-  ],
-  13: [
-    {
-      id: '13-1',
-      label: '中心大图+12',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: [
-        '2 / 2 / 4 / 4', // 中间大图 2x2
-        // 周围环绕12张
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5',
-        '2 / 1 / 3 / 2', '2 / 4 / 3 / 5',
-        '3 / 1 / 4 / 2', '3 / 4 / 4 / 5',
-        '4 / 1 / 5 / 2', '4 / 2 / 5 / 3', '4 / 3 / 5 / 4', '4 / 4 / 5 / 5'
-      ]
-    }
-  ],
-  14: [
-    {
-      id: '14-1',
-      label: '5-5-4布局',
-      wrapStyle: { 'grid-template-columns': 'repeat(20, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: [
-        // Row 1 (5张): 20/5 = 4
-        '1/1/2/5', '1/5/2/9', '1/9/2/13', '1/13/2/17', '1/17/2/21',
-        // Row 2 (5张)
-        '2/1/3/5', '2/5/3/9', '2/9/3/13', '2/13/3/17', '2/17/3/21',
-        // Row 3 (4张): 20/4 = 5
-        '3/1/4/6', '3/6/4/11', '3/11/4/16', '3/16/4/21'
-      ]
-    },
-    {
-      id: '14-2',
-      label: '对称双大图',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: [
-        '1 / 1 / 2 / 3', // 左上大图 2x1 (横向)
-        '1 / 3 / 2 / 5', // 右上大图 2x1 (横向)
-        '1 / 1 / 2 / 2', '1 / 2 / 2 / 3', '1 / 3 / 2 / 4', '1 / 4 / 2 / 5', // Row 1 (4)
-        '2 / 1 / 3 / 2', '2 / 2 / 3 / 3', '2 / 3 / 3 / 4', '2 / 4 / 3 / 5', // Row 2 (4)
-        '3 / 1 / 4 / 2', '3 / 2 / 4 / 3', '3 / 3 / 4 / 4', '3 / 4 / 4 / 5', // Row 3 (4)
-        '4 / 1 / 5 / 3', // 左下大图 2x1
-        '4 / 3 / 5 / 5'  // 右下大图 2x1
-        // 这样是 4+4+4+2 = 14张。
-      ]
-    }
-  ],
-  15: [
-    {
-      id: '15-1',
-      label: '3x5网格',
-      wrapStyle: { 'grid-template-columns': 'repeat(3, 1fr)', 'grid-template-rows': 'repeat(5, 1fr)' },
-      gridAreas: Array.from({ length: 15 }, (_, i) => {
-        const r = Math.floor(i / 3) + 1;
-        const c = (i % 3) + 1;
-        return `${r} / ${c} / ${r + 1} / ${c + 1}`;
-      })
-    },
-    {
-      id: '15-2',
-      label: '5x3网格',
-      wrapStyle: { 'grid-template-columns': 'repeat(5, 1fr)', 'grid-template-rows': 'repeat(3, 1fr)' },
-      gridAreas: Array.from({ length: 15 }, (_, i) => {
-        const r = Math.floor(i / 5) + 1;
-        const c = (i % 5) + 1;
-        return `${r} / ${c} / ${r + 1} / ${c + 1}`;
-      })
-    }
-  ],
-  16: [
-    {
-      id: '16-1',
-      label: '4x4标准',
-      wrapStyle: { 'grid-template-columns': 'repeat(4, 1fr)', 'grid-template-rows': 'repeat(4, 1fr)' },
-      gridAreas: Array.from({ length: 16 }, (_, i) => {
-        const r = Math.floor(i / 4) + 1;
-        const c = (i % 4) + 1;
-        return `${r} / ${c} / ${r + 1} / ${c + 1}`;
-      })
-    }
-  ]
+<script setup>
+import { useEditorState } from '../../composables/useEditorState';
+
+// 1. 替代 Pinia
+const { state, setActiveTool } = useEditorState();
+
+// 2. 点击处理：手动点击时，强制解除 Disabled 状态
+// 点击处理：标记来源为 'manual'
+const handleToolClick = (id) => {
+  setActiveTool(id, 'manual');
 };
 
-// 2. 图片数量下拉 (扩展至16)
-export const countOptions = [
-  { value: 'all', label: '全部' },
-  ...Array.from({ length: 16 }, (_, i) => ({
-    value: String(i + 1),
-    label: `${i + 1}张`
-  }))
+// 3. 定义菜单配置 (保持原样)
+const menuItems = [
+  {
+    id: 'adjust',
+    label: '调整',
+    iconPath: 'M192 128v768h128V672h192v224h128V672h192V544H512V128H192zm128 128h192v160H320V256z'
+  },
+  {
+    id: 'draw',
+    label: '绘制',
+    iconPath: 'M853.504 192.064l-235.008 235.008-60.352-60.352 235.008-235.008a64 64 0 0 1 90.496 0l-30.144 30.144 30.144 30.208z m-467.2 491.52l60.352-60.352L249.408 425.984l-60.352 60.352 197.248 197.248zM189.056 365.632l60.352-60.352 384.896 384.896-60.352 60.352L189.056 365.632zM128 896a64 64 0 0 1-64-64c0-68.992 48.128-196.608 107.52-256l192 192C304.128 827.392 192 896 128 896z'
+  },
+  {
+    id: 'text',
+    label: '文本',
+    iconPath: 'M832 64H192a64 64 0 0 0-64 64v768a64 64 0 0 0 64 64h640a64 64 0 0 0 64-64V128a64 64 0 0 0-64-64zM256 256h512v64H256v-64zm512 448H256v-64h512v64zm0-192H256v-64h512v64z'
+  },
+  {
+    id: 'border',
+    label: '边框',
+    iconPath: 'M160 160v192h-64V96h256v64H160z m0 704h192v64H96V672h64v192z m704-192v192H672v64h256V672h-64z m0-288V160H672V96h256v288h-64z'
+  },
+  {
+    id: 'material',
+    label: '素材',
+    iconPath: 'M448 128H128v320h320V128zm-64 256H192V192h192v192z m448-256H576v320h256V128zm-64 256H640V192h192v192z M448 576H128v320h320V576zm-64 256H192V640h192v192z m448-256H576v320h256V576zm-64 256H640V640h192v192z'
+  },
+  {
+    id: 'watermark',
+    label: '水印',
+    iconPath: 'M832 320H608V128h-64a96 96 0 0 0-96-96h-64a96 96 0 0 0-96 96h-64v192H192a64 64 0 0 0-64 64v512h768V384a64 64 0 0 0-64-64z m-320-96h64v96h-64v-96z m0-128h64a32 32 0 0 1 32 32v32h-128V128a32 32 0 0 1 32-32zM256 704a64 64 0 1 1 0-128 64 64 0 0 1 0 128zm256 128a64 64 0 1 1 0-128 64 64 0 0 1 0 128zm256-128a64 64 0 1 1 0-128 64 64 0 0 1 0 128z'
+  },
+  {
+    id: 'puzzle',
+    label: '拼图',
+    iconPath: 'M704 576a128 128 0 0 1-128 128h-64v256h-64V704h-64a128 128 0 1 1 0-256h64V192h64v256h64a128 128 0 0 1 128 128z m-256-64h64V256h-64v256zM320 576a64 64 0 1 0 64-64h-64v64zm384 0a64 64 0 1 0-64-64h64v64z'
+  },
+  {
+    id: 'ai',
+    label: 'AI',
+    iconPath: 'M832 192H192v640h640V192z m64-64v768H128V128h768z M320 320h128v128H320V320z m0 256h128v128H320V576z m256-256h128v128H576V320z m0 256h128v128H576V576z'
+  },
 ];
+</script>
 
-// =========================================================================
-// 3. 核心工具函数：生成和解析网格
-// =========================================================================
+<style scoped>
+.left-sidebar {
+  width: 72px;
+  background-color: #fff;
+  border-right: 1px solid #e4e7ed;
+  display: flex;
+  flex-direction: column;
+  padding-top: 12px;
+  overflow-y: auto;
+  transition: opacity 0.3s ease;
+}
 
-/**
- * 动态生成 NxM 网格的单元格数据
- * @param {Number} rows 行数
- * @param {Number} cols 列数
- * @returns {Array} 单元格数组
- */
-export const generateGridCells = (rows, cols) => {
-  const cells = [];
-  const w = 1 / cols;
-  const h = 1 / rows;
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      cells.push({
-        index: r * cols + c,
-        x: c * w,
-        y: r * h,
-        w: w,
-        h: h
-      });
-    }
-  }
-  return cells;
-};
+.left-sidebar::-webkit-scrollbar {
+  display: none;
+}
 
-/**
- * 解析 CSS Grid Area 模板为百分比坐标
- * 兼容格式如: "1 / 1 / 2 / 2" (rowStart / colStart / rowEnd / colEnd)
- * @param {Object} tpl 模板对象
- */
-export const parseTemplateToCells = (tpl) => {
-  if (!tpl || !tpl.gridAreas) return [];
+.menu-item {
+  height: 68px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #606266;
+  gap: 6px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
 
-  let maxR = 1, maxC = 1;
+.menu-item:hover {
+  color: var(--ie-primary-color);
+  background-color: #f5f7fa;
+}
 
-  const getCountFromStyle = (styleStr) => {
-    if (!styleStr) return 1;
-    const repeatMatch = styleStr.match(/repeat\((\d+)/);
-    if (repeatMatch) return parseInt(repeatMatch[1]);
-    const spaceMatch = styleStr.trim().split(/\s+/);
-    return spaceMatch.length;
-  };
+.menu-item.active {
+  color: var(--ie-primary-color);
+  font-weight: 500;
+  background-color: #ecf5ff;
+  position: relative;
+}
 
-  if (tpl.wrapStyle) {
-    maxC = Math.max(maxC, getCountFromStyle(tpl.wrapStyle['grid-template-columns']));
-    maxR = Math.max(maxR, getCountFromStyle(tpl.wrapStyle['grid-template-rows']));
-  }
+.menu-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 24px;
+  background-color: var(--ie-primary-color);
+  border-radius: 0 2px 2px 0;
+}
 
-  tpl.gridAreas.forEach(area => {
-    const parts = area.split('/').map(s => parseInt(s.trim()));
-    if (parts.length >= 4) {
-      if (parts[2] - 1 > maxR) maxR = parts[2] - 1;
-      if (parts[3] - 1 > maxC) maxC = parts[3] - 1;
-    }
-  });
+.label {
+  font-size: 12px;
+  line-height: 1;
+}
 
-  return tpl.gridAreas.map((area, index) => {
-    const [r1, c1, r2, c2] = area.split('/').map(s => parseInt(s.trim()));
-    const x = (c1 - 1) / maxC;
-    const y = (r1 - 1) / maxR;
-    const w = (c2 - c1) / maxC;
-    const h = (r2 - r1) / maxR;
+.menu-icon {
+  fill: currentColor;
+  display: block;
+}
 
-    return { index, x, y, w, h };
-  });
-};
-</file>
+/* 这是一个可选的增强： */
+/* 如果是自动跳转的，我们可以让高亮条有个淡入效果，而不是瞬间切换 */
+.menu-item.active.auto-activated::before {
+  transition: all 0.3s ease;
+}
 
-<file path=".spec/active-context.md">
-# Active Context & Development State
-
-> **Version**: 2.2 (Interaction Logic Defined)
-> **Last Updated**: 2025-12-23
-> **Current Focus**: Precision System & Contextual Interaction
-
-## 1. 当前开发状态 (Current Status)
-
-### ✅ 已完成模块 (Completed Modules)
-
-#### 1.1 核心编辑 (Core Editing)
-- **剪裁 (Crop)**:
-  - [x] **手动选区**: 实现了 `startManualSelection`，支持自定义框选区域。
-  - [x] **比例锁定**: 支持原图比例、自由比例及常用预设 (1:1, 16:9 等)。
-  - [x] **旋转翻转**: 90° 步进旋转与 XY 轴翻转。
-- **尺寸调整 (Resize)**:
-  - [x] **高清重制**: 引入 `useOffscreenHelper`，实现了基于原图分辨率的高清缩放。
-  - [x] **保真模式**: 支持锁定长宽比计算。
-- **补白 (White/Padding)**:
-  - [x] **社媒预设**: 集成 Instagram/Youtube 等常用尺寸模板。
-  - [x] **智能吸色**: 支持背景色吸取及透明背景设置。
-
-#### 1.2 拼图系统 (Puzzle System) `Major Feature`
-- **网格布局**:
-  - [x] **动态模板**: 基于 `config.js` 实现了 1-16 张图片的网格布局解析。
-  - [x] **自动布局**: 图片拖入自动计算 Cover 裁剪，保证填满格子不留白。
-- **交互逻辑**:
-  - [x] **拖拽交换**: 实现了平滑的交换动画 (`animateSwap`) 和失败回弹。
-  - [x] **物理约束**: 应用 `useConstraint` 防止图片脱离格子可视区。
-- **样式调整**:
-  - [x] **全局参数**: 支持动态调整间距、边距和圆角。
-
-#### 1.3 智能与特效 (AI & Effects)
-- **智能消除 (Inpaint)**:
-  - [x] **离屏遮罩**: 解决闪烁问题，通过离屏 Canvas 生成 Mask。
-  - [x] **双模交互**: 支持画笔 (Brush) 和 矩形框选 (Rect)。
-- **一键抠图 (Rembg)**:
-  - [x] **API 集成**: 封装 `src/api/ai.js` 支持一键移除背景。
-- **马赛克 (Mosaic)**:
-  - [x] **无损处理**: 采用“预览层 + 离屏应用”策略。
-- **滤镜与调色**:
-  - [x] **ColorMatrix**: 实现亮度、对比度等 6 维调节。
-  - [x] **LUT 模拟**: 内置“复古”、“电影”等滤镜预设。
-
-#### 1.4 辅助工具与交互 (Tools & Interaction)
-- **快捷键系统 (Shortcuts)**:
-  - [x] **配置化驱动**: 建立 `src/config/shortcuts.js` 数据源。
-  - [x] **可视化面板**: 实现 Keycap 风格的侧边抽屉速查表 (`ShortcutsPanel`)。
-  - [x] **通用操作**: 覆盖复制粘贴、图层移动 (`[` `]`)、锁定 (`Shift+Ctrl+L`)。
-- **测量工具 (Measure)**:
-  - [x] **交互绘制**: 支持拖拽创建测量线，自动计算长度。
-  - [x] **单位系统**: 支持 px, cm, mm 等多单位转换。
-- **交互优化 (Interaction Polish)** `New!`:
-  - [x] **右键菜单**: 修复粘贴坐标偏移，实现基于鼠标位置的左上角对齐 (`Origin: Top-Left`)。
-  - [x] **悬浮菜单**: 实现事件隔离，防止在悬浮条上操作时误触底层 Canvas。
-  - [x] **剪贴板**: 重构为单例模式 (`clipboardState`)，解决跨组件数据断层问题。
-
----
-
-## 2. 系统架构备忘 (Architecture Memo)
-
-### 2.1 高清离屏渲染管线 (High-Res Offscreen Pipeline)
-> **Pattern**: `src/composables/useOffscreenHelper.js`
-- **逻辑**: 获取原图原始分辨率 -> 创建临时 StaticCanvas -> 映射效果 -> 导出高清图。
-- **应用**: Resize, Crop, Inpaint, Mosaic。
-
-### 2.2 物理约束系统 (Constraint System)
-> **Pattern**: `src/composables/useConstraint.js`
-- **逻辑**: 计算对象相对于容器的溢出值，Resizing 时实时修正，Puzzle 拖拽时触发回弹。
-
-### 2.3 状态与快捷键 (State & Shortcuts)
-- **State**: 使用 `useEditorState.js` (Reactive 单例) 管理全局状态。
-- **Shortcuts**: 采用配置化策略，`ShortcutsPanel` UI 与 `useKeyboardShortcuts` 逻辑共用同一份配置源。
-
-### 2.4 对象驱动交互规范 (Object-Driven Interaction Spec) `NEW`
-> **Core**: 点击画布对象唤起侧边栏，点击背景进入残影模式。
-- **触发机制 (Trigger)**:
-  - **Click vs Drag**: 引入阈值 (如 < 3px) 区分点击与拖拽。**拖拽时不切换面板**，仅单击切换。
-  - **Sync**: 点击组件 -> 侧边栏跳转属性页 -> **左侧一级导航栏同步高亮**。
-- **状态流转 (State Flow)**:
-  - **Background Click**: 点击主图/背景 -> 取消组件高亮 -> 侧边栏**不跳转**但进入 **Disabled/Ghost Mode** (A类残影模式：保留视图但变灰不可用)。
-  - **Creation Flow**: 从素材库添加组件 -> 画布选中新组件 -> 侧边栏**保持在库视图** (不自动跳属性页，方便连续添加)。
-
----
-
-## 3. 待办事项 (Backlog & Roadmap)
-
-### 📅 近期计划 (Next Sprint)
-
-1.  **交互逻辑实现 (Interaction Implementation)** `Top Priority`:
-    * [ ] **状态同步**: 实现 Canvas 点击事件与 Sidebar/NavBar 的双向绑定。
-    * [ ] **防抖判断**: 实现 `mousedown` / `mouseup` 位移检测，区分拖拽与点击。
-    * [ ] **残影模式**: 开发 Sidebar 的 `Disabled` 状态样式及逻辑。
-2.  **精准对齐系统 (Precision System)**:
-    * [ ] **参考线 (Guides)**: 支持从标尺拖拽生成辅助线。
-    * [ ] **吸附 (Snapping)**: 实现对象拖拽时的自动吸附对齐。
-3.  **文本模块 (Text Module)**:
-    * [ ] 实现 `TextAdd.vue` (标题/正文) 与 `TextStyle.vue` (字体/样式)。
-4.  **绘制模块 (Draw Module)**:
-    * [ ] 完善画笔类型与基础几何图形。
-
-### 🐛 已知优化点 (Refactoring)
-- **Performance**: 优化高分图拼图拖拽时的计算性能 (Throttle)。
-- **TS Migration**: 逐步补充复杂逻辑模块的类型定义。
+.left-sidebar.is-disabled {
+    /* 你的残影样式 */
+    opacity: 0.5;
+    filter: grayscale(0.8);
+    pointer-events: auto; /* 关键：允许点击以重新激活 */
+}
+</style>
 </file>
 
 <file path="src/components/modules/adjust/useCanvasWhite.js">
@@ -5031,6 +4268,396 @@ export const applyWhitePadding = (width, height, bgColor) => {
 };
 </file>
 
+<file path="src/components/modules/puzzle/config.js">
+// src/components/modules/puzzle/config.js
+
+// =========================================================================
+// 1. 网格模板数据 - 按图片数量分组
+// =========================================================================
+// 网格模板数据 - 按图片数量分组
+export const gridTemplates = {
+  1: [
+    {
+      id: '1-1',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(1, 1fr)',
+        'grid-template-rows': 'repeat(1, 1fr)',
+      },
+      gridAreas: ['1 / 1 / 2 / 2'],
+    }
+  ],
+  2: [
+    {
+      id: '2-1',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(2, 1fr)',
+        'grid-template-rows': 'repeat(2, 1fr)',
+      },
+      gridAreas: ['1 / 1 / 3 / 2', '1 / 2 / 3 / 3'],
+    },
+    {
+      id: '2-2',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(2, 1fr)',
+        'grid-template-rows': 'repeat(2, 1fr)',
+      },
+      gridAreas: ['1 / 1 / 2 / 3', '2 / 1 / 3 / 3'],
+    }
+  ],
+  3: [
+    {
+      id: '3-1',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(3, 1fr)',
+        'grid-template-rows': 'repeat(3, 1fr)',
+      },
+      gridAreas: ['1 / 1 / 3 / 3', '1 / 3 / 3 / 4', '3 / 1 / 4 / 4'],
+    },
+    {
+      id: '3-2',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(3, 1fr)',
+        'grid-template-rows': 'repeat(3, 1fr)',
+      },
+      gridAreas: ['1 / 1 / 2 / 4', '2 / 1 / 4 / 3', '2 / 3 / 4 / 4'],
+    },
+    {
+      id: '3-3',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(2, 1fr)',
+        'grid-template-rows': 'repeat(2, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 3 / 2',
+        '1 / 2 / 2 / 3',
+        '2 / 2 / 3 / 3'
+      ],
+    },
+    {
+      id: '3-4',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(2, 1fr)',
+        'grid-template-rows': 'repeat(2, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 2 / 2',
+        '1 / 2 / 3 / 3',
+        '2 / 1 / 3 / 2'
+      ],
+    },
+    {
+      id: '3-5',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(2, 1fr)',
+        'grid-template-rows': 'repeat(2, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 2 / 3',
+        '2 / 1 / 3 / 2',
+        '2 / 2 / 3 / 3'
+      ],
+    },
+    {
+      id: '3-6',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(2, 1fr)',
+        'grid-template-rows': 'repeat(2, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 2 / 2',
+        '1 / 2 / 2 / 3',
+        '2 / 1 / 3 / 3'
+      ],
+    },
+    {
+      id: '3-7',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(3, 1fr)',
+        'grid-template-rows': 'repeat(3, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 4 / 2',
+        '1 / 2 / 4 / 3',
+        '1 / 3 / 4 / 4'
+      ],
+    },
+    {
+      id: '3-8',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(3, 1fr)',
+        'grid-template-rows': 'repeat(3, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 2 / 4',
+        '2 / 1 / 3 / 4',
+        '3 / 1 / 4 / 4'
+      ],
+    }
+  ],
+  4: [
+    {
+      id: '4-1',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(2, 1fr)',
+        'grid-template-rows': 'repeat(2, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 2 / 2',
+        '1 / 2 / 2 / 3',
+        '2 / 1 / 3 / 2',
+        '2 / 2 / 3 / 3'
+      ],
+    },
+    {
+      id: '4-2',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(6, 1fr)',
+        'grid-template-rows': 'repeat(6, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 4 / 3',
+        '1 / 3 / 4 / 7',
+        '4 / 1 / 7 / 5',
+        '4 / 5 / 7 / 7'
+      ],
+    },
+    {
+      id: '4-3',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(6, 1fr)',
+        'grid-template-rows': 'repeat(6, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 7 / 3',
+        '1 / 3 / 4 / 5',
+        '4 / 3 / 7 / 5',
+        '1 / 5 / 7 / 7'
+      ],
+    },
+    {
+      id: '4-4',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(6, 1fr)',
+        'grid-template-rows': 'repeat(6, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 3 / 7',
+        '3 / 1 / 5 / 4',
+        '3 / 4 / 5 / 7',
+        '5 / 1 / 7 / 7'
+      ],
+    },
+    {
+      id: '4-5',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(4, 1fr)',
+        'grid-template-rows': 'repeat(4, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 5 / 2',
+        '1 / 2 / 5 / 3',
+        '1 / 3 / 5 / 4',
+        '1 / 4 / 5 / 5'
+      ],
+    },
+    {
+      id: '4-6',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(4, 1fr)',
+        'grid-template-rows': 'repeat(4, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 2 / 5',
+        '2 / 1 / 3 / 5',
+        '3 / 1 / 4 / 5',
+        '4 / 1 / 5 / 5'
+      ],
+    },
+    {
+      id: '4-7',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(6, 1fr)',
+        'grid-template-rows': 'repeat(6, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 3 / 4',
+        '3 / 1 / 5 / 4',
+        '5 / 1 / 7 / 4',
+        '1 / 4 / 7 / 7'
+      ],
+    },
+    {
+      id: '4-8',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(6, 1fr)',
+        'grid-template-rows': 'repeat(6, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 7 / 4',
+        '1 / 4 / 3 / 7',
+        '3 / 4 / 5 / 7',
+        '5 / 4 / 7 / 7'
+      ],
+    },
+    {
+      id: '4-9',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(6, 1fr)',
+        'grid-template-rows': 'repeat(6, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 4 / 3',
+        '1 / 3 / 4 / 5',
+        '1 / 5 / 4 / 7',
+        '4 / 1 / 7 / 7'
+      ],
+    },
+    {
+      id: '4-10',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(6, 1fr)',
+        'grid-template-rows': 'repeat(6, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 4 / 7',
+        '4 / 1 / 7 / 3',
+        '4 / 3 / 7 / 5',
+        '4 / 5 / 7 / 7'
+      ],
+    },
+    {
+      id: '4-11',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(4, 1fr)',
+        'grid-template-rows': 'repeat(4, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 3 / 5',
+        '3 / 1 / 5 / 3',
+        '3 / 3 / 4 / 5',
+        '4 / 3 / 5 / 5'
+      ],
+    },
+    {
+      id: '4-12',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(4, 1fr)',
+        'grid-template-rows': 'repeat(4, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 5 / 3',
+        '1 / 3 / 3 / 4',
+        '1 / 4 / 3 / 5',
+        '3 / 3 / 5 / 5'
+      ],
+    },
+    {
+      id: '4-13',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(4, 1fr)',
+        'grid-template-rows': 'repeat(4, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 2 / 3',
+        '2 / 1 / 3 / 3',
+        '1 / 3 / 3 / 5',
+        '3 / 1 / 5 / 5'
+      ],
+    },
+    {
+      id: '4-14',
+      wrapStyle: {
+        'grid-template-columns': 'repeat(4, 1fr)',
+        'grid-template-rows': 'repeat(4, 1fr)',
+      },
+      gridAreas: [
+        '1 / 1 / 3 / 3',
+        '3 / 1 / 5 / 2',
+        '3 / 2 / 5 / 3',
+        '1 / 3 / 5 / 5'
+      ],
+    },
+  ]
+};
+
+// 图片数量下拉
+export const countOptions = [
+  { value: 'all', label: '全部' },
+  ...Array.from({ length: 4 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}` })),
+];
+
+// =========================================================================
+// 3. 核心工具函数：生成和解析网格
+// =========================================================================
+
+/**
+ * 动态生成 NxM 网格的单元格数据
+ * @param {Number} rows 行数
+ * @param {Number} cols 列数
+ * @returns {Array} 单元格数组
+ */
+export const generateGridCells = (rows, cols) => {
+  const cells = [];
+  const w = 1 / cols;
+  const h = 1 / rows;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      cells.push({
+        index: r * cols + c,
+        x: c * w,
+        y: r * h,
+        w,
+        h
+      });
+    }
+  }
+  return cells;
+};
+
+/**
+ * 解析 CSS Grid Area 模板为百分比坐标
+ * 兼容格式如: "1 / 1 / 2 / 2" (rowStart / colStart / rowEnd / colEnd)
+ * @param {Object} tpl 模板对象
+ */
+export const parseTemplateToCells = (tpl) => {
+  if (!tpl || !tpl.gridAreas) return [];
+
+  let maxR = 1, maxC = 1;
+
+  const getCountFromStyle = (styleStr) => {
+    if (!styleStr) return 1;
+    const repeatMatch = styleStr.match(/repeat\((\d+)/);
+    if (repeatMatch) return parseInt(repeatMatch[1]);
+    const spaceMatch = styleStr.trim().split(/\s+/);
+    return spaceMatch.length;
+  };
+
+  if (tpl.wrapStyle) {
+    maxC = Math.max(maxC, getCountFromStyle(tpl.wrapStyle['grid-template-columns']));
+    maxR = Math.max(maxR, getCountFromStyle(tpl.wrapStyle['grid-template-rows']));
+  }
+
+  tpl.gridAreas.forEach(area => {
+    const parts = area.split('/').map(s => parseInt(s.trim()));
+    if (parts.length >= 4) {
+      if (parts[2] - 1 > maxR) maxR = parts[2] - 1;
+      if (parts[3] - 1 > maxC) maxC = parts[3] - 1;
+    }
+  });
+
+  return tpl.gridAreas.map((area, index) => {
+    const [r1, c1, r2, c2] = area.split('/').map(s => parseInt(s.trim()));
+    const x = (c1 - 1) / maxC;
+    const y = (r1 - 1) / maxR;
+    const w = (c2 - c1) / maxC;
+    const h = (r2 - r1) / maxR;
+
+    return { index, x, y, w, h };
+  });
+};
+</file>
+
 <file path="src/components/panels/ToolPanel.vue">
 <template>
   <div class="tool-panel">
@@ -5124,6 +4751,111 @@ const handleCancelExit = () => {
   overflow-y: auto;
 }
 </style>
+</file>
+
+<file path=".spec/active-context.md">
+# Active Context & Development State
+
+> **Version**: 2.3 (Object-Driven Navigation & Routing)
+> **Last Updated**: 2025-12-23
+> **Current Focus**: Global Navigation Architecture & Event-Driven UI
+
+## 1. 当前开发状态 (Current Status)
+
+### ✅ 已完成模块 (Completed Modules)
+
+#### 1.1 核心编辑 (Core Editing)
+- **剪裁 (Crop)**:
+  - [x] **手动选区**: 实现了 `startManualSelection`，支持自定义框选区域。
+  - [x] **比例锁定**: 支持原图比例、自由比例及常用预设 (1:1, 16:9 等)。
+  - [x] **旋转翻转**: 90° 步进旋转与 XY 轴翻转。
+- **尺寸调整 (Resize)**:
+  - [x] **高清重制**: 引入 `useOffscreenHelper`，实现了基于原图分辨率的高清缩放。
+  - [x] **保真模式**: 支持锁定长宽比计算。
+- **补白 (White/Padding)**:
+  - [x] **社媒预设**: 集成 Instagram/Youtube 等常用尺寸模板。
+  - [x] **智能吸色**: 支持背景色吸取及透明背景设置。
+
+#### 1.2 拼图系统 (Puzzle System)
+- **网格布局**:
+  - [x] **动态模板**: 基于 `config.js` 实现了 1-16 张图片的网格布局解析。
+  - [x] **自动布局**: 图片拖入自动计算 Cover 裁剪，保证填满格子不留白。
+- **交互逻辑**:
+  - [x] **拖拽交换**: 实现了平滑的交换动画 (`animateSwap`) 和失败回弹。
+  - [x] **物理约束**: 应用 `useConstraint` 防止图片脱离格子可视区。
+- **样式调整**:
+  - [x] **全局参数**: 支持动态调整间距、边距和圆角。
+
+#### 1.3 智能与特效 (AI & Effects)
+- **智能消除 (Inpaint)**:
+  - [x] **离屏遮罩**: 解决闪烁问题，通过离屏 Canvas 生成 Mask。
+  - [x] **双模交互**: 支持画笔 (Brush) 和 矩形框选 (Rect)。
+- **一键抠图 (Rembg)**:
+  - [x] **API 集成**: 封装 `src/api/ai.js` 支持一键移除背景。
+- **马赛克 (Mosaic)**:
+  - [x] **无损处理**: 采用“预览层 + 离屏应用”策略。
+- **滤镜与调色**:
+  - [x] **ColorMatrix**: 实现亮度、对比度等 6 维调节。
+  - [x] **LUT 模拟**: 内置“复古”、“电影”等滤镜预设。
+
+#### 1.4 辅助工具与交互 (Tools & Interaction)
+- **快捷键系统 (Shortcuts)**:
+  - [x] **可视化面板**: 实现 Keycap 风格的侧边抽屉速查表 (`ShortcutsPanel`)。
+  - [x] **通用操作**: 覆盖复制粘贴、图层移动、锁定等。
+- **测量工具 (Measure)**:
+  - [x] **精准路由**: 点击标尺组件自动跳转至 `Adjust -> Ruler` 面板。
+  - [x] **交互绘制**: 支持拖拽创建测量线，自动计算长度。
+- **交互优化 (Interaction Polish)**:
+  - [x] **右键菜单**: 修复粘贴坐标偏移，实现基于鼠标位置的左上角对齐。
+  - [x] **悬浮菜单**: 实现事件隔离，防止在悬浮条上操作时误触底层 Canvas。
+  - [x] **剪贴板**: 重构为单例模式 (`clipboardState`)。
+
+#### 1.5 全局导航系统 (Global Navigation System) `Major Upgrade`
+- **对象驱动路由 (Object-Driven Routing)**:
+  - [x] **智能分发**: 实现了 `useEditorState` 中的 `routeToObject`，根据 Canvas 选中对象自动切换 UI。
+  - [x] **二级导航 (Level 2 Support)**: 支持精确跳转至特定折叠面板 (如 `Tool: Adjust` + `Tab: Ruler`)。
+  - [x] **元数据注入 (Metadata Injection)**: 支持通过 `customTab` / `customTool` 属性覆盖默认路由行为。
+- **视图解耦**:
+  - [x] **状态监听**: 侧边栏组件 (`index.vue`) 通过 `watch` 监听全局路由状态自动展开对应模块。
+  - [x] **去除残影**: 移除了未选中时的 Sidebar Disabled 状态，保持界面始终可用。
+
+---
+
+## 2. 系统架构备忘 (Architecture Memo)
+
+### 2.1 高清离屏渲染管线 (High-Res Offscreen Pipeline)
+> **Pattern**: `src/composables/useOffscreenHelper.js`
+- **逻辑**: 获取原图原始分辨率 -> 创建临时 StaticCanvas -> 映射效果 -> 导出高清图。
+
+### 2.2 物理约束系统 (Constraint System)
+> **Pattern**: `src/composables/useConstraint.js`
+- **逻辑**: 计算对象相对于容器的溢出值，Resizing 时实时修正，Puzzle 拖拽时触发回弹。
+
+### 2.3 状态与快捷键 (State & Shortcuts)
+- **State**: 使用 `useEditorState.js` (Reactive 单例) 管理全局状态。
+- **Shortcuts**: 采用配置化策略，`ShortcutsPanel` UI 与 `useKeyboardShortcuts` 逻辑共用同一份配置源。
+
+### 2.4 对象驱动路由架构 (Object-Driven Routing Architecture) `NEW`
+> **Core Philosophy**: Canvas 是路由触发器，State 是控制器，Sidebar 是视图。
+- **配置层 (Configuration)**:
+  - `OBJECT_TO_TOOL_MAP` (in `useEditorState.js`): 定义类型到面板的映射 (e.g., `'i-text' -> { tool: 'text', tab: 'style' }`)。
+- **感知层 (Sensor)**:
+  - `useCanvas.js`: 监听 `mouse:up`, `selection:created`, `selection:updated`。
+  - 过滤多选 (`activeSelection`) 和特殊对象，提取 `customTab` 信标。
+- **注入层 (Injection)**:
+  - 在创建特殊对象 (如标尺、素材) 时，注入 `{ customTab: 'ruler' }` 属性实现精确跳转。
+- **视图层 (View)**:
+  - 左侧菜单高亮 `state.activeTool`。
+  - 二级面板 (如 AdjustPanel) 监听 `state.activeTab` 并自动展开对应模块。
+
+---
+
+## 3. 待办事项 (Backlog & Roadmap)
+
+### 📅 近期计划 (Next Sprint)
+
+
+### 🐛 已知优化点 (Refactoring)
 </file>
 
 <file path="src/components/modules/adjust/AdjustWhite.vue">
@@ -5616,54 +5348,6 @@ onUnmounted(() => stopPreview());
 </style>
 </file>
 
-<file path="src/composables/useEditorState.js">
-import { reactive, readonly } from 'vue';
-
-// 单例状态 (替代 State)
-const state = reactive({
-    activeTool: 'adjust', // 当前激活的工具模块
-    isDrawing: false,     // 是否处于绘制模式
-    canUndo: false,       // 是否可撤销
-    canRedo: false,        // 是否可重做
-    isLoading: false,
-    loadingText: '处理中...'
-});
-
-export function useEditorState() {
-    // 替代 Actions
-    const setActiveTool = (tool) => {
-        state.activeTool = tool;
-        state.isDrawing = false; // 切换工具时退出绘制模式
-    };
-
-    const toggleDrawing = (status) => {
-        state.isDrawing = status;
-    };
-
-    const setHistoryState = (canUndo, canRedo) => {
-        state.canUndo = canUndo;
-        state.canRedo = canRedo;
-    };
-
-    // === 新增: Loading 控制 ===
-    const setLoading = (status, text = '处理中...') => {
-        state.isLoading = status;
-        state.loadingText = text;
-    };
-
-    return {
-        state: readonly(state), // 只读状态导出，防止直接修改
-        setActiveTool,
-        toggleDrawing,
-        setHistoryState,
-        setLoading // 导出 Action
-    };
-}
-
-// 全局聚焦系数
-export const ZOOM_PADDING = 0.921;
-</file>
-
 <file path="src/main.js">
 import { createApp } from 'vue'
 import './style.css' // 确保这里引入了我们新写的通用 CSS (包含 .ie-btn 等样式)
@@ -6069,6 +5753,162 @@ const handleRembg = async () => {
 </style>
 </file>
 
+<file path="src/composables/useEditorState.js">
+import { reactive, readonly } from 'vue';
+
+/**
+ * ✨ 全局路由配置表 (Single Source of Truth)
+ * 定义 Fabric 对象类型 -> 工具面板(Tool) + 子选项卡(Tab) 的映射关系
+ */
+export const OBJECT_TO_TOOL_MAP = {
+    // === 基础形状 ===
+    'i-text':  { tool: 'text', tab: 'style' },    // 文本 -> 文本面板-样式Tab
+    'textbox': { tool: 'text', tab: 'style' },
+    'image':   { tool: 'adjust', tab: 'filter' }, // 图片 -> 调整面板-滤镜Tab
+    'group':   { tool: 'adjust', tab: '' },       // 组 -> 调整面板 (根据业务需求)
+    
+    // === 绘制/矢量 ===
+    'path':    { tool: 'draw', tab: '' },         // 路径 -> 绘制面板
+    
+    // === 几何图形 (通常归类为素材或边框，根据你的业务定) ===
+    'rect':     { tool: 'border', tab: 'style' },
+    'circle':   { tool: 'material', tab: 'basic' },
+    'triangle': { tool: 'material', tab: 'basic' },
+    
+    // === 自定义业务类型 ===
+    'puzzle':   { tool: 'puzzle', tab: 'template' }
+};
+
+// 单例状态
+const state = reactive({
+    activeTool: 'adjust', // 一级菜单 ID
+    activeTab: '',        // ✨ 新增: 二级菜单 ID (例如 'style', 'color', 'filter')
+    
+    isDrawing: false,     // 是否处于自由绘制模式
+    
+    canUndo: false,       // 历史记录状态
+    canRedo: false,
+    
+    isLoading: false,
+    loadingText: '处理中...',
+    
+    isSidebarDisabled: false, // 侧边栏残影模式
+    
+    /**
+     * ✨ 导航来源标记
+     * 'system': 初始化或系统重置
+     * 'manual': 用户手动点击侧边栏 (优先级最高，应有点击反馈)
+     * 'canvas': 画布对象选中触发自动跳转 (应平滑过渡，无干扰)
+     */
+    navigationSource: 'system' 
+});
+
+export function useEditorState() {
+    
+    /**
+     * 切换当前激活的工具和选项卡
+     * @param {string} tool - 一级工具 ID
+     * @param {string} tab - (可选) 二级选项卡 ID
+     * @param {string} source - 触发来源 ('manual' | 'canvas' | 'system')
+     */
+    const setActiveTool = (tool, tab = '', source = 'manual') => {
+        // 状态防抖：如果 Tool 和 Tab 都没变，且侧边栏也是激活状态，则不执行
+        if (state.activeTool === tool && state.activeTab === tab && !state.isSidebarDisabled) {
+            return;
+        }
+
+        state.activeTool = tool;
+        state.activeTab = tab; // 更新二级路由
+        state.navigationSource = source;
+        
+        // 副作用处理
+        state.isDrawing = false; // 切换工具默认退出绘制模式
+        state.isSidebarDisabled = false; // 只要切换工具，必定激活面板
+    };
+
+    const toggleDrawing = (status) => {
+        state.isDrawing = status;
+    };
+
+    const setHistoryState = (canUndo, canRedo) => {
+        state.canUndo = canUndo;
+        state.canRedo = canRedo;
+    };
+
+    const setLoading = (status, text = '处理中...') => {
+        state.isLoading = status;
+        state.loadingText = text;
+    };
+
+    const setSidebarDisabled = (status) => {
+        state.isSidebarDisabled = status;
+    };
+
+    // === ✨ 核心：智能路由系统 ===
+
+    /**
+     * 根据 Canvas 选中的对象，自动路由到对应的工具面板
+     * @param {Object} target - Fabric 对象实例
+     * @returns {boolean} - 是否成功匹配并跳转
+     */
+    const routeToObject = (target) => {
+        if (!target) return false;
+
+        // 1. 优先检查对象实例级元数据 (Custom Payload)
+        // 允许在代码中 addText 时注入 { customTab: 'color' } 来覆盖默认行为
+        if (target.customTab) {
+            // 获取该类型的基础配置，如果没有则默认为 adjust
+            const baseConfig = OBJECT_TO_TOOL_MAP[target.type] || { tool: 'adjust' };
+            const targetTool = baseConfig.tool || 'adjust';
+            
+            console.log(`[Router] Custom routing: Tool[${targetTool}] Tab[${target.customTab}]`);
+            setActiveTool(targetTool, target.customTab, 'canvas');
+            return true;
+        }
+
+        // 2. 提取并标准化对象类型
+        let type = target.type;
+        
+        // 处理自定义标识
+        if (target.isPuzzleImage || target.isPuzzleController) {
+            type = 'puzzle';
+        }
+        
+        // ⚠️ 已移除 activeSelection (多选) 的判断逻辑
+        // 如果你需要多选时保持在当前页面或去特定页面，可在此重新添加
+
+        // 3. 查表
+        const config = OBJECT_TO_TOOL_MAP[type];
+        
+        if (config) {
+            // 兼容配置是字符串的情况 (旧逻辑兼容)
+            const toolId = typeof config === 'string' ? config : config.tool;
+            const tabId = typeof config === 'string' ? '' : config.tab;
+            
+            // 触发跳转，标记来源为 'canvas'
+            setActiveTool(toolId, tabId, 'canvas');
+            return true;
+        }
+        
+        // 4. 未匹配到路由 (例如辅助线、背景控制点等)
+        return false;
+    };
+
+    return {
+        state: readonly(state), // 导出只读状态
+        setActiveTool,
+        toggleDrawing,
+        setHistoryState,
+        setLoading,
+        setSidebarDisabled,
+        routeToObject // 导出路由动作供 useCanvas 使用
+    };
+}
+
+// 全局聚焦系数 (保留)
+export const ZOOM_PADDING = 0.921;
+</file>
+
 <file path="src/components/modules/puzzle/useCanvasPuzzle.js">
 // src/components/modules/puzzle/useCanvasPuzzle.js
 import { unref, reactive } from "vue";
@@ -6076,7 +5916,7 @@ import { fabric } from "fabric";
 import { parseTemplateToCells, generateGridCells } from "./config";
 
 // 【引入通用规范】
-import { constrainObjectToRect, animateRebound, getLogicRect } from '@/composables/useConstraint';
+import { constrainObjectToRect, animateRebound } from '@/composables/useConstraint';
 
 // === 内部变量 ===
 let canvasRef = null;
@@ -7017,8 +6857,9 @@ export const addImageToCell = (url, cellIndex, options = {}) => {
 </template>
 
 <script setup>
-import { ref, defineAsyncComponent } from 'vue';
+import { ref, defineAsyncComponent, watch } from 'vue';
 import { toast } from '@/utils/toast';
+import { useEditorState } from '@/composables/useEditorState'; // 假设与当前文件同级，如果在 composables 请修改路径
 
 // 异步组件引入
 const AdjustCrop = defineAsyncComponent(() => import('./AdjustCrop.vue'));
@@ -7033,7 +6874,25 @@ const AdjustMosaic = defineAsyncComponent(() => import('./AdjustMosaic.vue'));
 const AdjustRuler = defineAsyncComponent(() => import('./AdjustRuler.vue'));
 
 const activeCollapse = ref('');
+// ✨ 获取全局状态
+const { state } = useEditorState();
 
+// ✨✨✨ 核心链路修复：监听路由变化 ✨✨✨
+// 当 state.activeTab 变为 'ruler' 时，自动展开 'ruler' 面板
+watch(
+  () => state.activeTab,
+  (newTab) => {
+    // 这里做一个简单的白名单匹配，防止非 Adjust 面板的 Tab 干扰
+    // 这里的 'ruler' 对应 template 中 toggle('ruler') 的 id
+    const validTabs = ['crop', 'resize', 'inpaint', 'rembg', 'ruler', 'white', 'color', 'overlay', 'filters', 'mosaic'];
+    
+    if (newTab && validTabs.includes(newTab)) {
+      console.log('[AdjustPanel] Auto expanding:', newTab);
+      activeCollapse.value = newTab;
+    }
+  },
+  { immediate: true }
+);
 const toggle = (id) => {
   activeCollapse.value = activeCollapse.value === id ? '' : id;
 };
@@ -7050,678 +6909,6 @@ const notImplemented = () => {
   overflow-y: auto;
   background-color: #fff;
   box-sizing: border-box;
-}
-</style>
-</file>
-
-<file path="src/components/modules/puzzle/index.vue">
-<template>
-  <div class="puzzle-panel">
-    <div class="main-tabs">
-      <div class="tab-item" :class="{ active: mode === 'grid' }" @click="mode = 'grid'">
-        网格布局
-      </div>
-      <div class="tab-item disabled">
-        长图拼接
-      </div>
-    </div>
-
-    <div v-if="mode === 'grid'" class="panel-content">
-      <div class="sub-tabs">
-        <div class="sub-item" :class="{ active: subTab === 'tpl' }" @click="subTab = 'tpl'">模板库</div>
-        <div class="sub-item" :class="{ active: subTab === 'style' }" @click="subTab = 'style'">样式调整</div>
-      </div>
-
-      <div v-show="subTab === 'tpl'" class="tab-pane fade-in">
-
-        <div class="filter-section">
-          <div class="filter-label">图片数量</div>
-          <div class="filter-scroll-wrapper hide-scrollbar">
-            <div v-for="opt in countOptions" :key="opt.value" class="filter-tag"
-              :class="{ active: selectedCount === opt.value }" @click="selectedCount = opt.value">
-              {{ opt.label }}
-            </div>
-          </div>
-        </div>
-
-        <div class="template-section">
-          <div class="section-header">
-            <span class="title">布局列表</span>
-            <span class="count-badge" v-if="filteredTemplates.length">{{ filteredTemplates.length }}</span>
-          </div>
-
-          <div v-if="filteredTemplates.length === 0" class="empty-state">
-            暂无此类模板
-          </div>
-
-          <div class="template-grid-container" v-else>
-            <div v-for="tpl in filteredTemplates" :key="tpl.id" class="tpl-card" @click="applyTemplate(tpl)">
-              <div class="mini-grid-preview" :style="tpl.wrapStyle">
-                <div v-for="(area, idx) in tpl.gridAreas" :key="idx" :style="{ gridArea: area }"></div>
-              </div>
-              <div class="card-overlay">{{ tpl.label || '模板' }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="custom-grid-section">
-          <div class="section-header small">自定义行列</div>
-          <div class="custom-input-group">
-            <div class="input-item">
-              <span class="label">行</span>
-              <input type="number" class="ie-input" v-model.number="customRows" min="1" max="6" @change="applyCustom">
-            </div>
-            <div class="divider"></div>
-            <div class="input-item">
-              <span class="label">列</span>
-              <input type="number" class="ie-input" v-model.number="customCols" min="1" max="6" @change="applyCustom">
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <div v-show="subTab === 'style'" class="tab-pane fade-in">
-        <div class="ie-group">
-          <div class="group-header">间距与圆角</div>
-          <div class="control-list">
-            <div class="slider-item">
-              <span class="label">外边距</span>
-              <input type="range" class="ie-range" v-model.number="style.padding" max="60" @input="updateStyle">
-              <span class="val">{{ style.padding }}</span>
-            </div>
-            <div class="slider-item">
-              <span class="label">间隙</span>
-              <input type="range" class="ie-range" v-model.number="style.spacing" max="40" @input="updateStyle">
-              <span class="val">{{ style.spacing }}</span>
-            </div>
-            <div class="slider-item">
-              <span class="label">圆角</span>
-              <input type="range" class="ie-range" v-model.number="style.radius" max="100" @input="updateStyle">
-              <span class="val">{{ style.radius }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="ie-group">
-          <div class="group-header">画布背景</div>
-          <div class="color-selector">
-            <div class="color-preview" :style="{ backgroundColor: style.bgColor }">
-              <input type="color" v-model="style.bgColor" @input="updateStyle" class="color-input-hidden">
-            </div>
-            <span class="color-value">{{ style.bgColor }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <input type="file" ref="fileInput" accept="image/png, image/jpeg, image/jpg" style="display:none"
-      @change="onFileSelected">
-  </div>
-</template>
-
-<script setup>
-import { ref, reactive, inject, onMounted, onUnmounted, computed } from 'vue';
-import { toast } from '@/utils/toast';
-import {
-  registerPuzzleModule,
-  initPuzzleMode,
-  exitPuzzleMode,
-  updateLayout,
-  addImageToCell,
-} from './useCanvasPuzzle';
-import {
-  generateGridCells,
-  gridTemplates,
-  countOptions,
-  parseTemplateToCells
-} from './config';
-
-const canvasAPI = inject('canvasAPI');
-const fileInput = ref(null);
-const mode = ref('grid');
-const subTab = ref('tpl');
-
-const selectedCount = ref('all');
-let pendingCellIndex = -1;
-
-const customRows = ref(2);
-const customCols = ref(2);
-
-const style = reactive({
-  padding: 20,
-  spacing: 10,
-  radius: 0,
-  bgColor: '#ffffff'
-});
-
-const filteredTemplates = computed(() => {
-  if (selectedCount.value === 'all') {
-    return Object.values(gridTemplates).flat();
-  }
-  return gridTemplates[selectedCount.value] || [];
-});
-
-onMounted(() => {
-  if (canvasAPI) {
-    registerPuzzleModule(canvasAPI.canvas, canvasAPI.saveHistory, {
-      onCellClick: (index) => {
-        pendingCellIndex = index;
-        if (fileInput.value) {
-          fileInput.value.value = '';
-          fileInput.value.click();
-        }
-      }
-    });
-    initPuzzleMode();
-  }
-});
-
-onUnmounted(() => {
-  exitPuzzleMode();
-});
-
-const applyCustom = () => {
-  const cells = generateGridCells(customRows.value, customCols.value);
-  updateLayout(cells, style);
-};
-
-const applyTemplate = (tpl) => {
-  const cells = parseTemplateToCells(tpl);
-  updateLayout(cells, style);
-};
-
-const updateStyle = () => {
-  updateLayout(null, style);
-};
-
-const onFileSelected = (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-    toast.error('仅支持 JPG/PNG 图片格式');
-    return;
-  }
-  if (pendingCellIndex >= 0) {
-    const url = URL.createObjectURL(file);
-    addImageToCell(url, pendingCellIndex);
-    pendingCellIndex = -1;
-  }
-};
-</script>
-
-<style scoped>
-/* === 全局变量 (Design Token) === */
-.puzzle-panel {
-  --primary: var(--ie-primary-color);
-  --primary-soft: #ecf5ff;
-  --text-main: #2c3e50;
-  --text-sub: #606266;
-  --text-light: #909399;
-  --bg-page: #ffffff;
-  --bg-block: #f7f8fa;
-  /* 浅灰块背景 */
-  --border: #eef0f4;
-  --radius-md: 8px;
-  --radius-pill: 20px;
-
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-page);
-  color: var(--text-main);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overflow: hidden;
-}
-
-/* === 顶部 Tabs === */
-.main-tabs {
-  display: flex;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
-  gap: 10px;
-  background: var(--bg-page);
-}
-
-.tab-item {
-  flex: 1;
-  text-align: center;
-  padding: 8px 0;
-  font-size: 14px;
-  border-radius: var(--radius-md);
-  color: var(--text-sub);
-  cursor: pointer;
-  transition: all 0.2s;
-  background: var(--bg-block);
-  font-weight: 500;
-  border: 1px solid transparent;
-}
-
-.tab-item:hover:not(.disabled) {
-  background: #fff;
-  border-color: var(--border);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-}
-
-.tab-item.active {
-  background: var(--primary-soft);
-  color: var(--primary);
-  border-color: transparent;
-}
-
-.tab-item.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* === 内容区 === */
-.panel-content {
-  flex: 1;
-  overflow-y: auto;
-  /* 纵向滚动 */
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-
-/* 二级 Tabs */
-.sub-tabs {
-  display: flex;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-page);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.sub-item {
-  flex: 1;
-  text-align: center;
-  padding: 12px 0;
-  font-size: 13px;
-  color: var(--text-sub);
-  cursor: pointer;
-  position: relative;
-  transition: color 0.2s;
-}
-
-.sub-item.active {
-  color: var(--primary);
-  font-weight: 600;
-}
-
-.sub-item.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 2px;
-  background: var(--primary);
-  border-radius: 2px 2px 0 0;
-}
-
-.tab-pane {
-  padding: 16px;
-}
-
-/* === 1. 筛选器 (横向滚动 + 胶囊) === */
-.filter-section {
-  margin-bottom: 24px;
-}
-
-.filter-label {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-bottom: 8px;
-  padding-left: 2px;
-}
-
-.filter-scroll-wrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding-bottom: 4px;
-  justify-content: space-between;
-}
-
-.filter-scroll-wrapper::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-scroll-wrapper:active {
-  cursor: grabbing;
-}
-
-.filter-tag {
-  width: 58px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  /* 圆角更精致 */
-  font-size: 14px;
-  color: #606266;
-  background: #ffffff;
-  border: 1px solid #e5e8eb;
-  /* 基础阴影 - 提升层次感 */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  /* 过渡动画 - 交互更丝滑 */
-  transition: all 0.2s ease;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-}
-
-/* 激活态（全部按钮）样式 */
-.filter-tag.active {
-  color: #ffffff;
-  /* 渐变背景 - 提升质感 */
-  background: linear-gradient(135deg, #2596ff 0%, #0078ff 100%);
-  border-color: #0078ff;
-  /* 增强阴影 - 突出选中状态 */
-  box-shadow: 0 4px 8px rgba(0, 120, 255, 0.25);
-}
-
-/* 悬浮态样式 */
-.filter-tag:not(.active):hover {
-  border-color: #ccd0d6;
-  background: #f8f9fa;
-  /* 悬浮阴影提升 */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
-  transform: translateY(-1px);
-  /* 轻微上浮 - 触感反馈 */
-}
-
-/* 点击按压态 */
-.filter-tag:not(.active):active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  background: #f0f2f5;
-}
-
-/* 激活态伪元素 - 增加细节质感 */
-.filter-tag.active::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%);
-  pointer-events: none;
-}
-
-/* === 2. 模板列表 (卡片风格) === */
-.section-header {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-left: 2px;
-}
-
-.count-badge {
-  font-size: 12px;
-  color: var(--text-light);
-  background: var(--bg-block);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.template-grid-container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.tpl-card {
-  position: relative;
-  aspect-ratio: 1;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 5px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  overflow: hidden;
-}
-
-.tpl-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: var(--primary-soft);
-}
-
-/* 预览图容器 */
-.mini-grid-preview {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  gap: 2px;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.mini-grid-preview>div {
-  background: #e6e8eb;
-  /* 默认灰色 */
-  transition: background 0.2s;
-}
-
-.tpl-card:hover .mini-grid-preview>div {
-  background: #d4d7dc;
-  /* 悬浮加深 */
-}
-
-/* 底部文字遮罩 (只在hover显示) */
-.card-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.6);
-  /* 半透明黑底 */
-  padding: 4px;
-  text-align: center;
-  font-size: 10px;
-  color: #fff;
-  transform: translateY(100%);
-  transition: transform 0.2s ease;
-  backdrop-filter: blur(2px);
-}
-
-.tpl-card:hover .card-overlay {
-  transform: translateY(0);
-}
-
-/* === 3. 自定义行列 (整合输入框) === */
-.custom-grid-section {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px dashed var(--border);
-}
-
-.section-header.small {
-  font-size: 12px;
-  color: var(--text-light);
-  margin-bottom: 10px;
-}
-
-.custom-input-group {
-  display: flex;
-  align-items: center;
-  background: var(--bg-block);
-  border-radius: var(--radius-md);
-  padding: 6px;
-  border: 1px solid transparent;
-  transition: border-color 0.2s;
-}
-
-.custom-input-group:focus-within {
-  border-color: var(--primary);
-  background: #fff;
-  box-shadow: 0 0 0 2px var(--primary-soft);
-}
-
-.input-item {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.input-item .label {
-  font-size: 12px;
-  color: var(--text-sub);
-  margin-right: 8px;
-}
-
-.ie-input {
-  width: 40px;
-  border: none;
-  background: transparent;
-  font-size: 14px;
-  color: var(--text-main);
-  text-align: center;
-  outline: none;
-}
-
-.divider {
-  width: 1px;
-  height: 16px;
-  background: #ddd;
-  margin: 0 8px;
-}
-
-/* === 样式调整 Tab === */
-.ie-group {
-  margin-bottom: 24px;
-}
-
-.group-header {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-main);
-  margin-bottom: 12px;
-}
-
-.slider-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.slider-item .label {
-  width: 48px;
-  font-size: 13px;
-  color: var(--text-sub);
-}
-
-.ie-range {
-  flex: 1;
-  margin: 0 12px;
-  height: 4px;
-  background: #e4e7ed;
-  border-radius: 2px;
-  -webkit-appearance: none;
-  cursor: pointer;
-}
-
-.ie-range::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  background: var(--primary);
-  border: 2px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: transform 0.1s;
-}
-
-.ie-range::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
-}
-
-.slider-item .val {
-  width: 24px;
-  text-align: right;
-  font-size: 12px;
-  color: var(--text-light);
-  font-family: monospace;
-}
-
-.color-selector {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--bg-block);
-  padding: 8px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.color-selector:hover {
-  background: #eef1f6;
-}
-
-.color-preview {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.color-input-hidden {
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.color-value {
-  font-size: 13px;
-  color: var(--text-sub);
-  font-family: monospace;
-}
-
-.empty-state {
-  text-align: center;
-  color: var(--text-light);
-  font-size: 13px;
-  padding: 40px 0;
-  background: var(--bg-block);
-  border-radius: var(--radius-md);
-}
-
-.fade-in {
-  animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 </style>
 </file>
@@ -8071,6 +7258,793 @@ export const applyResize = async (width, height, isStretch = false) => {
     if (saveHistoryFn) saveHistoryFn();
   });
 };
+</file>
+
+<file path="src/components/modules/puzzle/index.vue">
+<template>
+  <div class="puzzle-module">
+    <!-- sub page count: 3 -->
+    <!-- 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板) -->
+    <!-- 2. 模板选择页 -->
+    <!-- 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1 -->
+
+    <!-- 初始页 -->
+    <div
+      v-if="sub === 1"
+      class="puzzle-main"
+    >
+      <!-- 选项卡 -->
+      <div class="puzzle-tabs">
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'grid' }"
+          @click="activeTab = 'grid'"
+        >
+          网格
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'join' }"
+          @click="activeTab = 'join'"
+        >
+          拼接
+        </div>
+      </div>
+
+      <!-- 操作内容 -->
+      <div>
+        <!-- 网格选项卡内容 -->
+        <div v-if="activeTab === 'grid'">
+          <button
+            class="select-btn"
+            @click="sub = 2"
+          >
+            <div class="icon-wrap">
+              <div
+                v-if="showControlPanel"
+                :style="curTemp.wrapStyle"
+                class="small-grid-template"
+              >
+                <div
+                  v-for="(gridArea, i) in curTemp.gridAreas"
+                  :key="i"
+                  class="grid-cell"
+                  :style="`grid-area: ${gridArea};`"
+                ></div>
+              </div>
+              <span
+                v-else
+                class="plus-icon"
+              >+</span>
+            </div>
+            <span>选择网格</span>
+            <span
+              v-if="showControlPanel"
+              class="cancel-btn"
+              @click.stop="cancel"
+            >取消</span>
+          </button>
+
+          <!-- 控制组件 -->
+          <div
+            v-if="showControlPanel"
+            class="control-panel"
+          >
+            <!-- 拼图尺寸 -->
+            <div class="control-group">
+              <label>拼图尺寸</label>
+              <div class="size-controls">
+                <div class="input-wrapper">
+                  <input
+                    type="number"
+                    v-model.number="puzzleSettings.width"
+                    :min="min"
+                    :max="max"
+                    class="ie-input"
+                    @change="updateSize('width')"
+                  >
+                  <span class="suffix">W</span>
+                </div>
+
+                <div
+                  class="link-icon"
+                  title="锁定宽高比"
+                  @click="toggleRatioLock"
+                >
+                  <svg
+                    v-if="puzzleSettings.lockRatio"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#409eff"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  <svg
+                    v-else
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#909399"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="opacity: 0.6"
+                  >
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    <line
+                      x1="4"
+                      y1="4"
+                      x2="20"
+                      y2="20"
+                      stroke="#909399"
+                    />
+                  </svg>
+                </div>
+
+                <div class="input-wrapper">
+                  <input
+                    type="number"
+                    v-model.number="puzzleSettings.height"
+                    :min="min"
+                    :max="max"
+                    class="ie-input"
+                    @change="updateSize('height')"
+                  >
+                  <span class="suffix">H</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 边框 -->
+            <div class="control-group">
+              <label>边框</label>
+              <input
+                v-model="puzzleSettings.border"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                @change="updateStyle"
+              />
+              <span class="value-display">{{ puzzleSettings.border }}px</span>
+            </div>
+
+            <!-- 间距 -->
+            <div class="control-group">
+              <label>间距</label>
+              <input
+                type="range"
+                v-model="puzzleSettings.spacing"
+                min="0"
+                max="100"
+                step="1"
+                @change="updateStyle"
+              />
+              <span class="value-display">{{ puzzleSettings.spacing }}px</span>
+            </div>
+
+            <!-- 拼图背景 -->
+            <div class="control-group">
+              <label>拼图背景颜色</label>
+              <input
+                type="color"
+                class="color"
+                v-model="puzzleSettings.bgColor"
+                @change="updateStyle"
+              />
+            </div>
+
+            <!-- 保存按钮 -->
+            <button
+              class="save-btn"
+              @click="save"
+            >
+              保存
+            </button>
+          </div>
+        </div>
+
+        <!-- 拼接选项卡内容 -->
+        <div v-else>
+          <button class="select-btn">
+            <div class="icon-wrap">
+              <div
+                v-if="showControlPanel"
+                :style="curTemp.wrapStyle"
+                class="small-grid-template"
+              >
+                <div
+                  v-for="(gridArea, i) in curTemp.gridAreas"
+                  :key="i"
+                  class="grid-cell"
+                  :style="`grid-area: ${gridArea};`"
+                ></div>
+              </div>
+              <span
+                v-else
+                class="plus-icon"
+              >+</span>
+            </div>
+            <span>选择拼接</span>
+            <span
+              v-if="showControlPanel"
+              class="cancel-btn"
+              @click.stop="cancel"
+            >取消</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 模板选择面板 -->
+    <div
+      v-if="sub === 2"
+      class="grid-templates"
+    >
+      <!-- 返回按钮 -->
+      <div
+        class="back-header"
+        @click="backToMain"
+      >
+        <span class="back-icon">‹</span> 网格
+      </div>
+
+      <!-- 图片数量选择 -->
+      <div class="image-count-selector">
+        <label>图片数量</label>
+        <select v-model="selectedImageCount">
+          <option
+            v-for="item in countOptions"
+            :key="item.value"
+            :value="item.value"
+          >{{ item.label }}</option>
+        </select>
+      </div>
+
+      <!-- 网格模板列表 -->
+      <div class="grid-list">
+        <div
+          v-for="(group, count) in filteredTemplates"
+          :key="count"
+          class="grid-group"
+        >
+          <!-- 图片数量标题 -->
+          <div class="grid-group-title">{{ count }}</div>
+
+          <!-- 该数量下的所有模板 -->
+          <div class="grid-templates-row">
+            <div
+              v-for="template in group"
+              :key="template.id"
+              :style="template.wrapStyle"
+              class="grid-template"
+              @click="selectTemplate(template)"
+            >
+              <div
+                v-for="(gridArea, i) in template.gridAreas"
+                :key="i"
+                class="grid-cell"
+                :style="`grid-area: ${gridArea};`"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 图片的配置页 -->
+    <div
+      v-if="sub === 3"
+      class="p-20"
+    >
+      <div class="operate-tabs">
+        <div class="tab-item border">
+          替换图片
+        </div>
+        <div
+          v-if="false"
+          class="tab-item border"
+        >
+          删除图片
+        </div>
+      </div>
+
+      <!-- 透明度 -->
+      <div class="control-group">
+        <label>透明度</label>
+        <input
+          v-model="transparent"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+        />
+        <span class="value-display">{{ transparent }}px</span>
+      </div>
+
+      <!-- 放大 -->
+      <div class="control-group">
+        <label>放大</label>
+        <input
+          type="range"
+          v-model="zoom"
+          min="100"
+          max="300"
+          step="1"
+        />
+        <span class="value-display">{{ zoom }}px</span>
+      </div>
+    </div>
+
+    <!-- 隐藏的上传入口 -->
+    <input
+      type="file"
+      ref="fileInput"
+      accept="image/png, image/jpeg, image/jpg"
+      style="display:none"
+      @change="onFileSelected"
+    >
+  </div>
+</template>
+
+<script setup>
+  import { ref, reactive, computed, inject, onMounted, onUnmounted } from 'vue';
+  import { toast } from '@/utils/toast';
+  import { gridTemplates, countOptions, generateGridCells, parseTemplateToCells } from './config.js';
+  import {
+    registerPuzzleModule,
+    initPuzzleMode,
+    exitPuzzleMode,
+    updateLayout,
+    addImageToCell,
+  } from './useCanvasPuzzle.js';
+
+  // 获取编辑器状态和Canvas API
+  const canvasAPI = inject('canvasAPI');
+  const fileInput = ref(null);
+  let pendingCellIndex = -1;
+
+  onMounted(() => {
+    if (canvasAPI) {
+      registerPuzzleModule(canvasAPI.canvas, canvasAPI.saveHistory, {
+        onCellClick: (index) => {
+          pendingCellIndex = index;
+          if (fileInput.value) {
+            fileInput.value.value = '';
+            fileInput.value.click();
+          }
+        }
+      });
+      initPuzzleMode();
+    }
+  });
+
+  onUnmounted(() => {
+    exitPuzzleMode();
+  });
+
+  const onFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+      toast.error('仅支持 JPG/PNG 图片格式');
+      return;
+    }
+    if (pendingCellIndex >= 0) {
+      const url = URL.createObjectURL(file);
+      addImageToCell(url, pendingCellIndex);
+      pendingCellIndex = -1;
+    }
+  };
+
+  /**
+   * sub page count: 3
+   * 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板)
+   * 2. 模板选择页
+   * 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1
+   */
+  const sub = ref(1);
+  const showControlPanel = ref(false);
+
+  // 状态管理
+  const selectedImageCount = ref('all');
+  const activeTab = ref('grid');
+
+  // 过滤显示的网格模板
+  const filteredTemplates = computed(() => {
+    if (selectedImageCount.value === 'all') {
+      return gridTemplates;
+    } else {
+      const curCount = parseInt(selectedImageCount.value);
+      const result = {};
+      for (const count in gridTemplates) {
+        if (parseInt(count) === curCount) {
+          result[count] = gridTemplates[count];
+        }
+      }
+      return result;
+    }
+  });
+
+  // 返回上一级
+  const backToMain = () => {
+    sub.value = 1;
+    selectedImageCount.value = 'all';
+  };
+
+  // 选择网格模板
+  const curTemp = ref({});
+  const selectTemplate = (template) => {
+    curTemp.value = template;
+    showControlPanel.value = true;
+    sub.value = 1;
+
+    // 应用模板到工作区
+    applyTemplate(template);
+  };
+
+  const applyTemplate = (templ) => {
+    const cells = parseTemplateToCells(templ);
+    updateLayout(cells);
+  };
+
+  const cancel = () => {
+    showControlPanel.value = false;
+    curTemp.value = {};
+    // sub.value = 1; // 本来就在 1
+  };
+
+  // 配置面板数据
+  const puzzleSettings = reactive({
+    width: 1200,
+    height: 1200,
+    lockRatio: false,
+    border: 15,
+    spacing: 15,
+    bgColor: '#ffffff'
+  });
+  const min = 400;
+  const max = 3840;
+  let ratio = 1;
+
+  const toggleRatioLock = () => {
+    puzzleSettings.lockRatio = !puzzleSettings.lockRatio;
+    if (puzzleSettings.lockRatio) {
+      ratio = puzzleSettings.width / puzzleSettings.height;
+    }
+  };
+
+  // 更新尺寸
+  const updateSize = (dimension) => {
+    // 确保尺寸在有效范围内
+    if (puzzleSettings[dimension] < min) {
+      puzzleSettings[dimension] = min;
+    } else if (puzzleSettings[dimension] > max) {
+      puzzleSettings[dimension] = max;
+    }
+
+    // 如果锁定宽高比，同时更新另一个维度
+    if (puzzleSettings.lockRatio) {
+      if (dimension === 'width') {
+        puzzleSettings.height = Math.round(puzzleSettings.width / ratio);
+      } else {
+        puzzleSettings.width = Math.round(puzzleSettings.height * ratio);
+      }
+    }
+
+    updateStyle();
+  };
+
+  const updateStyle = () => {
+    updateLayout(null, puzzleSettings);
+  };
+
+  // 保存拼图
+  const save = () => { };
+
+  // sub 3
+  const transparent = ref(100);
+  const zoom = ref(100);
+</script>
+
+<style scoped>
+  .puzzle-module {
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+  }
+
+  /* 主面板样式 */
+  .puzzle-main {
+    padding: 20px;
+  }
+
+  .puzzle-tabs {
+    display: flex;
+  }
+
+  .tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #606266;
+  }
+
+  .tab-item.active {
+    background-color: #409eff;
+    color: #fff;
+  }
+
+  .select-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 14px;
+    border-radius: 4px;
+    width: 100%;
+    cursor: pointer;
+    font-size: 14px;
+    color: #606266;
+    transition: all 0.3s;
+  }
+
+  .select-btn:hover {
+    border-color: #409eff;
+    color: #409eff;
+  }
+
+  .icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 4;
+    background-color: #fff;
+    font-size: 24px;
+    line-height: 40px;
+    text-align: center;
+    margin-right: 16px;
+  }
+
+  .small-grid-template {
+    height: 100%;
+    display: grid;
+    /* border-radius: 4px; */
+    overflow: hidden;
+  }
+
+  .plus-icon {
+    font-weight: bold;
+  }
+
+  .cancel-btn {
+    color: #409eff;
+    margin-left: 76px;
+    cursor: pointer;
+  }
+
+  /* 网格模板选择面板样式 */
+  .grid-templates {
+    padding: 20px 12px 20px;
+  }
+
+  .back-header {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+
+  .back-icon {
+    font-size: 20px;
+    margin-right: 8px;
+    color: #606266;
+  }
+
+  .image-count-selector {
+    margin-bottom: 20px;
+  }
+
+  .image-count-selector label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #606266;
+  }
+
+  .image-count-selector select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .grid-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .grid-group {
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .grid-group-title {
+    padding: 10px 15px;
+    background-color: #f5f7fa;
+    font-size: 14px;
+    font-weight: 500;
+    color: #606266;
+  }
+
+  .grid-templates-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 4px;
+  }
+
+  .grid-template {
+    width: 120px;
+    height: 120px;
+    display: grid;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .grid-template:hover {
+    border-color: #409eff;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .grid-cell {
+    height: 100%;
+    background-color: #f0f0f0;
+    border: 1px solid #fff;
+  }
+
+  /* 控制面板样式 */
+  .control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 15px 0;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .control-group label {
+    font-size: 14px;
+    color: #606266;
+    font-weight: 500;
+  }
+
+  .color {
+    width: 100%;
+    cursor: pointer;
+    border: none;
+  }
+
+  /* 尺寸控制 */
+  .size-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .input-wrapper {
+    position: relative;
+    width: 38%;
+  }
+
+  .ie-input {
+    text-align: center;
+    padding-right: 20px;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .suffix {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #c0c4cc;
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  .link-icon {
+    width: 24px;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* 滑块控制 */
+  .control-group input[type="range"] {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: #dcdfe6;
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #409eff;
+    cursor: pointer;
+  }
+
+  .control-group input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #409eff;
+    cursor: pointer;
+    border: none;
+  }
+
+  .value-display {
+    font-size: 14px;
+    color: #909399;
+    text-align: right;
+  }
+
+  /* 保存按钮 */
+  .save-btn {
+    padding: 12px 20px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 21px;
+    background-color: #409eff;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .save-btn:hover {
+    background-color: #66b1ff;
+  }
+
+  .p-20 {
+    padding: 20px;
+  }
+
+  .operate-tabs {
+    display: flex;
+    margin-bottom: 16px;
+  }
+
+  .border {
+    border: 1px solid #dcdfe6;
+  }
+</style>
 </file>
 
 <file path="src/components/layout/NavBar.vue">
@@ -10544,7 +10518,7 @@ onUnmounted(() => stopPreview());
 </template>
 
 <script setup>
-import { provide, ref, onMounted, watch, defineProps, defineEmits } from 'vue';
+import { provide, ref, watch } from 'vue';
 import { useCanvas } from '../../composables/useCanvas';
 import NavBar from './NavBar.vue';
 import LeftSidebar from './LeftSidebar.vue';
@@ -10738,25 +10712,29 @@ defineExpose({
 </file>
 
 <file path="src/composables/useCanvas.js">
-// src/composables/useCanvas.js
-import { ref, shallowRef, markRaw, toRaw } from "vue";
+import { ref, shallowRef, markRaw, toRaw, unref } from "vue";
 import { fabric } from "fabric";
+// ✨ 引入 routeToObject 用于路由跳转
 import { useEditorState, ZOOM_PADDING } from "./useEditorState";
 
-// 引入剪裁模块
 import {
-  registerCropModule,
-  constrainCrop,
-  cropObject,
-  cancelCrop,
-  rotateActive as rotateCrop,
-  flipActive as flipCrop
+    registerCropModule,
+    constrainCrop,
+    cropObject,
+    cancelCrop,
+    rotateActive as rotateCrop,
+    flipActive as flipCrop
 } from "@/components/modules/adjust/useCanvasCrop";
 
 export function useCanvas() {
   const canvas = shallowRef(null);
-  const { setHistoryState } = useEditorState();
+  // ✨ 获取 routeToObject
+  const { setHistoryState, setActiveTool, setSidebarDisabled, routeToObject } = useEditorState();
   const zoom = ref(1);
+
+  // 交互状态变量
+  let isPotentialClick = false;
+  let dragStartPoint = null;
 
   // === 历史记录 ===
   const history = [];
@@ -10769,7 +10747,7 @@ export function useCanvas() {
       history.splice(historyIndex + 1);
     }
     const json = JSON.stringify(
-      canvas.value.toJSON(["id", "selectable", "name"])
+        canvas.value.toJSON(["id", "selectable", "name", "isMainImage", "isPuzzleImage", "cellIndex", "isMaskObject"])
     );
     history.push(json);
     historyIndex++;
@@ -10781,7 +10759,6 @@ export function useCanvas() {
   };
 
   const updateStoreHistory = () => {
-    // 【修复】canRedo 应该是当前索引小于历史记录总长度减 1
     setHistoryState(historyIndex > 0, historyIndex < history.length - 1);
   };
 
@@ -10825,8 +10802,6 @@ export function useCanvas() {
     const height = canvas.value.height;
 
     let targetZoom = Math.min(width / rect.width, height / rect.height) * ZOOM_PADDING;
-
-    // 【约束逻辑】：确保缩放不会小于我们传入的限制（比如原图适应比例）
     targetZoom = Math.max(minZoomLimit, Math.min(targetZoom, 50));
 
     const rectCenterX = rect.left + rect.width / 2;
@@ -10840,6 +10815,40 @@ export function useCanvas() {
     canvas.value.requestRenderAll();
   };
 
+    const handleSelection = (target) => {
+      // 🔍 Debug 日志 1: 看看函数有没有被触发
+    console.log('1. handleSelection triggered. Target:', target);
+        // 1. 点击空白处 -> 进入残影模式
+        if (!target) {
+          console.log('Target is null, disabling sidebar'); // Log
+            setSidebarDisabled(true);
+            return;
+        }
+console.log('2. Target Type:', target.type);
+        // 2. 过滤特殊对象 (遮罩、不导出对象)
+        if (target.isMaskObject || target.excludeFromExport) {
+            return;
+        }
+
+        // 3. ✨ 过滤多选 (ActiveSelection)
+        // 根据你的要求 "不需要多选"，这里检测到多选直接返回，不做任何路由跳转
+        // 侧边栏保持上一次的状态，或者你可以选择在这里 setSidebarDisabled(true)
+        if (target.type === 'activeSelection') {
+             console.log('[Router] Multi-selection ignored.');
+             return; 
+        }
+
+        // 4. ✨ 核心：将整个 target 对象传给 State
+        // State 层会分析 target.type 或 target.customTab，决定跳到哪个 Tool + 哪个 Tab
+        const routed = routeToObject(target);
+        console.log('3. Routing result:', routed);
+        // 5. 兜底逻辑：如果选中的对象在路由表里没配置（比如背景控制点）
+        // 我们至少要保证侧边栏是“可用”的，而不是禁用的
+        if (!routed) {
+            setSidebarDisabled(false);
+        }
+    };
+
   // === 初始化与事件 ===
   const init = (id, width, height) => {
     console.log("init canvas", id, width, height);
@@ -10848,8 +10857,8 @@ export function useCanvas() {
       height: height,
       backgroundColor: "#f3f3f3",
       preserveObjectStacking: true,
-      fireRightClick: true,  // 允许 Fabric 识别右键点击
-      stopContextMenu: false // 禁止 Fabric 拦截默认右键菜单
+      fireRightClick: true,
+      stopContextMenu: false
     });
     canvas.value = markRaw(c);
 
@@ -10869,6 +10878,52 @@ export function useCanvas() {
     });
     c.on("object:removed", (e) => {
       if (e.target && e.target.type !== "rect") saveHistory();
+    });
+
+    // ✨ 交互消歧：按下时记录坐标
+    c.on("mouse:down", (opt) => {
+        isPotentialClick = true;
+        const pointer = c.getPointer(opt.e);
+        dragStartPoint = { x: pointer.x, y: pointer.y };
+    });
+
+    // ✨ 交互消歧：移动时检测阈值
+    c.on("mouse:move", (opt) => {
+        if (!isPotentialClick) return;
+        const pointer = c.getPointer(opt.e);
+        const dist = Math.sqrt(
+            Math.pow(pointer.x - dragStartPoint.x, 2) +
+            Math.pow(pointer.y - dragStartPoint.y, 2)
+        );
+        if (dist > 5) { // 阈值 5px
+            isPotentialClick = false; // 判定为拖拽
+        }
+    });
+
+    // ✨ 路由触发点 1: 点击松开 (主要交互)
+   c.on("mouse:up", (opt) => {
+        if (!isPotentialClick || c.isDrawingMode || cropObject.value) return;
+        const target = c.getActiveObject();
+        handleSelection(target);
+    });
+
+    // ✨ 路由触发点 2: 选区创建 (处理 API 调用 setActiveObject 或 框选)
+    // 确保非点击产生的选中也能触发路由
+   // 触发点 2: API 调用 (如 addText) 或 框选
+    c.on("selection:created", (e) => {
+        if (!isPotentialClick && (e.target || (e.selected && e.selected.length > 0))) { 
+         handleSelection(e.target || e.selected[0]);
+    }
+    });
+    
+    // ✨ 路由触发点 3: 选区更新 (例如从单选变为多选)
+    c.on("selection:updated", (e) => {
+        handleSelection(e.target);
+    });
+
+    // ✨ 路由触发点 4: 选区清除 (进入残影)
+    c.on("selection:cleared", () => {
+        setSidebarDisabled(true);
     });
 
     // Zoom 事件
@@ -10903,15 +10958,22 @@ export function useCanvas() {
           const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * ZOOM_PADDING;
           img.scale(scale);
         }
+        
+        // 设置基础属性
         img.set({
-          isMainImage: true,  // 标记为主图
-          id: 'main-image'    // 方便后续查找
+          isMainImage: true,
+          id: 'main-image'
         });
+        
         zoom.value = canvas.value.getZoom();
         historyProcessing = true;
+        
         canvas.value?.add(img);
         canvas.value?.centerObject(img);
-        canvas.value?.setActiveObject(img);
+        
+        // ✨ 关键：触发选中事件，让系统自动路由到 (Adjust -> Filter)
+        canvas.value?.setActiveObject(img); 
+        
         historyProcessing = false;
         saveHistory();
         canvas.value.fire('image:updated');
@@ -10936,9 +10998,6 @@ export function useCanvas() {
 
   const initImage = (url) => {
     if (!canvas.value) return;
-    // 重置相机视角
-    // canvas.value.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    // zoom.value = 1;
     historyProcessing = true;
     canvas.value.clear();
     canvas.value.setBackgroundColor("#f3f3f3", () => {
@@ -10992,12 +11051,9 @@ export function useCanvas() {
     const objects = canvas.value.getObjects();
 
     objects.forEach((obj) => {
-      // 变更点：不仅支持 path，还支持标记了 isMaskObject 的对象 (如框选矩形)
       if (obj.type === "path" || obj.isMaskObject) {
         obj._originalStroke = obj.stroke;
-        obj._originalFill = obj.fill; // 备份填充色
-
-        // 统一变成纯白，用于生成遮罩
+        obj._originalFill = obj.fill;
         obj.set({ stroke: "#ffffff", fill: "#ffffff" });
       } else {
         obj._originalOpacity = obj.opacity;
@@ -11008,10 +11064,8 @@ export function useCanvas() {
     canvas.value.setBackgroundColor("#000000", null);
     canvas.value.renderAll();
 
-    // 导出
     const dataURL = canvas.value.toDataURL({ format: "png", multiplier: 1 });
 
-    // 恢复现场
     objects.forEach((obj) => {
       if (obj.type === "path" || obj.isMaskObject) {
         obj.set({
@@ -11037,23 +11091,33 @@ export function useCanvas() {
       () => {
         canvas.value.renderAll();
         saveHistory();
-        // 触发自定义事件，通知滤镜模块更新预览图
         canvas.value.fire('image:updated');
       },
       { crossOrigin: "anonymous" }
     );
   };
 
-  const addText = (textStr = "双击编辑") => {
+const addText = (textStr = "双击编辑") => {
     if (!canvas.value) return;
+    
     const text = new fabric.IText(textStr, {
       left: 100,
       top: 100,
       fontSize: 40,
       fill: "#333",
+      // ✨ 进阶用法演示（可选）：
+      // 如果你想让这个特定的文本创建时直接跳到 "颜色" Tab，可以解开下面这行注释：
+      // customTab: 'color' 
     });
+    
     canvas.value.add(text);
+    
+    // ✨ 关键：这行代码会触发 fabric 的 'selection:created' 事件
+    // 进而触发 handleSelection -> routeToObject -> 自动跳转到 Text 面板的 Style Tab
     canvas.value.setActiveObject(text);
+    
+    canvas.value.requestRenderAll(); // 刷新画布
+    saveHistory(); // 记录历史
   };
 
   return {

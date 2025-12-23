@@ -97,10 +97,6 @@
 ## 3. 待办事项 (Backlog & Roadmap)
 
 ### 📅 近期计划 (Next Sprint)
-- **稳健性优化**: 为路由系统增加“僵尸对象”检查，防止对象删除后的竞态条件报错。
-- **新模块接入**: 将“贴纸/素材”模块接入新的路由系统。
-- **TS 类型补全**: 为 `routeToObject` 和 `Fabric Object` 扩展类型定义。
+
 
 ### 🐛 已知优化点 (Refactoring)
-- **Performance**: 优化高分图拼图拖拽时的计算性能 (Throttle)。
-- **Defensive Programming**: 在 `handleSelection` 中加强对 `e.target` 为空的防御性判断。
