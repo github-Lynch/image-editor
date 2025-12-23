@@ -4,7 +4,7 @@ import { fabric } from "fabric";
 import { parseTemplateToCells, generateGridCells } from "./config";
 
 // 【引入通用规范】
-import { constrainObjectToRect, animateRebound, getLogicRect } from '@/composables/useConstraint';
+import { constrainObjectToRect, animateRebound } from '@/composables/useConstraint';
 
 // === 内部变量 ===
 let canvasRef = null;

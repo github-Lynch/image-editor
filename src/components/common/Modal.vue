@@ -3,6 +3,8 @@
         <Transition name="fade">
             <div v-if="modelValue" class="modal-mask" @click.self="$emit('cancel')">
                 <div class="modal-container">
+                    <button class="modal-close" title="关闭" @click="$emit('cancel')">×</button>
+
                     <div class="modal-header">
                         <h3>{{ title }}</h3>
                     </div>
@@ -40,6 +42,7 @@ defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
 }
 
 .modal-container {
+    position: relative;
     background: white;
     border-radius: 12px;
     width: 320px;
@@ -51,6 +54,25 @@ defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
     margin: 0 0 16px;
     font-size: 18px;
     color: #333;
+}
+
+.modal-close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: #909399;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #606266;
 }
 
 .modal-body {
