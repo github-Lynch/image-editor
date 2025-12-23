@@ -3,27 +3,22 @@
 
 /* 2. 将原先 :root 里的变量移到容器内，变成局部变量 */
 .image-editor-sdk-container {
-  /* 定义局部变量 */
-  --ie-font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  --ie-bg-color: #242424;
-  --ie-text-color: rgba(255, 255, 255, 0.87);
-  --ie-primary-color: #409eff;
-  --ie-border-color: #dcdfe6;
 
-  /* === 核心重置 (替代 reset.css) === */
-  /* 强制在这个容器内使用 border-box，不依赖宿主环境 */
+  /* === 1. 基础盒子设定 === */
+  position: relative;
+  width: 100%;
+  height: 100%;
   box-sizing: border-box;
+  overflow: hidden;
+
+  /* === 2. 应用变量 === */
   font-family: var(--ie-font-family);
-  line-height: 1.5;
-  font-weight: 400;
-  color-scheme: light dark;
-  color: var(--ie-text-color);
   background-color: var(--ie-bg-color);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  color: var(--ie-text-color);
+
+  /* 字体优化 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-align: left;
   /* 覆盖可能居中的 body 样式 */
 
   /* 确保容器内的所有元素继承 box-sizing */
@@ -297,8 +292,8 @@
   }
 }
 
-/* === Toast 提示 (它通常挂载在 body 上，所以放在容器外面) === */
-/* 如果 Toast 逻辑改为挂载到容器内，也可以移进去 */
+/* === toast 提示 (它通常挂载在 body 上，所以放在容器外面) === */
+/* 如果 toast 逻辑改为挂载到容器内，也可以移进去 */
 .ie-toast {
   position: fixed;
   top: 20px;
@@ -370,3 +365,90 @@
   display: none;
   /* Chrome/Safari/Webkit */
 }
+
+.ie-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ie-primary-color); /* 关键：使用主题色变量 */
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin-top: -6px; /* 调整垂直对齐 */
+}
+
+/* Firefox 浏览器 */
+.ie-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid white;
+  border-radius: 50%;
+  background: var(--ie-primary-color); /* 关键：使用主题色变量 */
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* 修正滑块轨道颜色 (可选，视全局样式而定) */
+.ie-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: #e4e7ed; /* 轨道背景色 */
+  border-radius: 2px;
+}
+
+/* ... 原有内容保持不变 ... */
+
+/* === 通用小号数字输入框 (修复背景色与隐藏箭头) === */
+.ie-small-input {
+  background-color: #ffffff; /* 1. 强制白色背景 */
+  color: #606266;            /* 2. 标准文字颜色 */
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 50px;
+  /* Firefox 移除箭头 */
+  -moz-appearance: textfield; 
+}
+
+.ie-small-input:focus {
+  border-color: var(--ie-primary-color);
+}
+
+/* Chrome, Safari, Edge, Opera 移除箭头 */
+.ie-small-input::-webkit-outer-spin-button,
+.ie-small-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* === 标准化数值输入框 (配合 Slider 使用) === */
+  /* 宪法 6.2 规定：固定宽 50px，高 28px */
+  .ie-input-number {
+    width: 50px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--ie-border-color);
+    border-radius: 4px;
+    text-align: center;
+    font-size: 12px;
+    color: #606266;
+    background-color: #ffffff;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: textfield; /* 标准属性 */
+    -moz-appearance: textfield; /* Firefox */
+  }
+
+  .ie-input-number:focus {
+    border-color: var(--ie-primary-color);
+  }
+
+  /* 移除 Webkit 浏览器的原生箭头 */
+  .ie-input-number::-webkit-outer-spin-button,
+  .ie-input-number::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }

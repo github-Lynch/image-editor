@@ -44,8 +44,9 @@
                     </div>
 
                     <div class="link-icon-btn" @click="toggleAdaptive" :title="isAdaptive ? '锁定比例' : '自由比例'">
-                        <svg v-if="isAdaptive" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#409eff"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg v-if="isAdaptive" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="var(--ie-primary-color)" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round">
                             <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
                             <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                         </svg>
@@ -321,8 +322,8 @@ onUnmounted(() => stopPreview());
 
 .preset-item.active {
     background-color: #ecf5ff;
-    color: #409eff;
-    border-color: #409eff;
+    color: var(--ie-primary-color);
+    border-color: var(--ie-primary-color);
     font-weight: 500;
 }
 
@@ -377,7 +378,7 @@ onUnmounted(() => stopPreview());
 }
 
 .ie-input:focus {
-    border-color: #409eff;
+    border-color: var(--ie-primary-color);
     outline: none;
 }
 
@@ -428,7 +429,7 @@ onUnmounted(() => stopPreview());
 }
 
 .color-item.active {
-    border-color: #409eff;
+    border-color: var(--ie-primary-color);
     transform: scale(1.1);
 }
 

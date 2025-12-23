@@ -97,7 +97,7 @@ defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
 }
 
 .btn-primary {
-    background: #409eff;
+    background: var(--ie-primary-color);
     color: white;
 }
 

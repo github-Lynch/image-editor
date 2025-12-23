@@ -99,12 +99,12 @@ const menuItems = [
 }
 
 .menu-item:hover {
-  color: #409eff;
+  color: var(--ie-primary-color);
   background-color: #f5f7fa;
 }
 
 .menu-item.active {
-  color: #409eff;
+  color: var(--ie-primary-color);
   font-weight: 500;
   background-color: #ecf5ff;
   position: relative;
@@ -118,7 +118,7 @@ const menuItems = [
   transform: translateY(-50%);
   width: 3px;
   height: 24px;
-  background-color: #409eff;
+  background-color: var(--ie-primary-color);
   border-radius: 0 2px 2px 0;
 }
 

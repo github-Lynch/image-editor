@@ -108,6 +108,8 @@ export function useCanvas() {
       height: height,
       backgroundColor: "#f3f3f3",
       preserveObjectStacking: true,
+      fireRightClick: true,  // 允许 Fabric 识别右键点击
+      stopContextMenu: false // 禁止 Fabric 拦截默认右键菜单
     });
     canvas.value = markRaw(c);
 
@@ -161,6 +163,10 @@ export function useCanvas() {
           const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * ZOOM_PADDING;
           img.scale(scale);
         }
+        img.set({
+          isMainImage: true,  // 标记为主图
+          id: 'main-image'    // 方便后续查找
+        });
         zoom.value = canvas.value.getZoom();
         historyProcessing = true;
         canvas.value?.add(img);

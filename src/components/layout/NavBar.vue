@@ -50,7 +50,7 @@
 <script setup>
 import { inject, ref } from 'vue';
 import { useEditorState } from '@/composables/useEditorState'; 
-import { Toast } from '@/utils/toast'; 
+import { toast } from '@/utils/toast'; 
  
 
 const { state } = useEditorState();
@@ -74,7 +74,7 @@ const onFileSelected = (e) => {
   if (file) {
     // 检查 inject 的 API 是否存在
     if (!canvasAPI || !canvasAPI.initImage) { 
-      Toast.error('画布尚未初始化');
+      toast.error('画布尚未初始化');
       return;
     }
     const url = URL.createObjectURL(file);
@@ -90,7 +90,7 @@ const handleSave = () => {
   if (canvasAPI && canvasAPI.save) {
     canvasAPI.save(); 
   } else {
-    Toast.error('导出功能未实现');
+    toast.error('导出功能未实现');
   }
 };
 

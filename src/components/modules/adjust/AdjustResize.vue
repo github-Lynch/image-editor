@@ -2,7 +2,8 @@
   <div class="tool-group">
     <div class="tool-item" :class="{ 'is-expanded': isExpanded }" @click="handleToggle">
       <div class="left">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
           <path d="M15 3h6v6" />
           <path d="M9 21H3v-6" />
           <path d="M21 3l-7 7" />
@@ -11,83 +12,64 @@
         <span>调整尺寸</span>
       </div>
       <div class="right-icon">
-        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <path d="m9 18 6-6-6-6" />
         </svg>
       </div>
     </div>
 
     <div v-if="isExpanded" class="tool-content">
-      
+
       <div class="preset-grid">
-        <div 
-          class="preset-item custom-item"
-          :class="{ active: isCustomMode }" 
-          @click="selectCustomMode"
-        >
-        <span>自定义</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="preset-item custom-item" :class="{ active: isCustomMode }" @click="selectCustomMode">
+          <span>自定义</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="12" y1="8" x2="12" y2="16"></line>
             <line x1="8" y1="12" x2="16" y2="12"></line>
           </svg>
-          
+
         </div>
 
-        <div 
-          v-for="(preset, index) in presets" 
-          :key="index" 
-          class="preset-item"
-          :class="{ active: activePresetIndex === index }" 
-          @click="selectPreset(preset, index)"
-        >
+        <div v-for="(preset, index) in presets" :key="index" class="preset-item"
+          :class="{ active: activePresetIndex === index }" @click="selectPreset(preset, index)">
           <span class="preset-name">{{ preset.label }}</span>
           <span class="preset-dim">{{ preset.w }}×{{ preset.h }}</span>
         </div>
       </div>
 
       <div class="resize-input-box">
-        
+
         <div class="input-controls">
-           <div class="input-wrapper">
-             <input 
-               type="number" 
-               v-model.number="width" 
-               class="ie-input" 
-               @input="onInputChanged" 
-             >
-             <span class="suffix">W</span>
-           </div>
+          <div class="input-wrapper">
+            <input type="number" v-model.number="width" class="ie-input" @input="onInputChanged">
+            <span class="suffix">W</span>
+          </div>
 
-           <div class="link-icon-btn" @click="toggleAdaptive" :title="isAdaptive ? '锁定比例' : '自由比例'">
-              <svg v-if="isAdaptive" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#409eff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-              </svg>
-              <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6">
-                 <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                 <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                 <line x1="4" y1="4" x2="20" y2="20" stroke="#999"></line>
-              </svg>
-           </div>
+          <div class="link-icon-btn" @click="toggleAdaptive" :title="isAdaptive ? '锁定比例' : '自由比例'">
+            <svg v-if="isAdaptive" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="var(--ie-primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+              <line x1="4" y1="4" x2="20" y2="20" stroke="#999"></line>
+            </svg>
+          </div>
 
-           <div class="input-wrapper">
-             <input 
-               type="number" 
-               v-model.number="height" 
-               class="ie-input" 
-               @input="onInputChanged"
-             >
-             <span class="suffix">H</span>
-           </div>
+          <div class="input-wrapper">
+            <input type="number" v-model.number="height" class="ie-input" @input="onInputChanged">
+            <span class="suffix">H</span>
+          </div>
         </div>
 
         <div class="switch-row">
-          <div 
-            class="ie-switch" 
-            :class="{ 'is-checked': isAdaptive }" 
-            @click="toggleAdaptive"
-          >
+          <div class="ie-switch" :class="{ 'is-checked': isAdaptive }" @click="toggleAdaptive">
             <span class="ie-switch-core"></span>
           </div>
           <span class="switch-label">锁定长宽比 (保真模式)</span>
@@ -122,9 +104,9 @@ const canvasAPI = inject('canvasAPI');
 // === 状态定义 ===
 const width = ref(0);
 const height = ref(0);
-const isAdaptive = ref(true); 
-const originalRatio = ref(1); 
-const activePresetIndex = ref(-1); 
+const isAdaptive = ref(true);
+const originalRatio = ref(1);
+const activePresetIndex = ref(-1);
 const isInternalUpdate = ref(false); // 防止循环更新
 
 // 预设数据 (可根据需要扩展)
@@ -133,8 +115,8 @@ const presets = [
   { label: 'Temu服装图', w: 1340, h: 1785 },
   { label: '方形主图', w: 1000, h: 1000 },
   { label: '竖图主图', w: 750, h: 1000 },
-   {label: '方形主图', w: 500, h: 500 },
-   { label: '竖图主图', w: 1000, h: 1200 },
+  { label: '方形主图', w: 500, h: 500 },
+  { label: '竖图主图', w: 1000, h: 1200 },
   { label: 'Youtube视频封面', w: 1280, h: 720 },
   { label: 'Pinterest帖子', w: 750, h: 1120 },
   { label: 'Facebook封面', w: 851, h: 315 },
@@ -147,7 +129,7 @@ const isCustomMode = computed(() => activePresetIndex.value === -1);
 const currentTargetRatio = computed(() => {
   if (activePresetIndex.value >= 0) {
     const p = presets[activePresetIndex.value];
-    return p.h !== 0 ? (p.w / p.h) : 1; 
+    return p.h !== 0 ? (p.w / p.h) : 1;
   } else {
     return originalRatio.value;
   }
@@ -158,7 +140,7 @@ const initSize = () => {
   if (canvasAPI && canvasAPI.canvas) {
     registerResizeModule(canvasAPI.canvas, canvasAPI.saveHistory);
     const size = getCurrentSize();
-    
+
     if (size.height > 0) {
       originalRatio.value = size.width / size.height;
     }
@@ -167,7 +149,7 @@ const initSize = () => {
     height.value = size.height;
     activePresetIndex.value = -1; // 默认选中自定义
     isAdaptive.value = true;      // 默认开启保真
-    
+
     // 立即启动预览 (显示蓝色虚线框)
     nextTick(() => {
       startPreview(width.value, height.value, !isAdaptive.value);
@@ -181,7 +163,7 @@ const selectCustomMode = () => {
   activePresetIndex.value = -1;
   // 切换到自定义时，恢复到原图尺寸，或者保持当前输入但切换比例基准
   // 这里选择：重置回原图尺寸，符合直觉
-  resetToOriginal(); 
+  resetToOriginal();
 };
 
 const selectPreset = (preset, index) => {
@@ -191,9 +173,9 @@ const selectPreset = (preset, index) => {
   width.value = preset.w;
   height.value = preset.h;
   // 选中预设通常意味着用户希望遵循该比例，所以自动开启保真
-  isAdaptive.value = true; 
-  nextTick(() => { 
-    isInternalUpdate.value = false; 
+  isAdaptive.value = true;
+  nextTick(() => {
+    isInternalUpdate.value = false;
     updatePreviewBox(); // 更新预览
   });
 };
@@ -204,8 +186,8 @@ const toggleAdaptive = () => {
   if (isAdaptive.value && width.value > 0) {
     isInternalUpdate.value = true;
     height.value = Math.round(width.value / currentTargetRatio.value);
-    nextTick(() => { 
-      isInternalUpdate.value = false; 
+    nextTick(() => {
+      isInternalUpdate.value = false;
       updatePreviewBox();
     });
   } else {
@@ -226,11 +208,11 @@ const resetToOriginal = () => {
 
 // 监听宽度变化
 watch(width, (newW) => {
-  if (isInternalUpdate.value) return; 
+  if (isInternalUpdate.value) return;
 
   // 表格逻辑 1 & 3 & 5: 保真开启 -> 自动计算高度
   if (isAdaptive.value && newW > 0) {
-    isInternalUpdate.value = true; 
+    isInternalUpdate.value = true;
     height.value = Math.round(newW / currentTargetRatio.value);
     nextTick(() => { isInternalUpdate.value = false; });
   }
@@ -277,7 +259,7 @@ const handleApply = () => {
 };
 
 const handleCancel = () => {
-  stopPreview(); 
+  stopPreview();
   emit('toggle');
 }
 
@@ -296,7 +278,8 @@ onUnmounted(() => stopPreview());
 /* Grid 布局实现矩阵效果 */
 .preset-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr; /* 两列 */
+  grid-template-columns: 1fr 1fr;
+  /* 两列 */
   gap: 8px;
   margin-bottom: 16px;
   max-height: 280px;
@@ -312,7 +295,8 @@ onUnmounted(() => stopPreview());
   cursor: pointer;
   border: 1px solid transparent;
   display: flex;
-  flex-direction: column; /* 垂直排列文字 */
+  flex-direction: column;
+  /* 垂直排列文字 */
   align-items: center;
   justify-content: space-between;
   text-align: center;
@@ -326,18 +310,21 @@ onUnmounted(() => stopPreview());
 
 .preset-item.active {
   background-color: #ecf5ff;
-  color: #409eff;
-  border-color: #409eff;
+  color: var(--ie-primary-color);
+  border-color: var(--ie-primary-color);
   font-weight: 500;
 }
 
 /* 自定义项特殊样式 */
 .custom-item {
-  flex-direction: row; /* 横向 */
-  grid-column: span 2; /* 占满一行 */
+  flex-direction: row;
+  /* 横向 */
+  grid-column: span 2;
+  /* 占满一行 */
   background-color: #fff;
   border: 1px dashed #dcdfe6;
 }
+
 .custom-item.active {
   border-style: solid;
 }
@@ -346,6 +333,7 @@ onUnmounted(() => stopPreview());
   font-weight: 500;
   margin-bottom: 2px;
 }
+
 .preset-dim {
   font-size: 11px;
   color: #909399;
@@ -380,8 +368,9 @@ onUnmounted(() => stopPreview());
   height: 32px;
   font-size: 13px;
 }
+
 .ie-input:focus {
-  border-color: #409eff;
+  border-color: var(--ie-primary-color);
   outline: none;
 }
 
@@ -400,6 +389,7 @@ onUnmounted(() => stopPreview());
   padding: 4px;
   border-radius: 4px;
 }
+
 .link-icon-btn:hover {
   background-color: #f0f0f0;
 }
@@ -410,6 +400,7 @@ onUnmounted(() => stopPreview());
   justify-content: center;
   margin-bottom: 12px;
 }
+
 .switch-label {
   font-size: 12px;
   color: #606266;
@@ -428,9 +419,11 @@ onUnmounted(() => stopPreview());
   cursor: pointer;
   transition: background-color 0.3s;
 }
+
 .ie-switch.is-checked {
-  background-color: #409eff;
+  background-color: var(--ie-primary-color);
 }
+
 .ie-switch-core {
   position: absolute;
   top: 2px;
@@ -441,6 +434,7 @@ onUnmounted(() => stopPreview());
   background-color: #fff;
   transition: all 0.3s;
 }
+
 .ie-switch.is-checked .ie-switch-core {
   left: 100%;
   margin-left: -14px;
@@ -450,24 +444,35 @@ onUnmounted(() => stopPreview());
   text-align: center;
   margin-bottom: 10px;
 }
+
 .reset-link {
   font-size: 12px;
   color: #909399;
   cursor: pointer;
   text-decoration: underline;
 }
+
 .reset-link:hover {
-  color: #409eff;
+  color: var(--ie-primary-color);
 }
 
 .action-buttons {
   display: flex;
   gap: 10px;
 }
+
 .full {
   flex: 1;
 }
 
-.tool-item:hover .arrow { transform: translateX(2px); transition: transform 0.2s; }
-.tool-content { padding: 16px; border: 1px solid #eee; border-top: none; }
+.tool-item:hover .arrow {
+  transform: translateX(2px);
+  transition: transform 0.2s;
+}
+
+.tool-content {
+  padding: 16px;
+  border: 1px solid #eee;
+  border-top: none;
+}
 </style>

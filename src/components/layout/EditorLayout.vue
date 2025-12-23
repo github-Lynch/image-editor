@@ -14,13 +14,15 @@
 </template>
 
 <script setup>
-import { provide, watch } from 'vue';
+import { provide, ref, watch } from 'vue';
 import { useCanvas } from '../../composables/useCanvas';
 import NavBar from './NavBar.vue';
 import LeftSidebar from './LeftSidebar.vue';
 import ToolPanel from '../panels/ToolPanel.vue';
 import Workspace from '../Workspace.vue';
 import LoadingOverlay from '@/components/common/LoadingOverlay.vue';
+const sdkContainer = ref(null);
+
 // === 1. 定义组件接口 (Props & Emits) ===
 const props = defineProps({
   // 初始图片链接

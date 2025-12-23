@@ -334,7 +334,7 @@
 
 <script setup>
   import { ref, reactive, computed, inject, onMounted, onUnmounted } from 'vue';
-  import { Toast } from '@/utils/toast';
+  import { toast } from '@/utils/toast';
   import { gridTemplates, countOptions, generateGridCells, parseTemplateToCells } from './config.js';
   import {
     registerPuzzleModule,
@@ -372,7 +372,7 @@
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      Toast.error('仅支持 JPG/PNG 图片格式');
+      toast.error('仅支持 JPG/PNG 图片格式');
       return;
     }
     if (pendingCellIndex >= 0) {

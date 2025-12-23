@@ -21,7 +21,7 @@
                 <div v-for="item in config" :key="item.key" class="control-row">
                     <div class="label-box">
                         <span>{{ item.label }}</span>
-                        <input type="number" v-model.number="values[item.key]" class="ie-small-input"
+                        <input type="number" v-model.number="values[item.key]" class="ie-input-number"
                             @input="updateFilters">
                     </div>
                     <input type="range" v-model.number="values[item.key]" :min="item.min" :max="item.max" step="1"
@@ -101,16 +101,8 @@ onMounted(() => {
     color: #606266;
 }
 
-.ie-small-input {
-    width: 50px;
-    text-align: center;
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    height: 24px;
-    font-size: 12px;
-}
+/* 已移除局部的 ie-small-input 样式 */
 
-/* 仿店小秘滑块样式 */
 .ie-slider {
     width: 100%;
     height: 4px;
@@ -125,7 +117,7 @@ onMounted(() => {
     width: 12px;
     height: 12px;
     background: #fff;
-    border: 2px solid #409eff;
+    border: 2px solid var(--ie-primary-color); /* 修正为主题色 */
     border-radius: 50%;
     cursor: pointer;
     transition: transform 0.2s;

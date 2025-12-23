@@ -1,4 +1,4 @@
-export const Toast = {
+export const toast = {
     show(text, type = 'info') {
         const div = document.createElement('div');
         div.className = 'ie-toast';

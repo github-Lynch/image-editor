@@ -10,6 +10,8 @@
 
       <AdjustRembg :is-expanded="activeCollapse === 'rembg'" @toggle="toggle('rembg')" />
 
+      <AdjustRuler :is-expanded="activeCollapse === 'ruler'" @toggle="toggle('ruler')" />
+
       <AdjustWhite :is-expanded="activeCollapse === 'white'" @toggle="toggle('white')" />
 
       <AdjustColor :is-expanded="activeCollapse === 'color'" @toggle="toggle('color')" />
@@ -26,7 +28,7 @@
 
 <script setup>
 import { ref, defineAsyncComponent } from 'vue';
-import { Toast } from '@/utils/toast';
+import { toast } from '@/utils/toast';
 
 // 异步组件引入
 const AdjustCrop = defineAsyncComponent(() => import('./AdjustCrop.vue'));
@@ -38,6 +40,7 @@ const AdjustColor = defineAsyncComponent(() => import('./AdjustColor.vue'));
 const AdjustFilters = defineAsyncComponent(() => import('./AdjustFilters.vue'));
 const AdjustColorOverlay = defineAsyncComponent(() => import('./AdjustColorOverlay.vue'));
 const AdjustMosaic = defineAsyncComponent(() => import('./AdjustMosaic.vue'));
+const AdjustRuler = defineAsyncComponent(() => import('./AdjustRuler.vue'));
 
 const activeCollapse = ref('');
 
@@ -46,7 +49,7 @@ const toggle = (id) => {
 };
 
 const notImplemented = () => {
-  Toast.info('功能开发中');
+  toast.info('功能开发中');
 };
 </script>
 

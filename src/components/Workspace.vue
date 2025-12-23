@@ -1,10 +1,35 @@
 <template>
   <div class="workspace-container">
-    <div class="canvas-center" ref="canvasContainer">
+    <div class="canvas-center" ref="canvasContainer" @contextmenu.prevent="handleRightClick">
       <canvas id="c"></canvas>
     </div>
 
+    <FloatingObjectMenu />
+
+    <CanvasContextMenu :visible="showContextMenu" :position="contextMenuPos" @close="closeContextMenu"
+      @paste="handleMenuPaste" />
+
+    <ShortcutsPanel :visible="showShortcuts" @close="showShortcuts = false" />
+
     <div class="zoom-controls">
+      <button class="ie-btn ie-btn-circle" title="快捷键列表" @click="showShortcuts = true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+          <path d="M6 8h.01"></path>
+          <path d="M10 8h.01"></path>
+          <path d="M14 8h.01"></path>
+          <path d="M18 8h.01"></path>
+          <path d="M6 12h.01"></path>
+          <path d="M18 12h.01"></path>
+          <path d="M7 16h10"></path>
+          <path d="M12 12v-1"></path>
+        </svg>
+
+      </button>
+
+      <div class="divider"></div>
+
       <button class="ie-btn ie-btn-circle" title="缩小" @click="handleZoomOut">
         <svg viewBox="0 0 1024 1024" width="16" height="16">
           <path d="M128 544h768a32 32 0 1 0 0-64H128a32 32 0 1 0 0 64z" fill="currentColor" />
@@ -27,7 +52,12 @@
 </template>
 
 <script setup>
-import { onMounted, inject, ref, computed, onUnmounted } from 'vue';
+import { onMounted, inject, ref, computed, onUnmounted, unref } from 'vue';
+import FloatingObjectMenu from "./common/FloatingObjectMenu.vue";
+import CanvasContextMenu from "./common/CanvasContextMenu.vue";
+import { useObjectActions } from "@/composables/useObjectActions";
+import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
+import ShortcutsPanel from "@/components/common/ShortcutsPanel.vue";
 
 const props = defineProps({
   imageUrl: {
@@ -38,9 +68,10 @@ const props = defineProps({
 
 const canvasAPI = inject('canvasAPI');
 const canvasContainer = ref(null);
+const pastePosition = ref(null);
+const showShortcuts = ref(false);
 
-// 计算属性：只负责显示
-// 它依赖 canvasAPI.zoom.value，只要 zoom.value 变了，这里自动变
+// 计算属性
 const zoomPercentage = computed(() => {
   return canvasAPI?.zoom?.value ? Math.round(canvasAPI.zoom.value * 100) : 100;
 });
@@ -50,48 +81,69 @@ const handleZoomIn = () => canvasAPI?.zoomIn && canvasAPI.zoomIn();
 const handleZoomOut = () => canvasAPI?.zoomOut && canvasAPI.zoomOut();
 const handleReset = () => canvasAPI?.zoomReset && canvasAPI.zoomReset();
 
-// 定义更新函数，方便挂载和卸载
 const updateZoomState = () => {
   const fabricCanvas = canvasAPI?.canvas?.value;
   if (fabricCanvas && canvasAPI.zoom) {
-    // 读取当前画布真实的 zoom 值，同步给响应式数据
     canvasAPI.zoom.value = fabricCanvas.getZoom();
   }
 };
 
+// === 右键菜单逻辑 ===
+const actions = useObjectActions();
+useKeyboardShortcuts(actions);
+const showContextMenu = ref(false);
+const contextMenuPos = ref({ x: 0, y: 0 });
+
+const closeContextMenu = () => {
+  showContextMenu.value = false;
+};
+
+const onGlobalClick = () => {
+  if (showContextMenu.value) closeContextMenu();
+};
+
+const handleRightClick = (e) => {
+  if (e.target.closest('.floating-wrapper')) return;
+
+  contextMenuPos.value = { x: e.clientX, y: e.clientY };
+
+  const canvas = unref(canvasAPI.canvas);
+  if (canvas) {
+    const pointer = canvas.getPointer(e);
+    pastePosition.value = pointer;
+  }
+
+  showContextMenu.value = true;
+};
+
+const handleMenuPaste = () => {
+  actions.pasteActive(pastePosition.value);
+};
+
 onMounted(() => {
+  window.addEventListener('click', onGlobalClick);
   if (canvasAPI && canvasAPI.init) {
     const width = canvasContainer.value.clientWidth || 1900;
     const height = canvasContainer.value.clientHeight || 1000;
-
-    // 1. 初始化画布
     canvasAPI.init('c', width, height);
 
-    // 2. 获取 Fabric 实例
-    // 注意：这里假设 canvasAPI.canvas 是一个 ref
     const fabricCanvas = canvasAPI.canvas.value;
-
     if (fabricCanvas) {
-      // 3. 【核心修复】监听我们在 useCanvasCrop 中发射的 'zoom:change' 事件
-      // 同时也监听原生的 'zoom' 事件（如果有缩放滚轮逻辑）
       fabricCanvas.on('zoom:change', updateZoomState);
-
-      // 如果你的 canvasAPI 内部没有处理滚轮更新 zoom 变量，也可以在这里补一个
       fabricCanvas.on('mouse:wheel', updateZoomState);
     }
-
   } else {
     console.error('CanvasAPI not found.');
   }
 });
 
-// 记得销毁监听，防止内存泄漏
 onUnmounted(() => {
   const fabricCanvas = canvasAPI?.canvas?.value;
   if (fabricCanvas) {
     fabricCanvas.off('zoom:change', updateZoomState);
     fabricCanvas.off('mouse:wheel', updateZoomState);
   }
+  window.removeEventListener('click', onGlobalClick);
 });
 </script>
 
@@ -142,6 +194,38 @@ onUnmounted(() => {
 }
 
 .zoom-text:hover {
-  color: #409eff;
+  color: var(--ie-primary-color);
+}
+
+/* ✅ 修复3: 必须添加按钮样式，否则按钮是透明的或者看不到 */
+.ie-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #606266;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.ie-btn:hover {
+  color: var(--ie-primary-color);
+  /* 或者您的主题色 */
+  background-color: #ecf5ff;
+}
+
+.ie-btn-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.zoom-controls .divider {
+  width: 1px;
+  height: 16px;
+  background: #ebeef5;
+  margin: 0 4px;
 }
 </style>

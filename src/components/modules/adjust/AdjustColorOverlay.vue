@@ -31,7 +31,7 @@
             <div class="intensity-section">
                 <div class="label-row">
                     <span>叠加强度</span>
-                    <input type="number" v-model.number="intensity" class="ie-small-input" @input="updateOverlay">
+                    <input type="number" v-model.number="intensity" class="ie-input-number" @input="updateOverlay">
                 </div>
                 <input type="range" v-model.number="intensity" min="0" max="100" class="ie-slider" @input="updateOverlay">
             </div>
@@ -77,31 +77,25 @@ const updateOverlay = () => {
 };
 
 const handleConfirm = () => {
-    commitColorOverlay(); // 提交历史记录
+    commitColorOverlay();
     emit('toggle');
 };
 
 const handleCancel = () => {
-    cancelColorOverlayChange(); // 执行回滚
+    cancelColorOverlayChange();
     emit('toggle');
 };
 
-/**
- * 核心优化：展开面板时同步状态并执行备份
- */
 watch(() => props.isExpanded, (expanded) => {
     const canvas = canvasAPI?.canvas?.value;
     const bgImage = canvas?.getObjects().find(o => o.type === 'image');
     
     if (expanded && bgImage) {
-        // 1. 从图片元数据同步 UI 状态
         selectedColor.value = bgImage._lastOverlayColor || null;
         intensity.value = bgImage._lastOverlayOpacity ?? 30;
         if (selectedColor.value && !presets.includes(selectedColor.value)) {
             customColor.value = selectedColor.value;
         }
-
-        // 2. 执行备份逻辑，以便取消时回滚
         backupCurrentColorOverlay();
     }
 });
@@ -114,7 +108,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 保持原有布局样式，确保主题色一致 */
 .section-label { font-size: 12px; color: #666; margin-bottom: 8px; }
 .color-presets { display: flex; gap: 8px; margin-bottom: 20px; }
 .preset-item { width: 36px; height: 20px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; position: relative; overflow: hidden; }
@@ -125,8 +118,8 @@ onMounted(() => {
 .clear-item { background: #fff; }
 .slash-line { position: absolute; top: 50%; left: 0; width: 100%; height: 1px; background: red; transform: rotate(-45deg); }
 .intensity-section { margin-bottom: 16px; }
-.label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; }
-.ie-small-input { width: 45px; height: 24px; text-align: center; border: 1px solid #dcdfe6; border-radius: 4px; }
+.label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; color: #606266; }
+/* 已移除局部的 input 样式 */
 .action-buttons { display: flex; gap: 10px; margin-top: 16px; }
 .full { flex: 1; }
 </style>

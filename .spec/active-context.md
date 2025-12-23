@@ -1,74 +1,105 @@
-# Active Context: Image Editor SDK (大秘美图)
+# Active Context & Development State
 
-> **Last Updated**: 2025-12-21
-> **Current Focus**: Smart Inpaint (Refining), Mosaic Tool, Puzzle Stitching
+> **Version**: 2.0 (Codebase Sync)
+> **Last Updated**: 2025-12-22
+> **Current Focus**: Global Interaction Polish & Text/Draw Modules
 
-## 1. 🚧 正在进行中的模块 (Work In Progress)
+## 1. 当前开发状态 (Current Status)
 
-### 1.1 调整模块 (Adjust Module)
+### ✅ 已完成模块 (Completed Modules)
 
-- [ ] **智能消除笔 (Smart Inpaint)**
-  - **状态**: 核心代码已生成 (双模式：画笔+框选)，处于调试/完善阶段。
-  - **依赖**: 全局 Loading 组件 (已就绪)，API 接口。
-- [ ] **马赛克 (Mosaic)**
-  - **状态**: 待启动。
-  - **目标**: 实现局部马赛克涂抹或选区马赛克处理。
+#### 1.1 核心编辑 (Core Editing)
 
-### 1.2 拼图模块 (Puzzle Module)
+- **剪裁 (Crop)**:
+  - [x] **手动选区**: 实现了 `startManualSelection`，支持自定义框选区域。
+  - [x] **比例锁定**: 支持原图比例、自由比例及常用预设 (1:1, 16:9 等)。
+  - [x] **旋转翻转**: 90° 步进旋转与 XY 轴翻转。
+- **尺寸调整 (Resize)**:
+  - [x] **高清重制**: 引入 `useOffscreenHelper`，实现了基于原图分辨率的高清缩放，而非简单的 Canvas 缩放。
+  - [x] **保真模式**: 支持锁定长宽比计算。
+- **补白 (White/Padding)**:
+  - [x] **社媒预设**: 集成 Instagram/Youtube 等常用尺寸模板。
+  - [x] **智能吸色**: 支持背景色吸取及透明背景设置。
 
-- [ ] **拼接 (Stitch/Join)**
-  - **状态**: 待启动。
-  - **目标**: 实现多图垂直或水平长图拼接。
+#### 1.2 拼图系统 (Puzzle System) `Major Feature`
 
----
+- **网格布局**:
+  - [x] **动态模板**: 基于 `config.js` 实现了 1-16 张图片的网格布局解析 (`parseTemplateToCells`)。
+  - [x] **自动布局**: 图片拖入自动计算 Cover 裁剪，保证填满格子不留白。
+- **交互逻辑**:
+  - [x] **拖拽交换**: 实现了平滑的交换动画 (`animateSwap`) 和失败回弹 (`animateRebound`)。
+  - [x] **物理约束**: 在网格内缩放/移动图片时，应用 `useConstraint` 防止图片脱离格子可视区。
+- **样式调整**:
+  - [x] **全局参数**: 支持动态调整间距 (Spacing)、边距 (Padding) 和圆角 (Radius)。
 
-## 2. ✅ 已实现功能清单 (Implemented Features)
+#### 1.3 智能与特效 (AI & Effects)
 
-### 2.1 调整模块 (Adjust Module)
+- **智能消除 (Inpaint)**:
+  - [x] **离屏遮罩**: 解决了涂抹时的闪烁问题，通过离屏 Canvas 生成纯黑白 Mask 传给后端。
+  - [x] **双模交互**: 支持画笔涂抹 (Brush) 和 矩形框选 (Rect) 两种触发方式。
+- **一键抠图 (Rembg)**:
+  - [x] **API 集成**: 封装了 `src/api/ai.js`，支持一键移除背景。
+- **马赛克 (Mosaic)**:
+  - [x] **无损处理**: 采用“预览层 + 离屏应用”策略，确保马赛克应用到原图时依然清晰。
+- **滤镜与调色**:
+  - [x] **ColorMatrix**: 实现了亮度、对比度、饱和度、色温等 6 维调节。
+  - [x] **LUT 模拟**: 内置了“复古”、“电影”等 4 大类滤镜预设。
 
-> 位置: `src/components/modules/adjust/`
+#### 1.4 辅助工具 (Tools & Helpers)
 
-- [x] **剪裁/旋转 (Crop / Rotate)**: 图片裁剪、任意角度旋转。
-- [x] **调整尺寸 (Resize)**: 修改图片像素尺寸。
-- [x] **图片补白 (Padding)**: 扩展画布背景，增加留白。
-- [x] **色彩调节 (Color Adjust)**: 亮度、对比度、饱和度等基础调节。
-- [x] **颜色叠加 (Color Overlay)**: 图片混合模式颜色覆盖。
-- [x] **滤镜效果 (Filters)**: 基于 Fabric.js 滤镜系统的预设效果。
-
-### 2.2 拼图模块 (Puzzle Module)
-
-> 位置: `src/components/modules/puzzle/`
-
-- [x] **网格拼图 (Grid)**: 标准的格子拼图布局。
-
-### 2.3 基础设施 (Infrastructure)
-
-- [x] **核心引擎**: Fabric.js v5.3 初始化 (`markRaw` 优化)。
-- [x] **状态管理**: `useEditorState` 单例。
-- [x] **全局交互**: 全屏 Loading 遮罩 (`LoadingOverlay`)。
-
----
-
-## 3. 🚀 最近变更日志 (Recent Changes)
-
-- **[Feature] 消除笔 (In Progress)**:
-  - 实现了双模式交互（画笔涂抹 + 矩形框选）。
-  - 升级了 `useCanvas.js` 的 `exportMask` 逻辑，支持非 Path 对象导出。
-- **[Infra] 基建**:
-  - 建立了全局异步 Loading 机制。
-  - 升级项目宪章至 **v3.5** (包含 UI 规范与检查清单)。
+- **测量标尺 (Ruler)**:
+  - [x] **交互绘制**: 支持拖拽创建测量线，自动计算长度。
+  - [x] **单位系统**: 支持 px, cm, mm, inch 等多单位实时转换。
+- **快捷键 (Shortcuts)**:
+  - [x] **可视化面板**: 实现了 Keycap 风格的快捷键速查表。
+  - [x] **键盘流**: 覆盖了复制粘贴、图层移动 (`[` `]`)、锁定 (`Shift+Ctrl+L`) 等操作。
 
 ---
 
-## 4. 🧠 架构与约束记忆 (Architecture Memory)
+## 2. 系统架构备忘 (Architecture Memo)
 
-> AI 在开发“马赛克”和“拼接”新功能时必须遵守：
+### 2.1 高清离屏渲染管线 (High-Res Offscreen Pipeline)
 
-1.  **Fabric.js v5**: 严禁使用 v6 API。
-2.  **性能安全**: 新增的 Fabric 对象操作必须注意响应式陷阱，复杂对象禁止深度代理。
-3.  **UI 一致性**:
-    - 新开发的“马赛克”和“拼接”面板，UI 必须复用 `tool-panel-content`, `btn-primary` 等标准类名。
-    - 严禁硬编码颜色，必须使用 CSS 变量。
-4.  **模块化**:
-    - 马赛克逻辑 -> `useCanvasMosaic.js`
-    - 拼接逻辑 -> `useCanvasStitch.js`
+> **Pattern**: `src/composables/useOffscreenHelper.js`
+
+- **问题**: 直接在 Fabric Canvas 上 `toDataURL` 会受限于当前的缩放级别 (`zoom`)，导致导出图片模糊。
+- **方案**:
+  1. 获取原图的原始分辨率 (`originalElement.width/height`)。
+  2. 创建一个临时的 `StaticCanvas` (不可见)。
+  3. 将原图和效果（滤镜、裁剪框）按原始比例映射到临时 Canvas。
+  4. 导出高清图并替换主画布上的对象。
+- **应用**: Resize, Crop, Inpaint, Mosaic 均采用了此模式。
+
+### 2.2 物理约束系统 (Constraint System)
+
+> **Pattern**: `src/composables/useConstraint.js`
+
+- **逻辑**: 核心算法 `calculateConstraintOffset` 计算“对象”相对于“容器”的溢出值。
+- **行为**:
+  - **Resizing**: 实时修正坐标，防止图片小于容器导致露底。
+  - **Puzzle**: 拖拽松手时，如果图片位置不合法，触发 `animateRebound` 弹性回弹动画。
+
+### 2.3 状态管理策略 (State Strategy)
+
+- **Singleton**: 放弃 Pinia，使用 `useEditorState.js` (Reactive 单例) 管理全局工具状态 (`activeTool`) 和 Loading 状态。
+- **Events**: 模块间通信主要依赖 Fabric 的事件总线（如 `canvas.fire('image:updated')`），减少了 Vue 组件间的强耦合。
+
+---
+
+## 3. 待办事项 (Backlog & Roadmap)
+
+### 📅 近期计划 (Next Sprint)
+
+1.  **文本模块 (Text Module)**:
+    - [ ] 实现 `TextAdd.vue`：添加标题/正文。
+    - [ ] 实现 `TextStyle.vue`：字体、颜色、描边、阴影控制。
+2.  **绘制模块 (Draw Module)**:
+    - [ ] 完善 `DrawBrush`：扩展画笔类型（荧光笔、喷枪）。
+    - [ ] 实现 `DrawShape`：添加基础几何图形（矩形、箭头、圆）。
+3.  **水印模块 (Watermark)**:
+    - [ ] 实现全屏平铺水印逻辑。
+
+### 🐛 已知优化点 (Refactoring)
+
+- **Performance**: 拼图模块在拖拽高分辨率图片时，`onMouseMove` 中的计算量较大，考虑增加 `requestAnimationFrame` 节流。
+- **TS Migration**: 当前为纯 JS，部分复杂逻辑（如 Puzzle）类型提示不足，计划逐步引入 JSDoc 或迁移至 TS。

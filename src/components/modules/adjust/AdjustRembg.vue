@@ -30,7 +30,7 @@
 <script setup>
 import { ref, inject } from 'vue'; // 确保引入 inject
 import { aiApi } from '@/api/ai';
-import { Toast } from '@/utils/toast';
+import { toast } from '@/utils/toast';
 
 const canvasAPI = inject('canvasAPI');
 const config = inject('editorConfig'); // 1. 获取全局配置
@@ -38,7 +38,7 @@ const loading = ref(false);
 
 const handleRembg = async () => {
   const activeObj = canvasAPI?.canvas.value?.getActiveObject();
-  if (!activeObj || activeObj.type !== 'image') return Toast.warning('请先选中图片');
+  if (!activeObj || activeObj.type !== 'image') return toast.warning('请先选中图片');
 
   loading.value = true;
   try {
@@ -53,10 +53,10 @@ const handleRembg = async () => {
     );
 
     canvasAPI.replaceActiveImage(newUrl);
-    Toast.success('抠图完成');
+    toast.success('抠图完成');
   } catch (e) {
     console.error(e);
-    Toast.error('抠图失败');
+    toast.error('抠图失败');
   } finally {
     loading.value = false;
   }
@@ -67,7 +67,7 @@ const handleRembg = async () => {
 /* Loading 旋转动画 */
 .loading-icon {
   animation: rotating 1s linear infinite;
-  color: #409eff;
+  color: var(--ie-primary-color);
 }
 
 @keyframes rotating {
