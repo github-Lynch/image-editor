@@ -312,20 +312,10 @@
 
     <Modal
       v-model="showSaveModal"
-      title="保存"
       @confirm="handleConfirmSave"
       @cancel="showSaveModal = false"
       @discard="showSaveModal = false"
-    >
-      <div class="confirm-content">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#909399" stroke-width="2" style="margin-right: 8px;">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <span>注意：使用拼图后会覆盖原图所有内容</span>
-      </div>
-      </Modal>
+    />
   </div>
 </template>
 
@@ -348,9 +338,11 @@
     restoreSnapshotBeforeLayout,
     completeExitPuzzle // 引入完成拼图的方法
   } from './useCanvasPuzzle.js';
+  import { useEditorState } from '@/composables/useEditorState';
 
   const canvasAPI = inject('canvasAPI');
   const fileInput = ref(null);
+  const { setPuzzleMode } = useEditorState();
   
   let pendingCellIndex = -1;
   const selectedCellIndex = ref(-1);
@@ -363,9 +355,9 @@
   // 弹窗控制状态
   const showSaveModal = ref(false);
 
-  onMounted(() => {
+  const init = () => {
     if (canvasAPI) {
-      registerPuzzleModule(canvasAPI.canvas, canvasAPI.saveHistory, {
+      registerPuzzleModule(canvasAPI.canvas, {
         onCellClick: (index) => {
           pendingCellIndex = index;
           if (fileInput.value) {
@@ -392,12 +384,7 @@
       );
       initPuzzleMode();
     }
-  });
-
-  onUnmounted(() => {
-    // 离开组件时如果不保存，也应该执行退出清理逻辑
-    exitPuzzleMode();
-  });
+  }
 
   const onFileSelected = (e) => {
     const file = e.target.files?.[0];
@@ -451,6 +438,8 @@
     
     curTemp.value = template;
     showControlPanel.value = true;
+    setPuzzleMode(true); // 切换到拼图模式
+    init();
     sub.value = 1;
     applyTemplate(template);
     zoomToPuzzleArea();
@@ -464,6 +453,8 @@
   const cancel = () => {
     restoreSnapshotBeforeLayout();
     showControlPanel.value = false;
+    setPuzzleMode(false); // 退出拼图模式
+    exitPuzzleMode();
     curTemp.value = {};
   };
 
@@ -522,6 +513,8 @@
     
     // 3. 返回
     showControlPanel.value = false;
+    setPuzzleMode(false); // 退出拼图模式
+    exitPuzzleMode();
   };
 
   // === Sub 3 逻辑 ===

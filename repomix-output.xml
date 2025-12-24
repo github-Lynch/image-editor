@@ -214,322 +214,6 @@ const handlePaste = () => {
 </style>
 </file>
 
-<file path="src/components/common/FloatingObjectMenu.vue">
-<template>
-  <div 
-    v-show="isVisible" 
-    class="floating-wrapper"
-    :style="{ left: position.left + 'px', top: position.top + 'px' }"
-  >
-    <button 
-      class="trigger-btn" 
-      @click.stop="toggleMenu" 
-      :class="{ active: isMenuOpen }"
-      title="更多操作"
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="1"></circle>
-        <circle cx="19" cy="12" r="1"></circle>
-        <circle cx="5" cy="12" r="1"></circle>
-      </svg>
-    </button>
-
-    <div v-if="isMenuOpen" class="main-menu">
-      
-      <div class="menu-item" @click="handleAction(actions.copyActive)">
-        <span class="icon">
-           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-        </span>
-        <span class="label">复制</span>
-        <span class="shortcut">Ctrl+C</span>
-      </div>
-
-      <div class="menu-item" @click="handleAction(actions.cutActive)">
-        <span class="icon">
-           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
-        </span>
-        <span class="label">剪切</span>
-        <span class="shortcut">Ctrl+X</span>
-      </div>
-
-      <div class="menu-item" @click="handleLock">
-        <span class="icon">
-          <svg v-if="isLocked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></svg>
-        </span>
-        <span class="label">{{ isLocked ? '解锁' : '锁定' }}</span>
-        <span class="shortcut">Shift+Ctrl+L</span>
-      </div>
-
-      <div class="menu-item has-submenu">
-        <span class="icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline><polyline points="2 7 12 12 22 7"></polyline></svg>
-        </span>
-        <span class="label">图层顺序</span>
-        <span class="arrow-right">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </span>
-
-        <div class="submenu">
-           <div class="menu-item" @click="handleAction(() => actions.moveLayer('forward'))">
-             <span class="label">上一层</span>
-             <span class="shortcut">]</span>
-           </div>
-           <div class="menu-item" @click="handleAction(() => actions.moveLayer('backward'))">
-             <span class="label">下一层</span>
-             <span class="shortcut">[</span>
-           </div>
-           <div class="divider"></div>
-           <div class="menu-item" @click="handleAction(() => actions.moveLayer('front'))">
-             <span class="label">置顶</span>
-             <span class="shortcut">Shift+]</span>
-           </div>
-           <div class="menu-item" @click="handleAction(() => actions.moveLayer('back'))">
-             <span class="label">置底</span>
-             <span class="shortcut">Shift+[</span>
-           </div>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="menu-item delete" @click="handleAction(actions.deleteActive)">
-        <span class="icon">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-        </span>
-        <span class="label">删除</span>
-        <span class="shortcut">Del</span>
-      </div>
-
-      <div v-if="$slots.extra">
-          <div class="divider"></div>
-          <slot name="extra"></slot>
-      </div>
-
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, inject, onMounted, onUnmounted, unref } from 'vue';
-import { useObjectActions } from '@/composables/useObjectActions';
-
-const canvasAPI = inject('canvasAPI');
-const actions = useObjectActions();
-
-const isVisible = ref(false);
-const isMenuOpen = ref(false); 
-const isLocked = ref(false);
-const position = ref({ left: 0, top: 0 });
-
-const toggleMenu = () => {
-  isMenuOpen.value = !isMenuOpen.value;
-};
-
-const handleAction = (actionFn) => {
-  actionFn();
-  isMenuOpen.value = false; 
-};
-
-const handleLock = () => {
-  const locked = actions.toggleLock();
-  isLocked.value = locked;
-};
-
-// 更新菜单位置
-const updatePosition = () => {
-  const canvas = unref(canvasAPI.canvas);
-  const activeObj = canvas?.getActiveObject();
-
-  if (!activeObj || activeObj.isMainImage) {
-    isVisible.value = false;
-    isMenuOpen.value = false;
-    return;
-  }
-
-  const coords = activeObj.getBoundingRect(true, true);
-  const containerWidth = canvas.getElement().parentElement.offsetWidth;
-  const menuWidth = 40; 
-  
-  let newLeft = coords.left + coords.width + 40; 
-
-  if (newLeft + menuWidth > containerWidth) {
-      newLeft = coords.left - menuWidth + 76;
-  }
-
-  position.value = {
-    left: newLeft,
-    top: coords.top + 5
-  };
-
-  isVisible.value = true;
-  isLocked.value = !!activeObj.lockMovementX;
-};
-
-const bindEvents = () => {
-  const canvas = unref(canvasAPI.canvas);
-  if (!canvas) return;
-
-  const events = [
-    'selection:created', 'selection:updated', 'object:moving', 
-    'object:scaling', 'object:rotating', 'object:modified'
-  ];
-  events.forEach(evt => canvas.on(evt, updatePosition));
-  
-  canvas.on('selection:cleared', () => { 
-    isVisible.value = false; 
-    isMenuOpen.value = false;
-  });
-};
-
-const unbindEvents = () => {
-  const canvas = unref(canvasAPI.canvas);
-  if (!canvas) return;
-  canvas.off('selection:cleared');
-  const events = [
-    'selection:created', 'selection:updated', 'object:moving', 
-    'object:scaling', 'object:rotating', 'object:modified'
-  ];
-  events.forEach(evt => canvas.off(evt));
-};
-
-onMounted(() => setTimeout(bindEvents, 200));
-onUnmounted(unbindEvents);
-</script>
-
-<style scoped>
-/* 悬浮容器 */
-.floating-wrapper {
-  position: absolute;
-  z-index: 2000;
-  pointer-events: auto;
-}
-
-/* 1. 触发按钮 */
-.trigger-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 8px;
-  background: #ffffff;
-  border: 1px solid #e4e7ed;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #606266;
-  transition: all 0.2s;
-  padding: 0 !important;
-}
-
-.trigger-btn:hover, .trigger-btn.active {
-  background: #ecf5ff;
-  color: var(--ie-primary-color);
-  border-color: var(--ie-primary-color);
-}
-
-/* 2. 主菜单 */
-.main-menu {
-  position: absolute;
-  top: 15px;
-  left: 22px;
-  width: 180px; /* 加宽一点以容纳快捷键 */
-  background: #ffffff;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  padding: 4px 0;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 菜单项布局优化 */
-.menu-item {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #606266;
-  cursor: pointer;
-  transition: background 0.1s;
-}
-
-.menu-item:hover {
-  background: #f5f7fa;
-  color: var(--ie-primary-color);
-}
-
-.menu-item.delete:hover {
-  background: #fef0f0;
-  color: #f56c6c;
-}
-
-.icon {
-  display: flex;
-  align-items: center;
-  margin-right: 8px;
-  width: 16px;
-  opacity: 0.8;
-}
-
-.label {
-  flex: 1; /* 撑开中间，把快捷键挤到右边 */
-}
-
-/* ✨ 快捷键样式 */
-.shortcut {
-  font-size: 11px;
-  color: #bfa; /* 这个绿色是示例，实际建议用浅灰色 */
-  color: #909399; /* 修正为浅灰色，更专业 */
-  margin-left: 8px;
-  font-family: monospace; /* 等宽字体更好看 */
-  opacity: 0.8;
-}
-
-.arrow-right {
-  margin-left: auto;
-  opacity: 0.5;
-  display: flex;
-  align-items: center;
-}
-
-.divider {
-  height: 1px;
-  background: #ebeef5;
-  margin: 4px 0;
-}
-
-/* 3. 二级菜单 */
-.submenu {
-  display: none;
-  position: absolute;
-  left: 100%;
-  top: -4px;
-  width: 140px; /* 也稍微加宽 */
-  background: #ffffff;
-  border: 1px solid #ebeef5;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-  padding: 4px 0;
-  margin-left: 4px;
-}
-
-.menu-item.has-submenu:hover .submenu {
-  display: block;
-}
-
-.menu-item.has-submenu::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -10px;
-  width: 10px;
-  height: 100%;
-}
-</style>
-</file>
-
 <file path="src/components/common/LoadingOverlay.vue">
 <template>
     <div v-if="state.isLoading" class="loading-overlay">
@@ -2004,6 +1688,427 @@ body {
 </style>
 </file>
 
+<file path="src/components/common/FloatingObjectMenu.vue">
+<template>
+  <div
+    v-show="isVisible"
+    class="floating-wrapper"
+    :style="{ left: position.left + 'px', top: position.top + 'px' }"
+  >
+    <button
+      class="trigger-btn"
+      @click.stop="toggleMenu"
+      :class="{ active: isMenuOpen }"
+      title="更多操作"
+    >
+      <svg
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <circle cx="12" cy="12" r="1"></circle>
+        <circle cx="19" cy="12" r="1"></circle>
+        <circle cx="5" cy="12" r="1"></circle>
+      </svg>
+    </button>
+
+    <div v-if="isMenuOpen" class="main-menu">
+      <div class="menu-item" @click="handleAction(actions.copyActive)">
+        <span class="icon">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path
+              d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+            ></path>
+          </svg>
+        </span>
+        <span class="label">复制</span>
+        <span class="shortcut">Ctrl+C</span>
+      </div>
+
+      <div class="menu-item" @click="handleAction(actions.cutActive)">
+        <span class="icon">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="6" cy="6" r="3"></circle>
+            <circle cx="6" cy="18" r="3"></circle>
+            <line x1="20" y1="4" x2="8.12" y2="15.88"></line>
+            <line x1="14.47" y1="14.48" x2="20" y2="20"></line>
+            <line x1="8.12" y1="8.12" x2="12" y2="12"></line>
+          </svg>
+        </span>
+        <span class="label">剪切</span>
+        <span class="shortcut">Ctrl+X</span>
+      </div>
+
+      <div class="menu-item" @click="handleLock">
+        <span class="icon">
+          <svg
+            v-if="isLocked"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+          <svg
+            v-else
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+          </svg>
+        </span>
+        <span class="label">{{ isLocked ? "解锁" : "锁定" }}</span>
+        <span class="shortcut">Shift+Ctrl+L</span>
+      </div>
+
+      <div class="menu-item has-submenu">
+        <span class="icon">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+            <polyline points="2 7 12 12 22 7"></polyline>
+          </svg>
+        </span>
+        <span class="label">图层顺序</span>
+        <span class="arrow-right">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+        </span>
+
+        <div class="submenu">
+          <div
+            class="menu-item"
+            @click="handleAction(() => actions.moveLayer('forward'))"
+          >
+            <span class="label">上一层</span>
+            <span class="shortcut">]</span>
+          </div>
+          <div
+            class="menu-item"
+            @click="handleAction(() => actions.moveLayer('backward'))"
+          >
+            <span class="label">下一层</span>
+            <span class="shortcut">[</span>
+          </div>
+          <div class="divider"></div>
+          <div
+            class="menu-item"
+            @click="handleAction(() => actions.moveLayer('front'))"
+          >
+            <span class="label">置顶</span>
+            <span class="shortcut">Shift+]</span>
+          </div>
+          <div
+            class="menu-item"
+            @click="handleAction(() => actions.moveLayer('back'))"
+          >
+            <span class="label">置底</span>
+            <span class="shortcut">Shift+[</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="menu-item delete" @click="handleAction(actions.deleteActive)">
+        <span class="icon">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path
+              d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            ></path>
+          </svg>
+        </span>
+        <span class="label">删除</span>
+        <span class="shortcut">Del</span>
+      </div>
+
+      <div v-if="$slots.extra">
+        <div class="divider"></div>
+        <slot name="extra"></slot>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, inject, onMounted, onUnmounted, unref } from "vue";
+import { useObjectActions } from "@/composables/useObjectActions";
+
+const canvasAPI = inject("canvasAPI");
+const actions = useObjectActions();
+
+const isVisible = ref(false);
+const isMenuOpen = ref(false);
+const isLocked = ref(false);
+const position = ref({ left: 0, top: 0 });
+
+const toggleMenu = () => {
+  isMenuOpen.value = !isMenuOpen.value;
+};
+
+const handleAction = (actionFn) => {
+  actionFn();
+  isMenuOpen.value = false;
+};
+
+const handleLock = () => {
+  const locked = actions.toggleLock();
+  isLocked.value = locked;
+};
+
+// 更新菜单位置
+const updatePosition = () => {
+  const canvas = unref(canvasAPI.canvas);
+  const activeObj = canvas?.getActiveObject();
+
+  // 🛡️ [关键修复]：如果对象被标记为不可响应 (evented: false) 或者不可选中 (selectable: false)，
+  // 坚决不显示菜单！这能防止漏网之鱼。
+  if (
+    !activeObj ||
+    activeObj.isMainImage ||
+    activeObj.evented === false ||
+    activeObj.selectable === false
+  ) {
+    isVisible.value = false;
+    isMenuOpen.value = false;
+    return;
+  }
+
+  const coords = activeObj.getBoundingRect(true, true);
+  const containerWidth = canvas.getElement().parentElement.offsetWidth;
+  const menuWidth = 40;
+
+  let newLeft = coords.left + coords.width + 40;
+
+  if (newLeft + menuWidth > containerWidth) {
+    newLeft = coords.left - menuWidth + 76;
+  }
+
+  position.value = {
+    left: newLeft,
+    top: coords.top + 5,
+  };
+
+  isVisible.value = true;
+  isLocked.value = !!activeObj.lockMovementX;
+};
+
+const bindEvents = () => {
+  const canvas = unref(canvasAPI.canvas);
+  if (!canvas) return;
+
+  const events = [
+    "selection:created",
+    "selection:updated",
+    "object:moving",
+    "object:scaling",
+    "object:rotating",
+    "object:modified",
+  ];
+  events.forEach((evt) => canvas.on(evt, updatePosition));
+
+  canvas.on("selection:cleared", () => {
+    isVisible.value = false;
+    isMenuOpen.value = false;
+  });
+};
+
+const unbindEvents = () => {
+  const canvas = unref(canvasAPI.canvas);
+  if (!canvas) return;
+  canvas.off("selection:cleared");
+  const events = [
+    "selection:created",
+    "selection:updated",
+    "object:moving",
+    "object:scaling",
+    "object:rotating",
+    "object:modified",
+  ];
+  events.forEach((evt) => canvas.off(evt));
+};
+
+onMounted(() => setTimeout(bindEvents, 200));
+onUnmounted(unbindEvents);
+</script>
+
+<style scoped>
+.floating-wrapper {
+  position: absolute;
+  z-index: 2000;
+  pointer-events: auto;
+}
+
+.trigger-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e4e7ed;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #606266;
+  transition: all 0.2s;
+  padding: 0 !important;
+}
+
+.trigger-btn:hover,
+.trigger-btn.active {
+  background: #ecf5ff;
+  color: var(--ie-primary-color);
+  border-color: var(--ie-primary-color);
+}
+
+.main-menu {
+  position: absolute;
+  top: 15px;
+  left: 22px;
+  width: 180px;
+  background: #ffffff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #606266;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.menu-item:hover {
+  background: #f5f7fa;
+  color: var(--ie-primary-color);
+}
+
+.menu-item.delete:hover {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+  width: 16px;
+  opacity: 0.8;
+}
+
+.label {
+  flex: 1;
+}
+
+.shortcut {
+  font-size: 11px;
+  color: #909399;
+  margin-left: 8px;
+  font-family: monospace;
+  opacity: 0.8;
+}
+
+.arrow-right {
+  margin-left: auto;
+  opacity: 0.5;
+  display: flex;
+  align-items: center;
+}
+
+.divider {
+  height: 1px;
+  background: #ebeef5;
+  margin: 4px 0;
+}
+
+.submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: -4px;
+  width: 140px;
+  background: #ffffff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 4px 0;
+  margin-left: 4px;
+}
+
+.menu-item.has-submenu:hover .submenu {
+  display: block;
+}
+
+.menu-item.has-submenu::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -10px;
+  width: 10px;
+  height: 100%;
+}
+</style>
+</file>
+
 <file path="src/components/modules/adjust/AdjustMosaic.vue">
 <template>
   <div class="tool-group">
@@ -2117,307 +2222,6 @@ onUnmounted(() => {
 
 .action-buttons { display: flex; gap: 10px; }
 .full { flex: 1; }
-</style>
-</file>
-
-<file path="src/components/modules/adjust/AdjustRuler.vue">
-<template>
-  <div class="tool-group">
-    <div class="tool-item" :class="{ 'is-expanded': isExpanded }" @click="$emit('toggle')">
-      <div class="left">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0l12.6 12.6z"></path>
-          <path d="m5 6 1.7 1.7"></path>
-          <path d="m17 18 1.7 1.7"></path>
-          <path d="m11 12 1.7 1.7"></path>
-        </svg>
-        <span>测量标尺</span>
-      </div>
-      <div class="right-icon">
-        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </div>
-    </div>
-
-    <div v-if="isExpanded" class="tool-content">
-      
-      <div class="control-group">
-        <div class="section-title">
-          端点样式 
-          <span v-if="isDrawing" style="color:var(--ie-primary-color); float:right; font-weight:normal; animation: blink 1.5s infinite;">
-            绘制中...
-          </span>
-        </div>
-        <div class="style-grid">
-          <div 
-            v-for="style in CAP_STYLES" 
-            :key="style.id"
-            class="style-item"
-            :class="{ active: isStyleActive(style.id) }" 
-            @click="setCapStyle(style.id)"
-            :title="style.label"
-          >
-            <svg width="40" height="20" viewBox="0 0 60 20">
-              <line x1="10" y1="10" x2="50" y2="10" stroke="currentColor" stroke-width="2" />
-              <g v-if="style.id === 'line'">
-                <line x1="10" y1="5" x2="10" y2="15" stroke="currentColor" stroke-width="2" />
-                <line x1="50" y1="5" x2="50" y2="15" stroke="currentColor" stroke-width="2" />
-              </g>
-              <g v-if="style.id === 'arrow'">
-                <path d="M10 10 L15 7 V13 Z" fill="currentColor" />
-                <path d="M50 10 L45 7 V13 Z" fill="currentColor" />
-              </g>
-              <g v-if="style.id === 'arrow_in'">
-                <path d="M5 7 L10 10 L5 13 Z" fill="currentColor" />
-                <path d="M55 7 L50 10 L55 13 Z" fill="currentColor" />
-              </g>
-              <g v-if="style.id === 'dot'">
-                <circle cx="10" cy="10" r="3" fill="currentColor" />
-                <circle cx="50" cy="10" r="3" fill="currentColor" />
-              </g>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <div class="section-title">线身类型</div>
-        <div class="custom-select" :class="{ open: isDashSelectOpen }">
-          <div class="selected-value" @click="isDashSelectOpen = !isDashSelectOpen">
-             <svg width="100%" height="10" viewBox="0 0 160 10" preserveAspectRatio="none">
-               <line 
-                 x1="0" y1="5" x2="160" y2="5" 
-                 stroke="currentColor" stroke-width="2" 
-                 :stroke-dasharray="currentDashStr"
-                 :stroke-linecap="rulerConfig.strokeLineCap || 'butt'"
-               />
-             </svg>
-             <svg class="dropdown-arrow" width="12" height="12" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z" fill="currentColor"/></svg>
-          </div>
-          
-          <div v-show="isDashSelectOpen" class="options-list">
-             <div 
-               v-for="(opt, idx) in DASH_OPTIONS" 
-               :key="idx" 
-               class="option-item"
-               @click="setDashPattern(opt)"
-             >
-                <div class="opt-label">{{ opt.label }}</div>
-                <svg width="80" height="10" viewBox="0 0 80 10" preserveAspectRatio="none">
-                  <line 
-                    x1="0" y1="5" x2="80" y2="5" 
-                    stroke="#606266" stroke-width="2" 
-                    :stroke-dasharray="opt.value.join(',')" 
-                    :stroke-linecap="opt.strokeLineCap || 'butt'"
-                  />
-                </svg>
-             </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <div class="control-group">
-        <div class="label-row">
-          <span>标注数值</span>
-        </div>
-        <div class="input-group">
-          <input 
-            type="number" 
-            v-model.number="rulerConfig.value" 
-            class="ie-input-number" 
-            style="flex:1; width:auto;"
-            @input="updateActiveRuler"
-          >
-          <select v-model="rulerConfig.unit" class="ie-select" @change="updateActiveRuler">
-            <option value="px">px</option>
-            <option value="cm">cm</option>
-            <option value="mm">mm</option>
-            <option value="m">m</option>
-            <option value="in">inch</option>
-            <option value="ft">foot</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="control-group">
-        <div class="label-row">
-          <span>线条颜色</span>
-          <input type="color" v-model="rulerConfig.color" @input="updateActiveRuler">
-        </div>
-        
-        <div class="label-row">
-          <span>透明度</span>
-          <span class="val">{{ rulerConfig.opacity }}%</span>
-        </div>
-        <input 
-          type="range" 
-          v-model.number="rulerConfig.opacity" 
-          min="10" max="100" 
-          class="ie-slider" 
-          @input="updateActiveRuler"
-        >
-      </div>
-
-      <div class="control-group">
-        <div class="label-row">
-          <span>线条粗细</span>
-          <span class="val">{{ rulerConfig.strokeWidth }}px</span>
-        </div>
-        <input 
-          type="range" 
-          v-model.number="rulerConfig.strokeWidth" 
-          min="1" max="10" 
-          class="ie-slider" 
-          @input="updateActiveRuler"
-        >
-      </div>
-
-      <div class="control-group">
-        <div class="label-row">
-          <span>字体大小</span>
-          <input 
-            type="number" 
-            v-model.number="rulerConfig.fontSize" 
-            class="ie-input-number"
-            @input="updateActiveRuler"
-          >
-        </div>
-        <div class="label-row" style="margin-top:8px">
-          <span>文字背景</span>
-          <input type="checkbox" v-model="rulerConfig.showBg" @change="updateActiveRuler">
-        </div>
-      </div>
-
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { defineProps, defineEmits, inject, onMounted, onUnmounted, ref, computed, watch } from 'vue';
-import { 
-  registerRulerModule, 
-  rulerConfig, 
-  isDrawing, 
-  startDrawMode, 
-  stopDrawMode, 
-  updateActiveRuler,
-  CAP_STYLES,      
-  DASH_OPTIONS     
-} from './useCanvasRuler';
-// [NEW] 引入通用锁定钩子
-import { useCanvasLock } from '@/composables/useCanvasLock'; // 假设路径
-
-const props = defineProps({ isExpanded: Boolean });
-const emit = defineEmits(['toggle']);
-const canvasAPI = inject('canvasAPI');
-
-const isDashSelectOpen = ref(false);
-const { setBackgroundLock } = useCanvasLock();
-
-// === 生命周期与状态管理 ===
-watch(() => props.isExpanded, (val) => {
-    const canvas = canvasAPI.canvas.value;
-    
-    // [NEW] 同步锁定/解锁背景
-    // 进入模块 -> 锁背景; 离开模块 -> 解锁背景
-    setBackgroundLock(canvas, val);
-
-    if (val) {
-        // [场景1] 进入模块
-        const activeObj = canvas?.getActiveObject();
-        // 只有在【没有】选中现有尺子的情况下，才自动进入绘制模式
-        if (!activeObj || !activeObj.isRuler) {
-            setCapStyle(CAP_STYLES[0].id); 
-        }
-    } else {
-        // [场景2] 离开模块
-        if (isDrawing.value) {
-            stopDrawMode();
-        }
-    }
-});
-
-// [NEW] 组件销毁兜底：确保一定解锁背景，防止副作用残留
-onUnmounted(() => {
-    if (canvasAPI && canvasAPI.canvas.value) {
-        setBackgroundLock(canvasAPI.canvas.value, false);
-    }
-});
-
-// === 视觉高亮逻辑 ===
-const isStyleActive = (styleId) => {
-    // 仅在“绘制中”才高亮图标，选中旧尺子时不亮
-    return isDrawing.value && rulerConfig.value.capStyle === styleId;
-};
-
-// ...其余交互逻辑保持不变...
-const setCapStyle = (styleId) => {
-    rulerConfig.value.capStyle = styleId;
-    const canvas = canvasAPI.canvas.value;
-    const activeObj = canvas?.getActiveObject();
-
-    if (activeObj && activeObj.isRuler) {
-        updateActiveRuler();
-    } else {
-        if (!isDrawing.value) {
-            startDrawMode();
-        }
-    }
-};
-
-const setDashPattern = (opt) => {
-    rulerConfig.value.dashArray = opt.value;
-    rulerConfig.value.strokeLineCap = opt.strokeLineCap || 'butt';
-    isDashSelectOpen.value = false;
-    const canvas = canvasAPI.canvas.value;
-    const activeObj = canvas?.getActiveObject();
-    if (activeObj && activeObj.isRuler) {
-        updateActiveRuler();
-    }
-};
-
-const currentDashStr = computed(() => {
-    return rulerConfig.value.dashArray ? rulerConfig.value.dashArray.join(',') : '';
-});
-
-onMounted(() => {
-  if (canvasAPI && canvasAPI.canvas) {
-    registerRulerModule(canvasAPI.canvas, canvasAPI.saveHistory);
-  }
-});
-</script>
-
-<style scoped>
-@keyframes blink {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.tool-content { padding: 16px; }
-.section-title { font-size: 12px; color: #909399; margin-bottom: 8px; font-weight: 500; }
-.style-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
-.style-item { height: 32px; border: 1px solid #dcdfe6; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #606266; background: #fff; transition: all 0.2s; }
-.style-item:hover { border-color: #c0c4cc; }
-.style-item.active { border-color: var(--ie-primary-color); color: var(--ie-primary-color); background-color: #ecf5ff; }
-
-.custom-select { position: relative; width: 100%; border: 1px solid #dcdfe6; border-radius: 4px; background: #fff; cursor: pointer; }
-.selected-value { height: 32px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; color: #606266; }
-.options-list { position: absolute; top: 100%; left: -1px; right: -1px; background: #fff; border: 1px solid #dcdfe6; border-radius: 0 0 4px 4px; z-index: 10; max-height: 200px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-.option-item { height: 32px; padding: 0 12px; display: flex; align-items: center; }
-.option-item:hover { background-color: #f5f7fa; }
-.opt-label { font-size: 12px; color: #606266; margin-right: 12px; min-width: 40px; }
-
-.divider { height: 1px; background: #ebeef5; margin: 16px 0; }
-.control-group { margin-bottom: 16px; }
-.label-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #606266; margin-bottom: 8px; }
-.input-group { display: flex; gap: 8px; }
-.ie-select { height: 28px; border: 1px solid #dcdfe6; border-radius: 4px; font-size: 12px; color: #606266; padding: 0 4px; outline: none; background: white; }
-.val { font-family: monospace; }
-.ie-slider { width: 100%; }
 </style>
 </file>
 
@@ -2612,55 +2416,6 @@ export const commitColorOverlay = () => {
 };
 </file>
 
-<file path="src/composables/useCanvasLock.js">
-import { unref } from 'vue';
-
-/**
- * 通用画布锁定钩子 (修正版)
- * 针对：主图作为普通对象位于图层最底层 (Index 0) 的情况
- */
-export function useCanvasLock() {
-
-    /**
-     * 切换主图的锁定状态
-     * @param {Object} canvasInstance - Fabric canvas 实例
-     * @param {Boolean} shouldLock - true: 锁定; false: 解锁
-     */
-    const setBackgroundLock = (canvasInstance, shouldLock) => {
-        const canvas = unref(canvasInstance);
-        if (!canvas) return;
-
-        // [修正点] 获取对象列表中的第一个元素 (最底层)
-        const objects = canvas.getObjects();
-        const bgObject = objects[0];
-
-        // 安全检查：确保底层存在对象，且通常应该是图片
-        if (bgObject && (bgObject.type === 'image' || bgObject.id === 'workspace_bg')) {
-            // 锁定核心属性
-            bgObject.set({
-                selectable: !shouldLock, // 锁定时不可选中
-                evented: !shouldLock,    // 锁定时不可响应鼠标 (允许穿透)
-                hoverCursor: shouldLock ? 'default' : null // 鼠标样式
-            });
-
-            // 强制取消当前可能存在的选中状态
-            if (shouldLock && canvas.getActiveObject() === bgObject) {
-                canvas.discardActiveObject();
-            }
-
-            canvas.requestRenderAll();
-        } else {
-            // 仅在开发环境提示，避免干扰
-            console.warn('[useCanvasLock] 未在图层底部(Index 0)找到主图对象，锁定未生效。');
-        }
-    };
-
-    return {
-        setBackgroundLock
-    };
-}
-</file>
-
 <file path="src/config/theme.js">
 // src/config/theme.js
 
@@ -2730,118 +2485,6 @@ export const toast = {
     error(text) { this.show(text, 'error'); },
     info(text) { this.show(text, 'info'); }
 };
-</file>
-
-<file path=".spec/project-charter.md">
-# Project Charter: Image Editor SDK (大秘美图)
-
-> **Version**: 3.8.0 (Integrated Edition)
-> **Last Updated**: 2025-12-22
-> **Context**: High-performance Web Image Processing SDK
-> **Enforcement**: 此文档为最高准则，AI 生成代码必须严格查阅并遵循。
-
-## 1. 项目愿景 (Vision)
-
-构建一个**模块化、高性能**的 Web 端图像处理 SDK。核心架构采用“轻量级核心 (Core) + 功能插件化 (Modules)”的设计模式，支持从基础的裁剪旋转到复杂的 AI 消除、拼图和滤镜处理。
-
----
-
-## 2. 技术栈与版本约束 (Tech Stack)
-
-> ⚠️ **关键约束**：所有自动生成的代码必须严格遵守以下版本特性。
-
-- **Core Framework**: Vue 3.3+ (Composition API, `<script setup>`)
-- **Graphics Engine**: **Fabric.js v5.3.0** (Locked)
-  - ❌ **严禁**: 使用 Fabric v6 的 `Canvas` 类名或 Promise-based 渲染。
-  - ✅ **必须**: 使用 `new fabric.Canvas()` 等 v5 风格 API。
-- **Build Tool**: Vite 7.x
-- **Style System**: **Native CSS (Scoped) + CSS Variables**
-  - **Color Source**: 遵循 SSOT 原则，颜色必须定义在 `src/config/theme.js`。
-  - **Isolation**: 所有样式必须包裹在 `.image-editor-sdk-container` 作用域内。
-- **State Management**: **Custom Reactive Singleton**
-  - 必须保持响应性，严禁直接解构 State 对象。
-
----
-
-## 3. 核心架构模式 (Core Architecture Patterns) `Critical`
-
-### 3.1 颜色管理策略 (Color Strategy)
-
-> **原则**: 解决 Canvas (JS) 与 UI (CSS) 颜色不同步问题。
-
-1.  **真理源**: 所有颜色值定义在 `src/config/theme.js` 的 `THEME` 对象中。
-2.  **注入机制**: App 挂载时 (`onMounted`)，必须调用 `applyTheme(containerRef)` 将 JS 变量注入为 CSS 变量。
-3.  **使用规范**:
-    - **UI (Vue/CSS)**: 使用 `var(--ie-primary-color)`。
-    - **Canvas (JS)**: 引入 `THEME` 对象，使用 `THEME.colors.primary`。
-    - **禁止**: 代码中出现 `#409eff` 等硬编码颜色。
-
-### 3.2 高清离屏渲染 (Offscreen Rendering)
-
-- 所有涉及**导出图片**或**生成 AI 遮罩**的操作，必须使用 `src/composables/useOffscreenHelper.js`，严禁直接对主 Canvas 进行 `toDataURL`。
-
-### 3.3 模块通信 (Event Bus)
-
-- 使用 Fabric Canvas 实例 (`canvas.fire`) 作为唯一事件总线。
-
----
-
-## 4. 目录结构规范 (Directory Structure)
-
-| 路径                      | 说明                 | 规则                                                                    |
-| :------------------------ | :------------------- | :---------------------------------------------------------------------- |
-| `src/components/modules/` | **独立功能模块**     | 包含完整业务逻辑 (UI + Canvas 交互)，如 `Crop/`, `Puzzle/`, `Filter/`。 |
-| `src/components/tools/`   | **纯 Canvas 工具**   | 仅包含 Fabric.js 的自定义类或交互逻辑，如 `RulerTool.js`。              |
-| `src/components/common/`  | **通用 UI 组件**     | 无业务逻辑的纯 UI，如 Slider, Button, Modal。                           |
-| `src/composables/`        | **逻辑复用 (Hooks)** | 必须以 `use` 开头，如 `useKeyboardShortcuts.js`。                       |
-| `src/config/`             | **静态配置**         | 快捷键定义、拼图模板数据、滤镜参数矩阵、`theme.js`。                    |
-
----
-
-## 5. UI 开发规范 (UI Design System)
-
-> **原则**: 使用 Scoped CSS 和 CSS 变量，统一视觉风格。
-
-### 5.1 通用类名表 (Common Classes)
-
-| 组件类型       | 类名 (Class Name)  | 样式特征 (Style Specs)                                               |
-| :------------- | :----------------- | :------------------------------------------------------------------- |
-| **面板容器**   | `.tool-panel`      | `bg: var(--panel-bg)`, 固定宽 280px，白底/深色模式适配，绝对定位右侧 |
-| **面板标题**   | `.panel-title`     | 14px, 600 weight, 底部 Margin                                        |
-| **控制组**     | `.control-group`   | 包含标签和控件的容器，底部 Margin (24px)                             |
-| **属性行**     | `.label-row`       | Flex 布局 (两端对齐)，用于显示 "属性名 - 数值"                       |
-| **主要按钮**   | `.btn-primary`     | 100% 宽度，`bg: var(--primary)`，圆角 (4px)                          |
-| **次要按钮**   | `.btn-secondary`   | `border: var(--border)`，用于取消或次要操作                          |
-| **滑动条**     | `.slider-input`    | 统一宽度的 range input                                               |
-| **数值输入框** | `.ie-input-number` | 固定宽 50px，高 28px，居中对齐，无原生箭头，常配合 Slider 使用       |
-
----
-
-## 6. 开发工作流 (OpenSpec Workflow)
-
-### 6.1 提议 (Proposal)
-
-在开发新功能前，必须在 `.spec/proposals/` 下创建文档，并回答以下“灵魂三问”：
-
-1.  **复用检查**: “我要写的这个辅助函数，`src/utils` 里有没有？UI 组件在 `common` 里有没有？架构模式在 `Section 3` 里有没有？”
-2.  **UI 位置**: 在 `ToolPanel` 的哪个位置增加入口？
-3.  **交互逻辑**: 拖入画布后的默认行为（居中？自动缩放？）。
-
-### 6.2 实施检查清单 (The "Golden Checklist") [CRITICAL]
-
-- [ ] **Canvas 销毁**: 组件 `onUnmounted` 时是否注销了 fabric 事件监听？
-- [ ] **状态清理**: 退出模块时，是否重置了 `activeTool` 和临时图层？
-- [ ] **键盘安全**: 新增快捷键是否判断了 `document.activeElement` 以防止输入框冲突？
-- [ ] **响应式检查**: 是否错误地使用了 `const { state } = useStore()` 导致响应性丢失？
-- [ ] **颜色合规**: 检查代码中是否还残留 `#hex` 硬编码颜色？
-
----
-
-## 7. 禁区 (Forbidden Zones)
-
-1.  **DOM 操作**: 严禁使用 jQuery 操作 Canvas 内部。
-2.  **重型计算**: 严禁在 `mousemove` 中直接运行高开销算法。
-3.  **硬编码颜色**: 严禁写死颜色值，必须引用 `THEME` 或 CSS 变量。
 </file>
 
 <file path="src/api/ai.js">
@@ -2940,127 +2583,6 @@ export const aiApi = {
     });
   }
 };
-</file>
-
-<file path="src/components/common/Modal.vue">
-<template>
-    <Teleport to="body">
-        <Transition name="fade">
-            <div v-if="modelValue" class="modal-mask" @click.self="$emit('cancel')">
-                <div class="modal-container">
-                    <button class="modal-close" title="关闭" @click="$emit('cancel')">×</button>
-
-                    <div class="modal-header">
-                        <h3>{{ title }}</h3>
-                    </div>
-                    <div class="modal-body">
-                        <slot>{{ content }}</slot>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="ie-btn btn-secondary" @click="$emit('discard')">不保存</button>
-                        <button class="ie-btn btn-primary" @click="$emit('confirm')">保存并退出</button>
-                    </div>
-                </div>
-            </div>
-        </Transition>
-    </Teleport>
-</template>
-
-<script setup>
-defineProps({
-    modelValue: Boolean,
-    title: { type: String, default: '提示' },
-    content: String
-});
-defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
-</script>
-
-<style scoped>
-.modal-mask {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-}
-
-.modal-container {
-    position: relative;
-    background: white;
-    border-radius: 12px;
-    width: 320px;
-    padding: 24px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.modal-header h3 {
-    margin: 0 0 16px;
-    font-size: 18px;
-    color: #333;
-}
-
-.modal-close {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    background: none;
-    border: none;
-    font-size: 32px;
-    color: #909399;
-    cursor: pointer;
-    padding: 0;
-    width: 32px;
-    height: 32px;
-    line-height: 1;
-}
-
-.modal-close:hover {
-    color: #606266;
-}
-
-.modal-body {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 24px;
-    line-height: 1.5;
-}
-
-.modal-footer {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-}
-
-.ie-btn {
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    border: none;
-    font-size: 14px;
-}
-
-.btn-primary {
-    background: var(--ie-primary-color);
-    color: white;
-}
-
-.btn-secondary {
-    background: #f4f4f5;
-    color: #606266;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-</style>
 </file>
 
 <file path="src/components/modules/adjust/AdjustColor.vue">
@@ -3658,335 +3180,127 @@ watch(brushSize, (val) => {
 });
 </file>
 
-<file path="src/components/modules/adjust/useCanvasRuler.js">
-import { ref, unref } from 'vue';
-import { fabric } from 'fabric';
+<file path="src/components/common/Modal.vue">
+<template>
+    <Teleport to="body">
+        <Transition name="fade">
+            <div v-if="modelValue" class="modal-mask" @click.self="$emit('cancel')">
+                <div class="modal-container">
+                    <button class="modal-close" title="关闭" @click="$emit('cancel')">×</button>
 
-// === 模块级单例状态 ===
-let canvasRef = null;
-let saveHistoryFn = null;
+                    <div class="modal-header">
+                        <h3>{{ title }}</h3>
+                    </div>
+                    <div class="modal-body">
+                        <slot>{{ content }}</slot>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="ie-btn btn-secondary" @click="$emit('discard')">{{ cancelText }}</button>
+                        <button class="ie-btn btn-primary" @click="$emit('confirm')">{{ confirmText }}</button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </Teleport>
+</template>
 
-// === 配置常量 ===
-export const DASH_OPTIONS = [
-    { label: '实线', value: [], icon: 'solid' },
-    { label: '长虚线', value: [15, 15], icon: 'long-dash' },
-    { label: '短虚线', value: [5, 5], icon: 'short-dash' },
-    { label: '疏点线', value: [0, 8], strokeLineCap: 'round' }, 
-    { label: '密点线', value: [0, 4], strokeLineCap: 'round' },
-    { label: '点划线', value: [15, 5, 0, 5], strokeLineCap: 'round' } 
-];
-
-export const CAP_STYLES = [
-    { id: 'line', label: '短线' },
-    { id: 'arrow', label: '外向箭头' },
-    { id: 'arrow_in', label: '内向箭头' },
-    { id: 'dot', label: '圆点' },
-    { id: 'none', label: '无' }
-];
-
-// 响应式状态
-const isDrawing = ref(false);
-const rulerConfig = ref({
-    value: 20,
-    unit: 'cm',
-    color: '#ff0000',
-    opacity: 100,
-    fontSize: 24,
-    fontFamily: 'Arial',
-    strokeWidth: 4,
-    showBg: true,
-    capStyle: 'line',    
-    dashArray: [],       
-    strokeLineCap: 'butt'
+<script setup>
+defineProps({
+    modelValue: Boolean,
+    title: { type: String, default: '保存?' },
+    content: { type: String, default: '注意: 使用拼图后会覆盖原图所有内容' },
+    cancelText: { type: String, default: '取消' },
+    confirmText: { type: String, default: '确认' },
 });
+defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
+</script>
 
-// === 1. 注册与初始化 ===
-export const registerRulerModule = (canvas, saveHistory) => {
-    canvasRef = canvas;
-    saveHistoryFn = saveHistory;
+<style scoped>
+.modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
 
-    const c = unref(canvas);
-    if (c) {
-        c.on('selection:created', onSelectionChanged);
-        c.on('selection:updated', onSelectionChanged);
-    }
-};
+.modal-container {
+    position: relative;
+    background: white;
+    border-radius: 12px;
+    width: 320px;
+    padding: 24px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
 
-// === 2. 端点工厂 ===
-const createCap = (type, color, strokeWidth) => {
-    const size = 10 + strokeWidth; 
-    if (type === 'arrow' || type === 'arrow_in') {
-        return new fabric.Triangle({
-            width: size, height: size, fill: color,
-            originX: 'center', originY: 'center', selectable: false
-        });
-    } else if (type === 'dot') {
-        return new fabric.Circle({
-            radius: strokeWidth * 1.5, fill: color,
-            originX: 'center', originY: 'center', selectable: false
-        });
-    } else if (type === 'line') {
-        return new fabric.Line([0, -size, 0, size], {
-            stroke: color, strokeWidth: strokeWidth,
-            originX: 'center', originY: 'center', selectable: false
-        });
-    } else {
-        return new fabric.Rect({ width: 0, height: 0, visible: false });
-    }
-};
+.modal-header h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+    color: #333;
+}
 
-// === 3. 创建标尺对象 ===
-const createRulerObject = (start, end) => {
-    const canvas = unref(canvasRef);
-    const cfg = rulerConfig.value;
-    
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.sqrt(dx * dx + dy * dy);
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    const midX = (start.x + end.x) / 2;
-    const midY = (start.y + end.y) / 2;
-    const halfLen = length / 2;
+.modal-close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: none;
+    border: none;
+    font-size: 32px;
+    color: #909399;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    line-height: 1;
+}
 
-    const line = new fabric.Line([-halfLen, 0, halfLen, 0], {
-        stroke: cfg.color, strokeWidth: cfg.strokeWidth,
-        strokeDashArray: cfg.dashArray, strokeLineCap: cfg.strokeLineCap || 'butt',
-        originX: 'center', originY: 'center'
-    });
+.modal-close:hover {
+    color: #606266;
+}
 
-    const startCap = createCap(cfg.capStyle, cfg.color, cfg.strokeWidth);
-    const endCap = createCap(cfg.capStyle, cfg.color, cfg.strokeWidth);
-    startCap.set({ left: -halfLen, top: 0 });
-    endCap.set({ left: halfLen, top: 0 });
-    
-    const updateCapRotation = (cap, isStart) => {
-        if (cfg.capStyle.includes('arrow')) {
-            let rot = 90;
-            if (cfg.capStyle === 'arrow') rot = isStart ? -90 : 90;
-            else rot = isStart ? 90 : -90;
-            cap.set({ angle: rot });
-        } else { cap.set({ angle: 0 }); }
-    };
-    updateCapRotation(startCap, true);
-    updateCapRotation(endCap, false);
+.modal-body {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 24px;
+    line-height: 1.5;
+}
 
-    const textObj = new fabric.Text(`${cfg.value} ${cfg.unit}`, {
-        fontSize: cfg.fontSize, fill: cfg.color, fontFamily: cfg.fontFamily,
-        backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : '',
-        originX: 'center', originY: 'bottom', left: 0, top: -10
-    });
-    if (Math.abs(angle) > 90) textObj.set({ angle: 180, originY: 'bottom', top: 10 });
+.modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
 
-    const group = new fabric.Group([line, startCap, endCap, textObj], {
-        left: midX, top: midY, angle: angle,
-        originX: 'center', originY: 'center', opacity: cfg.opacity / 100,
-        customTab: 'ruler', customTool: 'adjust', isRuler: true,
-        _rulerValue: cfg.value, _rulerUnit: cfg.unit,
-        _capStyle: cfg.capStyle, _dashArray: cfg.dashArray, _strokeLineCap: cfg.strokeLineCap,
-        lockScalingY: true, lockUniScaling: true
-    });
+.ie-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    font-size: 14px;
+}
 
-    group.setControlsVisibility({ mtr: true, ml: true, mr: true, mt:false, mb:false, tl:false, tr:false, bl:false, br:false });
-    canvas.add(group);
-    
-    // 【重要逻辑变更】
-    // 在连续绘制模式下，不要 setActiveObject(group)，因为这会触发 selection:created 
-    // 可能会导致 UI 跳变或干扰用户的下一次点击。
-    // 让新画的尺子静静地躺在那里即可。
-    
-    // canvas.setActiveObject(group); <--- 注释掉这行
-    
-    if (saveHistoryFn) saveHistoryFn();
-};
+.btn-primary {
+    background: var(--ie-primary-color);
+    color: white;
+}
 
-// === 4. 原地重生逻辑 ===
-const recreateActiveRuler = (activeGroup) => {
-    const canvas = unref(canvasRef);
-    const center = activeGroup.getCenterPoint();
-    const lineObj = activeGroup.getObjects()[0];
-    const currentWidth = lineObj.width * activeGroup.scaleX;
-    const angleRad = fabric.util.degreesToRadians(activeGroup.angle);
-    const dx = (currentWidth / 2) * Math.cos(angleRad);
-    const dy = (currentWidth / 2) * Math.sin(angleRad);
-    const start = { x: center.x - dx, y: center.y - dy };
-    const end = { x: center.x + dx, y: center.y + dy };
-    canvas.remove(activeGroup);
-    createRulerObject(start, end); // 这里调用会创建新对象，且不选中
-    
-    // 如果是编辑模式触发的重生，我们需要把新对象选中，不然用户会觉得自己丢失了焦点
-    // 但上面的 createRulerObject 修改为了不选中。
-    // 这里是一个 edge case，但为了保证连续绘制的体验，我们先优先保证绘制。
-    // 实际在 updateActiveRuler 里，我们最好手动选中回来。
-    const newGroup = canvas.getObjects().slice(-1)[0];
-    if (newGroup) canvas.setActiveObject(newGroup);
+.btn-secondary {
+    background: #f4f4f5;
+    color: #606266;
+}
 
-    canvas.requestRenderAll();
-};
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
 
-// === 5. 更新逻辑 ===
-export const updateActiveRuler = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-    const group = canvas.getActiveObject();
-    if (!group || !group.isRuler) return;
-
-    const cfg = rulerConfig.value;
-    const needsRebuild = (group._capStyle !== cfg.capStyle) || (group.getObjects()[3].fontSize !== cfg.fontSize);
-
-    if (needsRebuild) {
-        recreateActiveRuler(group);
-    } else {
-        const items = group.getObjects(); 
-        items[0].set({
-            stroke: cfg.color, strokeWidth: cfg.strokeWidth,
-            strokeDashArray: cfg.dashArray, strokeLineCap: cfg.strokeLineCap || 'butt'
-        });
-        items[1].set({ fill: cfg.color, stroke: cfg.color });
-        items[2].set({ fill: cfg.color, stroke: cfg.color });
-        items[3].set({
-            text: `${cfg.value} ${cfg.unit}`, fill: cfg.color,
-            backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : ''
-        });
-        group.set({ opacity: cfg.opacity / 100 });
-        group._rulerValue = cfg.value;
-        group._rulerUnit = cfg.unit;
-        group._dashArray = cfg.dashArray;
-        group._strokeLineCap = cfg.strokeLineCap;
-
-        canvas.requestRenderAll();
-        if (saveHistoryFn) saveHistoryFn();
-    }
-};
-
-// === 6. 事件监听 ===
-const onSelectionChanged = (e) => {
-    // 【重要】如果在绘制模式下，不要让选中的物体打断我的配置
-    if (isDrawing.value) return;
-
-    const activeObj = e.selected?.[0];
-    if (activeObj && activeObj.isRuler) {
-        // ... (同步配置代码保持不变) ...
-        const items = activeObj.getObjects();
-        rulerConfig.value.value = activeObj._rulerValue ?? 20;
-        rulerConfig.value.unit = activeObj._rulerUnit ?? 'cm';
-        rulerConfig.value.opacity = (activeObj.opacity || 1) * 100;
-        rulerConfig.value.capStyle = activeObj._capStyle || 'line'; 
-        rulerConfig.value.dashArray = activeObj._dashArray || [];
-        rulerConfig.value.strokeLineCap = activeObj._strokeLineCap || 'butt';
-        if (items[0]) {
-            rulerConfig.value.color = items[0].stroke;
-            rulerConfig.value.strokeWidth = items[0].strokeWidth;
-        }
-        if (items[3]) {
-            rulerConfig.value.fontSize = items[3].fontSize;
-            rulerConfig.value.showBg = !!items[3].backgroundColor;
-        }
-    }
-};
-
-// === 7. 绘制交互 (Continuos Mode) ===
-let startPoint = null;
-let activeLine = null;
-
-// 新增：键盘监听退出
-const onKeyDown = (e) => {
-    if (e.key === 'Escape' || e.key === 'Esc') {
-        stopDrawMode();
-    }
-};
-
-export const startDrawMode = () => {
-    if (isDrawing.value) return; // 防止重复绑定
-
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-    isDrawing.value = true;
-    
-    // 锁定画布所有对象
-    canvas.discardActiveObject();
-    canvas.selection = false;
-    canvas.defaultCursor = 'crosshair';
-    canvas.getObjects().forEach(obj => {
-        obj._prevSelectable = obj.selectable;
-        obj.selectable = false;
-    });
-
-    canvas.on('mouse:down', onMouseDown);
-    // 添加键盘监听
-    window.addEventListener('keydown', onKeyDown);
-};
-
-export const stopDrawMode = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-    isDrawing.value = false;
-    
-    // 恢复状态
-    canvas.selection = true;
-    canvas.defaultCursor = 'default';
-    canvas.getObjects().forEach(obj => {
-        if (obj._prevSelectable !== undefined) {
-            obj.selectable = obj._prevSelectable;
-            delete obj._prevSelectable;
-        }
-    });
-
-    // 移除监听
-    canvas.off('mouse:down', onMouseDown);
-    canvas.off('mouse:move', onMouseMove);
-    canvas.off('mouse:up', onMouseUp);
-    window.removeEventListener('keydown', onKeyDown);
-};
-
-const onMouseDown = (opt) => {
-    // 只有左键才绘制
-    // if (opt.e.button !== 0) return; // 可选
-
-    const canvas = unref(canvasRef);
-    const pointer = canvas.getPointer(opt.e);
-    startPoint = { x: pointer.x, y: pointer.y };
-    activeLine = new fabric.Line([startPoint.x, startPoint.y, startPoint.x, startPoint.y], {
-        stroke: rulerConfig.value.color,
-        strokeWidth: rulerConfig.value.strokeWidth,
-        strokeDashArray: [5, 5], 
-        selectable: false, evented: false
-    });
-    canvas.add(activeLine);
-    canvas.on('mouse:move', onMouseMove);
-    canvas.on('mouse:up', onMouseUp);
-};
-
-const onMouseMove = (opt) => {
-    if (!activeLine) return;
-    const canvas = unref(canvasRef);
-    const pointer = canvas.getPointer(opt.e);
-    activeLine.set({ x2: pointer.x, y2: pointer.y });
-    canvas.requestRenderAll();
-};
-
-const onMouseUp = () => {
-    const canvas = unref(canvasRef);
-    // 只移除 move 和 up，保留 down (实现连续绘制)
-    canvas.off('mouse:move', onMouseMove);
-    canvas.off('mouse:up', onMouseUp);
-    
-    if (!activeLine) return;
-    
-    const endPoint = { x: activeLine.x2, y: activeLine.y2 };
-    canvas.remove(activeLine);
-    activeLine = null;
-    
-    const dist = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
-    
-    if (dist > 10) {
-        createRulerObject(startPoint, endPoint);
-    }
-    
-    // [修正]: 删除 stopDrawMode()，保持 isDrawing = true
-    // stopDrawMode(); 
-};
-
-export { rulerConfig, isDrawing };
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+</style>
 </file>
 
 <file path="src/components/layout/LeftSidebar.vue">
@@ -4142,6 +3456,522 @@ const menuItems = [
     opacity: 0.5;
     filter: grayscale(0.8);
     pointer-events: auto; /* 关键：允许点击以重新激活 */
+}
+</style>
+</file>
+
+<file path="src/components/modules/adjust/AdjustRuler.vue">
+<template>
+  <div class="tool-group">
+    <div
+      class="tool-item"
+      :class="{ 'is-expanded': isExpanded }"
+      @click="$emit('toggle')"
+    >
+      <div class="left">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0l12.6 12.6z"
+          ></path>
+          <path d="m5 6 1.7 1.7"></path>
+          <path d="m17 18 1.7 1.7"></path>
+          <path d="m11 12 1.7 1.7"></path>
+        </svg>
+        <span>测量标尺</span>
+      </div>
+      <div class="right-icon">
+        <svg
+          class="arrow"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </div>
+    </div>
+
+    <div v-if="isExpanded" class="tool-content">
+      <div class="control-group">
+        <div class="section-title">
+          端点样式
+          <span
+            v-if="isDrawing"
+            style="
+              color: var(--ie-primary-color);
+              float: right;
+              font-weight: normal;
+              animation: blink 1.5s infinite;
+            "
+          >
+            绘制中...
+          </span>
+        </div>
+        <div class="style-grid">
+          <div
+            v-for="style in CAP_STYLES"
+            :key="style.id"
+            class="style-item"
+            :class="{ active: isStyleActive(style.id) }"
+            @click="setCapStyle(style.id)"
+            :title="style.label"
+          >
+            <svg width="40" height="20" viewBox="0 0 60 20">
+              <line
+                x1="10"
+                y1="10"
+                x2="50"
+                y2="10"
+                stroke="currentColor"
+                stroke-width="2"
+              />
+              <g v-if="style.id === 'line'">
+                <line
+                  x1="10"
+                  y1="5"
+                  x2="10"
+                  y2="15"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+                <line
+                  x1="50"
+                  y1="5"
+                  x2="50"
+                  y2="15"
+                  stroke="currentColor"
+                  stroke-width="2"
+                />
+              </g>
+              <g v-if="style.id === 'arrow'">
+                <path d="M10 10 L15 7 V13 Z" fill="currentColor" />
+                <path d="M50 10 L45 7 V13 Z" fill="currentColor" />
+              </g>
+              <g v-if="style.id === 'arrow_in'">
+                <path d="M5 7 L10 10 L5 13 Z" fill="currentColor" />
+                <path d="M55 7 L50 10 L55 13 Z" fill="currentColor" />
+              </g>
+              <g v-if="style.id === 'dot'">
+                <circle cx="10" cy="10" r="3" fill="currentColor" />
+                <circle cx="50" cy="10" r="3" fill="currentColor" />
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="section-title">线身类型</div>
+        <div class="custom-select" :class="{ open: isDashSelectOpen }">
+          <div
+            class="selected-value"
+            @click="isDashSelectOpen = !isDashSelectOpen"
+          >
+            <svg
+              width="100%"
+              height="10"
+              viewBox="0 0 160 10"
+              preserveAspectRatio="none"
+            >
+              <line
+                x1="0"
+                y1="5"
+                x2="160"
+                y2="5"
+                stroke="currentColor"
+                stroke-width="2"
+                :stroke-dasharray="currentDashStr"
+                :stroke-linecap="rulerConfig.strokeLineCap || 'butt'"
+              />
+            </svg>
+            <svg
+              class="dropdown-arrow"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+            >
+              <path d="M7 10l5 5 5-5z" fill="currentColor" />
+            </svg>
+          </div>
+
+          <div v-show="isDashSelectOpen" class="options-list">
+            <div
+              v-for="(opt, idx) in DASH_OPTIONS"
+              :key="idx"
+              class="option-item"
+              @click="setDashPattern(opt)"
+            >
+              <div class="opt-label">{{ opt.label }}</div>
+              <svg
+                width="80"
+                height="10"
+                viewBox="0 0 80 10"
+                preserveAspectRatio="none"
+              >
+                <line
+                  x1="0"
+                  y1="5"
+                  x2="80"
+                  y2="5"
+                  stroke="#606266"
+                  stroke-width="2"
+                  :stroke-dasharray="opt.value.join(',')"
+                  :stroke-linecap="opt.strokeLineCap || 'butt'"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <span>标注数值</span>
+        </div>
+        <div class="input-group">
+          <input
+            type="number"
+            v-model.number="rulerConfig.value"
+            class="ie-input-number"
+            style="flex: 1; width: auto"
+            @input="updateActiveRuler"
+          />
+          <select
+            v-model="rulerConfig.unit"
+            class="ie-select"
+            @change="updateActiveRuler"
+          >
+            <option value="px">px</option>
+            <option value="cm">cm</option>
+            <option value="mm">mm</option>
+            <option value="m">m</option>
+            <option value="in">inch</option>
+            <option value="ft">foot</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <span>线条颜色</span>
+          <input
+            type="color"
+            v-model="rulerConfig.color"
+            @input="updateActiveRuler"
+          />
+        </div>
+
+        <div class="label-row">
+          <span>透明度</span>
+          <span class="val">{{ rulerConfig.opacity }}%</span>
+        </div>
+        <input
+          type="range"
+          v-model.number="rulerConfig.opacity"
+          min="10"
+          max="100"
+          class="ie-slider"
+          @input="updateActiveRuler"
+        />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <span>线条粗细</span>
+          <span class="val">{{ rulerConfig.strokeWidth }}px</span>
+        </div>
+        <input
+          type="range"
+          v-model.number="rulerConfig.strokeWidth"
+          min="1"
+          max="10"
+          class="ie-slider"
+          @input="updateActiveRuler"
+        />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+          <span>字体大小</span>
+          <input
+            type="number"
+            v-model.number="rulerConfig.fontSize"
+            class="ie-input-number"
+            @input="updateActiveRuler"
+          />
+        </div>
+        <div class="label-row" style="margin-top: 8px">
+          <span>文字背景</span>
+          <input
+            type="checkbox"
+            v-model="rulerConfig.showBg"
+            @change="updateActiveRuler"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import {
+  defineProps,
+  defineEmits,
+  inject,
+  onMounted,
+  onUnmounted,
+  ref,
+  computed,
+  watch,
+} from "vue";
+import {
+  registerRulerModule,
+  rulerConfig,
+  isDrawing,
+  // ✨ 修复点：替换为新的模式控制函数
+  startRulerMode, 
+  stopRulerMode,
+  updateActiveRuler,
+  syncConfigFromActiveSelection,
+  CAP_STYLES,
+  DASH_OPTIONS,
+} from "./useCanvasRuler";
+import { useCanvasLock } from "@/composables/useCanvasLock";
+
+const props = defineProps({ isExpanded: Boolean });
+const emit = defineEmits(["toggle"]);
+const canvasAPI = inject("canvasAPI");
+
+const isDashSelectOpen = ref(false);
+const { setBackgroundLock } = useCanvasLock();
+
+// === 生命周期与状态管理 ===
+watch(
+  () => props.isExpanded,
+  (val) => {
+    const canvas = canvasAPI.canvas.value;
+    if (!canvas) return;
+
+    // ✨ 物理锁联动：进入标尺模块时，设置豁免标尺并进入标尺光标模式
+    setBackgroundLock(canvas, val, { 
+        excludeRulers: true, 
+        isRulerMode: val 
+    });
+
+    if (val) {
+      // 同步当前选中的标尺配置（如果有）
+      syncConfigFromActiveSelection();
+      // ✨ 开启“智能感知”标尺模式
+      startRulerMode(canvasAPI.canvas, canvasAPI.saveHistory);
+    } else {
+      // 退出标尺模式，移除监听
+      stopRulerMode();
+    }
+  }
+);
+
+onMounted(() => {
+  if (canvasAPI && canvasAPI.canvas) {
+    // 注册模块引用
+    registerRulerModule(canvasAPI.canvas, canvasAPI.saveHistory);
+
+    if (props.isExpanded) {
+      syncConfigFromActiveSelection();
+      startRulerMode(canvasAPI.canvas, canvasAPI.saveHistory);
+    }
+  }
+});
+
+onUnmounted(() => {
+  const canvas = canvasAPI?.canvas?.value;
+  if (canvas) {
+    setBackgroundLock(canvas, false);
+    stopRulerMode();
+  }
+});
+
+// === 视觉高亮 ===
+const isStyleActive = (styleId) => {
+  const isEditing = canvasAPI.canvas.value?.getActiveObject()?.isRuler;
+  if (isEditing) {
+    return rulerConfig.value.capStyle === styleId;
+  }
+  // 在测量模式下，即使没选中也高亮当前配置的样式
+  return props.isExpanded && rulerConfig.value.capStyle === styleId;
+};
+
+const setCapStyle = (styleId) => {
+  rulerConfig.value.capStyle = styleId;
+  const canvas = canvasAPI.canvas.value;
+  const activeObj = canvas?.getActiveObject();
+
+  if (activeObj && activeObj.isRuler) {
+    updateActiveRuler();
+  }
+  // 注意：不再需要手动调用 startDrawMode，startRulerMode 已在后台监听
+};
+
+const setDashPattern = (opt) => {
+  rulerConfig.value.dashArray = opt.value;
+  rulerConfig.value.strokeLineCap = opt.strokeLineCap || "butt";
+  isDashSelectOpen.value = false;
+  const canvas = canvasAPI.canvas.value;
+  const activeObj = canvas?.getActiveObject();
+  if (activeObj && activeObj.isRuler) {
+    updateActiveRuler();
+  }
+};
+
+const currentDashStr = computed(() => {
+  return rulerConfig.value.dashArray
+    ? rulerConfig.value.dashArray.join(",")
+    : "";
+});
+</script>
+
+<style scoped>
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.tool-content {
+  padding: 16px;
+}
+.section-title {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.style-item {
+  height: 32px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #606266;
+  background: #fff;
+  transition: all 0.2s;
+}
+.style-item:hover {
+  border-color: #c0c4cc;
+}
+.style-item.active {
+  border-color: var(--ie-primary-color);
+  color: var(--ie-primary-color);
+  background-color: #ecf5ff;
+}
+
+.custom-select {
+  position: relative;
+  width: 100%;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+.selected-value {
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #606266;
+}
+.options-list {
+  position: absolute;
+  top: 100%;
+  left: -1px;
+  right: -1px;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  border-radius: 0 0 4px 4px;
+  z-index: 10;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+.option-item {
+  height: 32px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+}
+.option-item:hover {
+  background-color: #f5f7fa;
+}
+.opt-label {
+  font-size: 12px;
+  color: #606266;
+  margin-right: 12px;
+  min-width: 40px;
+}
+
+.divider {
+  height: 1px;
+  background: #ebeef5;
+  margin: 16px 0;
+}
+.control-group {
+  margin-bottom: 16px;
+}
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 8px;
+}
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+.ie-select {
+  height: 28px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #606266;
+  padding: 0 4px;
+  outline: none;
+  background: white;
+}
+.ie-input-number {
+    height: 28px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    padding: 0 8px;
+    outline: none;
+    width: 60px;
+}
+.val {
+  font-family: monospace;
+}
+.ie-slider {
+  width: 100%;
 }
 </style>
 </file>
@@ -4855,99 +4685,283 @@ export const parseTemplateToCells = (tpl) => {
 };
 </file>
 
-<file path="src/components/panels/ToolPanel.vue">
-<template>
-  <div class="tool-panel">
-    <component :is="currentModule" />
+<file path="src/composables/useCanvasLock.js">
+import { unref } from 'vue';
 
-    <Modal v-model="showPuzzleConfirm" title="保存拼图修改？" @confirm="handleConfirmExit(true)"
-      @discard="handleConfirmExit(false)" @cancel="handleCancelExit">
-      检测到您正在拼图模块，离开将无法再次调整当前的格子布局。是否将当前拼图结果保存为一张新图片？
-    </Modal>
-  </div>
-</template>
-
-<script setup>
-import { computed, defineAsyncComponent, ref, watch, inject } from 'vue';
-import { useEditorState } from '../../composables/useEditorState';
-import Modal from '../common/Modal.vue';
-import { completeExitPuzzle } from '../modules/puzzle/useCanvasPuzzle';
-
-const { state, setActiveTool } = useEditorState();
-
-// 内部驱动 UI 的工具状态
-const localActiveTool = ref(state.activeTool);
-const showPuzzleConfirm = ref(false);
-let pendingTool = null; // 记录用户点击的目标工具
-let isInternalSwitch = false; // 防止 watch 循环触发
-
-// 动态映射表保持不变
-const modules = {
-  adjust: defineAsyncComponent(() => import('../modules/adjust/index.vue')),
-  draw: defineAsyncComponent(() => import('../modules/draw/index.vue')),
-  text: defineAsyncComponent(() => import('../modules/text/index.vue')),
-  border: defineAsyncComponent(() => import('../modules/border/index.vue')),
-  material: defineAsyncComponent(() => import('../modules/material/index.vue')),
-  watermark: defineAsyncComponent(() => import('../modules/watermark/index.vue')),
-  puzzle: defineAsyncComponent(() => import('../modules/puzzle/index.vue')),
-  ai: defineAsyncComponent(() => import('../modules/ai/index.vue')),
+/**
+ * ✨ 1. 定义 LOCKABLE_PROPERTIES 静态常量列表
+ * 所有的锁定和豁免动作都必须严格遵循此列表，确保逻辑一一对应
+ */
+const LOCK_CONFIG = {
+  // 属性名: [锁定值, 交互值]
+  'selectable': [false, true],
+  'evented': [false, true],
+  'hasControls': [false, true],
+  'hasBorders': [false, true],
+  'lockMovementX': [true, false],
+  'lockMovementY': [true, false],
+  'lockRotation': [true, false],
+  'lockScalingX': [true, false],
+  'lockScalingY': [true, false],
 };
 
-const currentModule = computed(() => {
-  return modules[localActiveTool.value] || modules['adjust'];
-});
+export function useCanvasLock() {
+  // 状态记忆库 (WeakMap)
+  const objectStates = new WeakMap();
 
-// === 核心逻辑：拦截切换 ===
-watch(() => state.activeTool, (newTool, oldTool) => {
-  if (isInternalSwitch) {
-    isInternalSwitch = false;
-    return;
-  }
+  /**
+   * 🛡️ 内部函数：ObjectFunctions.enable(obj)
+   * 强制将对象恢复到全功能状态，用于豁免逻辑 (策略 B)
+   */
+  const forceEnableObject = (obj, isRulerMode) => {
+    Object.keys(LOCK_CONFIG).forEach(prop => {
+      const [_, interactiveValue] = LOCK_CONFIG[prop];
+      obj.set(prop, interactiveValue);
+    });
+    // 特殊光标处理
+    obj.set('hoverCursor', isRulerMode ? 'move' : 'default');
+  };
 
-  // 如果从拼图模块切往别的模块
-  if (oldTool === 'puzzle' && newTool !== 'puzzle') {
-    pendingTool = newTool; // 记住想去的地方
-    showPuzzleConfirm.value = true; // 弹出提示
+  /**
+   * 🛡️ 内部函数：实施物理锁定并备份
+   */
+  const lockAndStoreObject = (obj) => {
+    const backup = {};
+    Object.keys(LOCK_CONFIG).forEach(prop => {
+      // ✨ 只有第一次锁定该对象时才备份，防止多层记忆覆盖原始状态
+      if (!objectStates.has(obj)) {
+        backup[prop] = obj[prop];
+      }
+      const [lockedValue] = LOCK_CONFIG[prop];
+      obj.set(prop, lockedValue);
+    });
+    
+    if (Object.keys(backup).length > 0) {
+      objectStates.set(obj, backup);
+    }
+    obj.set('hoverCursor', 'default');
+  };
 
-    // 强制将全局状态重置回 puzzle，让侧边栏高亮保持在拼图上
-    isInternalSwitch = true;
-    setActiveTool('puzzle');
-  } else {
-    // 普通切换直接同步
-    localActiveTool.value = newTool;
-  }
-});
+  /**
+   * 🛡️ 主函数：智能物理锁控制
+   */
+  const setBackgroundLock = (canvasInstance, shouldLock, options = {}) => {
+    const canvas = unref(canvasInstance);
+    if (!canvas) return;
 
-// 处理弹窗点击
-const handleConfirmExit = (isSave) => {
-  // 调用 useCanvasPuzzle 提供的最终退出函数
-  completeExitPuzzle(isSave ? 'save' : 'discard');
+    const { excludeRulers = true, dragMode = false, isRulerMode = false } = options;
+    const objects = canvas.getObjects();
+    
+    if (shouldLock) {
+      // 1. 画布级状态调整
+      canvas.selection = false; 
+      canvas.defaultCursor = dragMode ? 'grab' : (isRulerMode ? 'crosshair' : 'default');
 
-  showPuzzleConfirm.value = false;
+      objects.forEach(obj => {
+        const isMain = obj.isMainImage || obj.id === 'main-image' || (obj.type === 'image' && objects.indexOf(obj) === 0);
+        
+        // 2. 主图路由 (始终拥有最高豁免权)
+        if (isMain) {
+          obj.set({
+            selectable: dragMode, 
+            evented: dragMode,
+            hoverCursor: dragMode ? 'grab' : (isRulerMode ? 'crosshair' : 'default'),
+            moveCursor: dragMode ? 'grabbing' : 'default'
+          });
+          return;
+        }
 
-  if (pendingTool) {
-    // 确认后，执行真正的全局跳转
-    isInternalSwitch = true;
-    setActiveTool(pendingTool);
-    localActiveTool.value = pendingTool;
-    pendingTool = null;
-  }
-};
+        // 3. 策略 B 豁免逻辑：如果是标尺且开启豁免，执行“强制开启”循环
+        if (excludeRulers && obj.isRuler) {
+          forceEnableObject(obj, isRulerMode);
+          return;
+        }
 
-const handleCancelExit = () => {
-  showPuzzleConfirm.value = false;
-  pendingTool = null;
-};
-</script>
+        // 4. 标准锁定逻辑：执行“强制锁定”循环并备份
+        lockAndStoreObject(obj);
+      });
 
-<style scoped>
-.tool-panel {
-  background: #fff;
-  border-right: 1px solid #e4e7ed;
-  height: 100%;
-  overflow-y: auto;
+      // 自动清理非拖拽模式下的主图选中
+      if (!dragMode && canvas.getActiveObject()?.isMainImage) {
+        canvas.discardActiveObject();
+      }
+
+    } else {
+      // === 🔓 全局解锁阶段 ===
+      canvas.selection = true;
+      canvas.defaultCursor = 'default';
+
+      objects.forEach(obj => {
+        const originalState = objectStates.get(obj);
+        if (originalState) {
+          // 基于备份恢复
+          obj.set(originalState);
+          objectStates.delete(obj);
+        } else {
+          // 如果没有备份（可能是新生成的对象），执行标准化解锁
+          forceEnableObject(obj, false);
+        }
+      });
+    }
+
+    canvas.requestRenderAll();
+  };
+
+  return { setBackgroundLock };
 }
-</style>
+</file>
+
+<file path=".spec/project-charter.md">
+# Project Charter: Image Editor SDK (大秘美图)
+
+> **Version**: 3.8.0 (Integrated Edition)
+> **Last Updated**: 2025-12-22
+> **Context**: High-performance Web Image Processing SDK
+> **Enforcement**: 此文档为最高准则，AI 生成代码必须严格查阅并遵循。
+
+## 0. AI 交互核心指令 (Prime Directives)
+
+> **优先级**: 🔴 最高 (Highest Priority)
+> **适用范围**: 所有代码生成与修改任务
+> 
+
+1.  **代码完整性公约 (Code Integrity Protocol)**:
+    - **全量交付 (Full Output)**: 除非用户明确要求“仅发送片段”，否则在修改文件时，**必须输出文件的完整代码**。
+    - **禁止精简 (No Simplification)**: 严禁使用 `// ... rest of code`、`// ... keep original` 或省略号来代替原有代码。必须完整保留未修改的 UI 结构、样式 (`<style>`)、SVG 图标及辅助函数。
+    - **无损注入 (Non-Destructive)**: 新代码必须是“注入”到现有逻辑中，严禁在重构时通过“重写”导致原有 Grid 布局、预设数据或逻辑丢失。
+2.  **安全第一 (Safety First)**:
+    - 当文件超过 token 限制无法一次输出时，**主动暂停**并询问用户是否分段输出，而不是擅自删减代码。
+3.  **✨ 智能交互公约 (Smart Interaction Protocol) `NEW`**:
+    - **深度反问 (Proactive Counter-Questioning)**: 针对用户的任何技术提议或功能改变，AI 不得直接盲目执行。必须从架构一致性、潜在 Bug、用户体验、性能损耗等维度进行至少 2-3 个深度的“反问”或“质疑”。
+    -   **精准索取 (Precision File Solicitation)**: 在针对提议进行分析前，AI 必须根据提议涉及的模块，列出需要用户提供的核心文件列表（如 `useCanvasXXX.js`, `XXX.vue`），以确保分析是基于最新真实代码的。
+4.  **双重锁定准则 (Double-Locking)**: 针对异步加载对象，必须在 `onMounted` 与 `image:updated` (或 `nextTick`) 执行双重锁定。
+5.  **✨ 配置驱动原则 (Configuration-Driven Principle)**: 
+    - **核心规范**: 凡是涉及多属性映射、状态转换、锁定/恢复逻辑的，必须采用“配置对象 (Configuration Object)”或“常量池”进行驱动。
+    - **严禁硬编码**: 严禁在循环、条件判断中直接书写属性名字符串。
+    - **对称性保证**: 锁定与解锁、开启与关闭的逻辑必须共享同一份配置源，确保操作的原子性与完整性。  
+---
+
+## 1. 项目愿景 (Vision)
+
+构建一个**模块化、高性能**的 Web 端图像处理 SDK。核心架构采用“轻量级核心 (Core) + 功能插件化 (Modules)”的设计模式，支持从基础的裁剪旋转到复杂的 AI 消除、拼图和滤镜处理。
+
+---
+
+## 2. 技术栈与版本约束 (Tech Stack)
+
+> ⚠️ **关键约束**：所有自动生成的代码必须严格遵守以下版本特性。
+
+- **Core Framework**: Vue 3.3+ (Composition API, `<script setup>`)
+- **Graphics Engine**: **Fabric.js v5.3.0** (Locked)
+  - ❌ **严禁**: 使用 Fabric v6 的 `Canvas` 类名或 Promise-based 渲染。
+  - ✅ **必须**: 使用 `new fabric.Canvas()` 等 v5 风格 API。
+- **Build Tool**: Vite 7.x
+- **Style System**: **Native CSS (Scoped) + CSS Variables**
+  - **Color Source**: 遵循 SSOT 原则，颜色必须定义在 `src/config/theme.js`。
+  - **Isolation**: 所有样式必须包裹在 `.image-editor-sdk-container` 作用域内。
+- **State Management**: **Custom Reactive Singleton**
+  - 必须保持响应性，严禁直接解构 State 对象。
+
+---
+
+## 3. 核心架构模式 (Core Architecture Patterns) `Critical`
+
+### 3.1 颜色管理策略 (Color Strategy)
+
+> **原则**: 解决 Canvas (JS) 与 UI (CSS) 颜色不同步问题。
+
+1.  **真理源**: 所有颜色值定义在 `src/config/theme.js` 的 `THEME` 对象中。
+2.  **注入机制**: App 挂载时 (`onMounted`)，必须调用 `applyTheme(containerRef)` 将 JS 变量注入为 CSS 变量。
+3.  **使用规范**:
+    - **UI (Vue/CSS)**: 使用 `var(--ie-primary-color)`。
+    - **Canvas (JS)**: 引入 `THEME` 对象，使用 `THEME.colors.primary`。
+    - **禁止**: 代码中出现 `#409eff` 等硬编码颜色。
+
+### 3.2 高清离屏渲染 (Offscreen Rendering)
+
+- 所有涉及**导出图片**或**生成 AI 遮罩**的操作，必须使用 `src/composables/useOffscreenHelper.js`，严禁直接对主 Canvas 进行 `toDataURL`。
+
+### 3.3 模块通信 (Event Bus)
+
+- 使用 Fabric Canvas 实例 (`canvas.fire`) 作为唯一事件总线。
+
+---
+
+## 4. 目录结构规范 (Directory Structure)
+
+src/
+├── api/ # 后端接口交互 (AI, Rembg, Inpaint)
+├── components/
+│ ├── common/ # 通用原子组件 (Modal, LoadingOverlay, ContextMenu...)
+│ ├── layout/ # 全局布局组件 (EditorLayout, LeftSidebar, NavBar)
+│ ├── modules/ # 独立功能模块 (业务逻辑核心)
+│ │ ├── adjust/ # 调整类 (Crop, Resize, Filter...) - 内含 Vue + useCanvasHooks
+│ │ ├── ai/ # AI 类功能 (AiGenerate, AiExpand)
+│ │ ├── draw/ # 自由绘制模块
+│ │ ├── text/ # 文本模块
+│ │ ├── puzzle/ # 拼图模块 (含 config.js)
+│ │ └── ... # 其他模块 (border, material, watermark)
+│ ├── panels/ # 二级侧边栏容器 (ToolPanel)
+│ └── Workspace.vue # 画布核心容器 (Canvas 初始化与事件绑定)
+├── composables/ # 核心逻辑 Hooks (useCanvas, useEditorState, useCanvasLock...)
+├── config/ # 静态配置 (theme.js, shortcuts.js)
+└── utils/ # 纯函数工具库 (toast.js)
+
+---
+
+## 5. UI 开发规范 (UI Design System)
+
+> **原则**: 使用 Scoped CSS 和 CSS 变量，统一视觉风格。
+
+### 5.1 通用类名表 (Common Classes)
+
+| 组件类型       | 类名 (Class Name)  | 样式特征 (Style Specs)                                               |
+| :------------- | :----------------- | :------------------------------------------------------------------- |
+| **面板容器**   | `.tool-panel`      | `bg: var(--panel-bg)`, 固定宽 280px，白底/深色模式适配，绝对定位右侧 |
+| **面板标题**   | `.panel-title`     | 14px, 600 weight, 底部 Margin                                        |
+| **控制组**     | `.control-group`   | 包含标签和控件的容器，底部 Margin (24px)                             |
+| **属性行**     | `.label-row`       | Flex 布局 (两端对齐)，用于显示 "属性名 - 数值"                       |
+| **主要按钮**   | `.btn-primary`     | 100% 宽度，`bg: var(--primary)`，圆角 (4px)                          |
+| **次要按钮**   | `.btn-secondary`   | `border: var(--border)`，用于取消或次要操作                          |
+| **滑动条**     | `.slider-input`    | 统一宽度的 range input                                               |
+| **数值输入框** | `.ie-input-number` | 固定宽 50px，高 28px，居中对齐，无原生箭头，常配合 Slider 使用       |
+
+---
+
+## 6. 开发工作流 (OpenSpec Workflow)
+
+### 6.1 提议 (Proposal)
+
+在开发新功能前，必须在 `.spec/proposals/` 下创建文档，并回答以下“灵魂三问”：
+
+1.  **复用检查**: “我要写的这个辅助函数，`src/utils` 里有没有？UI 组件在 `common` 里有没有？架构模式在 `Section 3` 里有没有？”
+2.  **UI 位置**: 在 `ToolPanel` 的哪个位置增加入口？
+3.  **交互逻辑**: 拖入画布后的默认行为（居中？自动缩放？）。
+
+### 6.2 实施检查清单 (The "Golden Checklist") [CRITICAL]
+
+- [ ]每次生成代码前，先读取 `active-context.md` 确认当前上下文。
+- [ ] **Canvas 销毁**: 组件 `onUnmounted` 时是否注销了 fabric 事件监听？
+- [ ] **状态清理**: 退出模块时，是否重置了 `activeTool` 和临时图层？
+- [ ] **键盘安全**: 新增快捷键是否判断了 `document.activeElement` 以防止输入框冲突？
+- [ ] **响应式检查**: 是否错误地使用了 `const { state } = useStore()` 导致响应性丢失？
+- [ ] **颜色合规**: 检查代码中是否还残留 `#hex` 硬编码颜色？
+- [ ]生成代码后，自我检查是否破坏了现有的 Grid 布局或 CSS 变量引用。
+
+---
+
+## 7. 术语表 (Glossary)
+- **Counter-Questioning Logic**: 指 AI 在接受任务前，通过反问确认交互边界与技术细节的过程，旨在减少重构成本。
+- **Main Image**: 画布底层的核心图片 (Index 0)，通常被锁定。
+- **Mask Object**: 用于遮罩的辅助对象，导出时通常不可见。
+- **Puzzle Controller**: 拼图模式下的虚拟控制器，用于调整间距和圆角。
+- **Physical Lock**: 通过 `useCanvasLock` 施加的强制不可交互状态。
+- **Main Image Identification**: 必须同时具备 isMainImage: true 和 id: 'main-image' 属性。所有操作主图的模块（如 Resize, White）
+  在初始化时必须校验并补齐此  标识，以防被 useCanvasLock 误锁。
+- **Physical Lock Priority**: 物理锁必须在所有 UI 渲染及预览对象创建（如 startPreview）完成后，在 nextTick 中执行最后一次“扫尾式”加锁。
+- **Configuration-Driven Lock**: 所有的锁定属性（selectable, lockMovement 等）均定义在 `LOCK_CONFIG` 中，系统通过遍历该配置实现逻辑自洽。
+- **Force Functional State (策略 B)**: 进入特定模块时，通过配置池强制恢复对象的所有交互属性，确保功能不受前序模块残留状态的影响。
+- **Configuration-Driven Lock**: 所有的锁定属性均集中定义在 `LOCK_CONFIG` 中。
 </file>
 
 <file path="src/components/modules/adjust/AdjustWhite.vue">
@@ -5440,19 +5454,392 @@ onUnmounted(() => stopPreview());
 </style>
 </file>
 
-<file path="src/main.js">
-import { createApp } from 'vue'
-import './style.css' // 确保这里引入了我们新写的通用 CSS (包含 .ie-btn 等样式)
-import App from './App.vue'
-import { applyTheme } from './config/theme.js';
-// 1. 创建 Vue 实例
-const app = createApp(App)
+<file path="src/components/modules/adjust/useCanvasRuler.js">
+import { ref, unref } from 'vue';
+import { fabric } from 'fabric';
+import { useEditorState } from '@/composables/useEditorState';
 
-// 2. 应用主题
-applyTheme();
+// === 模块级单例状态 ===
+let canvasRef = null;
+let saveHistoryFn = null;
+const { state } = useEditorState();
 
-// 3. 挂载
-app.mount('#app')
+export const DASH_OPTIONS = [
+    { label: '实线', value: [], icon: 'solid' },
+    { label: '长虚线', value: [15, 15], icon: 'long-dash' },
+    { label: '短虚线', value: [5, 5], icon: 'short-dash' },
+    { label: '疏点线', value: [0, 8], strokeLineCap: 'round' }, 
+    { label: '密点线', value: [0, 4], strokeLineCap: 'round' },
+    { label: '点划线', value: [15, 5, 0, 5], strokeLineCap: 'round' } 
+];
+
+export const CAP_STYLES = [
+    { id: 'line', label: '短线' },
+    { id: 'arrow', label: '外向箭头' },
+    { id: 'arrow_in', label: '内向箭头' },
+    { id: 'dot', label: '圆点' },
+    { id: 'none', label: '无' }
+];
+
+const isDrawing = ref(false);
+const rulerConfig = ref({
+    value: 20,
+    unit: 'cm',
+    color: '#ff0000',
+    opacity: 100,
+    fontSize: 24,
+    fontFamily: 'Arial',
+    strokeWidth: 4,
+    showBg: true,
+    capStyle: 'line',    
+    dashArray: [],       
+    strokeLineCap: 'butt'
+});
+
+export const registerRulerModule = (canvas, saveHistory) => {
+    canvasRef = canvas;
+    saveHistoryFn = saveHistory;
+
+    const c = unref(canvas);
+    if (c) {
+        c.off('selection:created', onSelectionChanged);
+        c.off('selection:updated', onSelectionChanged);
+        c.on('selection:created', onSelectionChanged);
+        c.on('selection:updated', onSelectionChanged);
+    }
+};
+
+const createCap = (type, color, strokeWidth) => {
+    const size = 10 + strokeWidth; 
+    if (type === 'arrow' || type === 'arrow_in') {
+        return new fabric.Triangle({
+            width: size, height: size, fill: color,
+            originX: 'center', originY: 'center', selectable: false
+        });
+    } else if (type === 'dot') {
+        return new fabric.Circle({
+            radius: strokeWidth * 1.5, fill: color,
+            originX: 'center', originY: 'center', selectable: false
+        });
+    } else if (type === 'line') {
+        return new fabric.Line([0, -size, 0, size], {
+            stroke: color, strokeWidth: strokeWidth,
+            originX: 'center', originY: 'center', selectable: false
+        });
+    } else {
+        return new fabric.Rect({ width: 0, height: 0, visible: false });
+    }
+};
+
+const createRulerObject = (start, end) => {
+    const canvas = unref(canvasRef);
+    const cfg = rulerConfig.value;
+    
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+    const midX = (start.x + end.x) / 2;
+    const midY = (start.y + end.y) / 2;
+    const halfLen = length / 2;
+
+    const line = new fabric.Line([-halfLen, 0, halfLen, 0], {
+        stroke: cfg.color, strokeWidth: cfg.strokeWidth,
+        strokeDashArray: cfg.dashArray, strokeLineCap: cfg.strokeLineCap || 'butt',
+        originX: 'center', originY: 'center'
+    });
+
+    const startCap = createCap(cfg.capStyle, cfg.color, cfg.strokeWidth);
+    const endCap = createCap(cfg.capStyle, cfg.color, cfg.strokeWidth);
+    startCap.set({ left: -halfLen, top: 0 });
+    endCap.set({ left: halfLen, top: 0 });
+    
+    const updateCapRotation = (cap, isStart) => {
+        if (cfg.capStyle.includes('arrow')) {
+            let rot = 90;
+            if (cfg.capStyle === 'arrow') rot = isStart ? -90 : 90;
+            else rot = isStart ? 90 : -90;
+            cap.set({ angle: rot });
+        } else { cap.set({ angle: 0 }); }
+    };
+    updateCapRotation(startCap, true);
+    updateCapRotation(endCap, false);
+
+    const textObj = new fabric.Text(`${cfg.value} ${cfg.unit}`, {
+        fontSize: cfg.fontSize, fill: cfg.color, fontFamily: cfg.fontFamily,
+        backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : '',
+        originX: 'center', originY: 'bottom', left: 0, top: -10
+    });
+    if (Math.abs(angle) > 90) textObj.set({ angle: 180, originY: 'bottom', top: 10 });
+
+    const group = new fabric.Group([line, startCap, endCap, textObj], {
+        left: midX, top: midY, angle: angle,
+        originX: 'center', originY: 'center', opacity: cfg.opacity / 100,
+        customTab: 'ruler', customTool: 'adjust', isRuler: true,
+        _rulerValue: cfg.value, _rulerUnit: cfg.unit,
+        _capStyle: cfg.capStyle, _dashArray: cfg.dashArray, _strokeLineCap: cfg.strokeLineCap,
+        lockScalingY: true, lockUniScaling: true,
+        hoverCursor: 'move' // ✨ 确保对象自身的悬停形态
+    });
+
+    group.setControlsVisibility({ mtr: true, ml: true, mr: true, mt:false, mb:false, tl:false, tr:false, bl:false, br:false });
+    canvas.add(group);
+    
+    if (saveHistoryFn) saveHistoryFn();
+    return group;
+};
+
+const recreateActiveRuler = (activeGroup) => {
+    const canvas = unref(canvasRef);
+    const center = activeGroup.getCenterPoint();
+    const lineObj = activeGroup.getObjects()[0];
+    const currentWidth = lineObj.width * activeGroup.scaleX;
+    const angleRad = fabric.util.degreesToRadians(activeGroup.angle);
+    const dx = (currentWidth / 2) * Math.cos(angleRad);
+    const dy = (currentWidth / 2) * Math.sin(angleRad);
+    const start = { x: center.x - dx, y: center.y - dy };
+    const end = { x: center.x + dx, y: center.y + dy };
+    
+    canvas.remove(activeGroup);
+    const newGroup = createRulerObject(start, end);
+    canvas.setActiveObject(newGroup);
+    canvas.requestRenderAll();
+};
+
+export const updateActiveRuler = () => {
+    const canvas = unref(canvasRef);
+    if (!canvas) return;
+    const group = canvas.getActiveObject();
+    if (!group || !group.isRuler) return;
+
+    const cfg = rulerConfig.value;
+    const needsRebuild = (group._capStyle !== cfg.capStyle) || (group.getObjects()[3].fontSize !== cfg.fontSize);
+
+    if (needsRebuild) {
+        recreateActiveRuler(group);
+    } else {
+        const items = group.getObjects(); 
+        items[0].set({
+            stroke: cfg.color, strokeWidth: cfg.strokeWidth,
+            strokeDashArray: cfg.dashArray, strokeLineCap: cfg.strokeLineCap || 'butt'
+        });
+        items[1].set({ fill: cfg.color, stroke: cfg.color });
+        items[2].set({ fill: cfg.color, stroke: cfg.color });
+        items[3].set({
+            text: `${cfg.value} ${cfg.unit}`, fill: cfg.color,
+            backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : ''
+        });
+        group.set({ opacity: cfg.opacity / 100 });
+        group._rulerValue = cfg.value;
+        group._rulerUnit = cfg.unit;
+        group._dashArray = cfg.dashArray;
+        group._strokeLineCap = cfg.strokeLineCap;
+
+        canvas.requestRenderAll();
+        if (saveHistoryFn) saveHistoryFn();
+    }
+};
+
+const onSelectionChanged = (e) => {
+    if (isDrawing.value) return;
+    const activeObj = e.selected?.[0];
+    syncConfigFromObject(activeObj);
+};
+
+export const syncConfigFromActiveSelection = () => {
+    const canvas = unref(canvasRef);
+    const activeObj = canvas?.getActiveObject();
+    syncConfigFromObject(activeObj);
+    return activeObj;
+};
+
+const syncConfigFromObject = (activeObj) => {
+    if (activeObj && activeObj.isRuler) {
+        const items = activeObj.getObjects();
+        rulerConfig.value.value = activeObj._rulerValue ?? 20;
+        rulerConfig.value.unit = activeObj._rulerUnit ?? 'cm';
+        rulerConfig.value.opacity = (activeObj.opacity || 1) * 100;
+        rulerConfig.value.capStyle = activeObj._capStyle || 'line'; 
+        rulerConfig.value.dashArray = activeObj._dashArray || [];
+        rulerConfig.value.strokeLineCap = activeObj._strokeLineCap || 'butt';
+        if (items[0]) {
+            rulerConfig.value.color = items[0].stroke;
+            rulerConfig.value.strokeWidth = items[0].strokeWidth;
+        }
+        if (items[3]) {
+            rulerConfig.value.fontSize = items[3].fontSize;
+            rulerConfig.value.showBg = !!items[3].backgroundColor;
+        }
+    }
+};
+
+let startPoint = null;
+let activeLine = null;
+
+const onKeyDown = (e) => {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+        stopRulerMode();
+    }
+};
+
+const onMouseDown = (opt) => {
+    const canvas = unref(canvasRef);
+    if (!canvas || state.isGlobalDragMode) return;
+
+    if (opt.target && opt.target.isRuler) {
+        canvas.setActiveObject(opt.target);
+        return;
+    }
+
+    if (!opt.target) {
+        const pointer = canvas.getPointer(opt.e);
+        startPoint = { x: pointer.x, y: pointer.y };
+        
+        activeLine = new fabric.Line([startPoint.x, startPoint.y, startPoint.x, startPoint.y], {
+            stroke: rulerConfig.value.color,
+            strokeWidth: rulerConfig.value.strokeWidth,
+            selectable: true, 
+            evented: true,
+            isRuler: true
+        });
+        
+        canvas.add(activeLine);
+        canvas.on('mouse:move', onMouseMove);
+        canvas.on('mouse:up', onMouseUp);
+    }
+};
+
+const onMouseMove = (opt) => {
+    if (!activeLine) return;
+    const canvas = unref(canvasRef);
+    const pointer = canvas.getPointer(opt.e);
+    activeLine.set({ x2: pointer.x, y2: pointer.y });
+    canvas.requestRenderAll();
+};
+
+const onMouseUp = () => {
+    const canvas = unref(canvasRef);
+    canvas.off('mouse:move', onMouseMove);
+    canvas.off('mouse:up', onMouseUp);
+    
+    if (!activeLine) return;
+    const endPoint = { x: activeLine.x2, y: activeLine.y2 };
+    canvas.remove(activeLine);
+    activeLine = null;
+    
+    const dist = Math.sqrt(Math.pow(endPoint.x - startPoint.x, 2) + Math.pow(endPoint.y - startPoint.y, 2));
+    if (dist > 10) {
+        createRulerObject(startPoint, endPoint);
+    }
+};
+
+export const startRulerMode = (canvas) => {
+    canvasRef = canvas;
+    const c = unref(canvas);
+    if (!c) return;
+    
+    c.on('mouse:down', onMouseDown);
+    window.addEventListener('keydown', onKeyDown);
+    // ✨ 光标由 useCanvasLock 统一管理，无需此处手动设置
+};
+
+export const stopRulerMode = () => {
+    const c = unref(canvasRef);
+    if (!c) return;
+    c.off('mouse:down', onMouseDown);
+    c.off('mouse:move', onMouseMove);
+    c.off('mouse:up', onMouseUp);
+    window.removeEventListener('keydown', onKeyDown);
+};
+
+export { rulerConfig, isDrawing };
+</file>
+
+<file path="src/components/panels/ToolPanel.vue">
+<template>
+  <div class="tool-panel">
+    <component :is="currentModule" />
+
+    <Modal v-model="showPuzzleConfirm" cancel-text="不保存" confirm-text="保存" @confirm="handleConfirmExit(true)"
+      @discard="handleConfirmExit(false)" @cancel="handleCancelExit"
+      />
+  </div>
+</template>
+
+<script setup>
+import { computed, defineAsyncComponent, ref, watch, inject } from 'vue';
+import { useEditorState } from '../../composables/useEditorState';
+import Modal from '../common/Modal.vue';
+import { completeExitPuzzle } from '../modules/puzzle/useCanvasPuzzle';
+
+const { state, setActiveTool, setPuzzleMode } = useEditorState();
+
+// 内部驱动 UI 的工具状态
+const localActiveTool = ref(state.activeTool);
+const showPuzzleConfirm = ref(false);
+let pendingTool = null; // 记录用户点击的目标工具
+
+// 动态映射表保持不变
+const modules = {
+  adjust: defineAsyncComponent(() => import('../modules/adjust/index.vue')),
+  draw: defineAsyncComponent(() => import('../modules/draw/index.vue')),
+  text: defineAsyncComponent(() => import('../modules/text/index.vue')),
+  border: defineAsyncComponent(() => import('../modules/border/index.vue')),
+  material: defineAsyncComponent(() => import('../modules/material/index.vue')),
+  watermark: defineAsyncComponent(() => import('../modules/watermark/index.vue')),
+  puzzle: defineAsyncComponent(() => import('../modules/puzzle/index.vue')),
+  ai: defineAsyncComponent(() => import('../modules/ai/index.vue')),
+};
+
+const currentModule = computed(() => {
+  return modules[localActiveTool.value] || modules['adjust'];
+});
+
+// === 核心逻辑：拦截切换 ===
+watch(() => state.activeTool, (newTool, oldTool) => {
+  // 如果从拼图模块切往别的模块
+  if (oldTool === 'puzzle' && state.isPuzzleMode) {
+    pendingTool = newTool; // 记住想去的地方
+    showPuzzleConfirm.value = true; // 弹出提示
+
+    setActiveTool('puzzle');
+  } else {
+    // 普通切换直接同步
+    localActiveTool.value = newTool;
+  }
+});
+
+// 处理弹窗点击
+const handleConfirmExit = (isSave) => {
+  // 调用 useCanvasPuzzle 提供的最终退出函数
+  completeExitPuzzle(isSave ? 'save' : 'discard');
+
+  showPuzzleConfirm.value = false;
+
+  if (pendingTool) {
+    // 确认后，执行真正的全局跳转
+    setActiveTool(pendingTool);
+    localActiveTool.value = pendingTool;
+    pendingTool = null;
+  }
+
+  setPuzzleMode(false);
+};
+
+const handleCancelExit = () => {
+  showPuzzleConfirm.value = false;
+  pendingTool = null;
+};
+</script>
+
+<style scoped>
+.tool-panel {
+  background: #fff;
+  border-right: 1px solid #e4e7ed;
+  height: 100%;
+  overflow-y: auto;
+}
+</style>
 </file>
 
 <file path="vite.config.js">
@@ -5845,290 +6232,20 @@ const handleRembg = async () => {
 </style>
 </file>
 
-<file path="src/composables/useEditorState.js">
-import { reactive, readonly } from 'vue';
-
-/**
- * ✨ 全局路由配置表 (Single Source of Truth)
- * 定义 Fabric 对象类型 -> 工具面板(Tool) + 子选项卡(Tab) 的映射关系
- */
-export const OBJECT_TO_TOOL_MAP = {
-    // === 基础形状 ===
-    'i-text': { tool: 'text', tab: 'style' },    // 文本 -> 文本面板-样式Tab
-    'textbox': { tool: 'text', tab: 'style' },
-    'image': { tool: 'adjust', tab: 'filter' }, // 图片 -> 调整面板-滤镜Tab
-    'group': { tool: 'adjust', tab: '' },       // 组 -> 调整面板 (根据业务需求)
-
-    // === 绘制/矢量 ===
-    'path': { tool: 'draw', tab: '' },         // 路径 -> 绘制面板
-
-    // === 几何图形 (通常归类为素材或边框，根据你的业务定) ===
-    'rect': { tool: 'border', tab: 'style' },
-    'circle': { tool: 'material', tab: 'basic' },
-    'triangle': { tool: 'material', tab: 'basic' },
-
-    // === 自定义业务类型 ===
-    'puzzle': { tool: 'puzzle', tab: 'template' }
-};
-
-// 单例状态
-const state = reactive({
-    activeTool: 'adjust', // 一级菜单 ID
-    activeTab: '',        // ✨ 新增: 二级菜单 ID (例如 'style', 'color', 'filter')
-
-    isDrawing: false,     // 是否处于自由绘制模式
-
-    canUndo: false,       // 历史记录状态
-    canRedo: false,
-
-    isLoading: false,
-    loadingText: '处理中...',
-
-    isSidebarDisabled: false, // 侧边栏残影模式
-
-    /**
-     * ✨ 导航来源标记
-     * 'system': 初始化或系统重置
-     * 'manual': 用户手动点击侧边栏 (优先级最高，应有点击反馈)
-     * 'canvas': 画布对象选中触发自动跳转 (应平滑过渡，无干扰)
-     */
-    navigationSource: 'system'
-});
-
-export function useEditorState() {
-
-    /**
-     * 切换当前激活的工具和选项卡
-     * @param {string} tool - 一级工具 ID
-     * @param {string} tab - (可选) 二级选项卡 ID
-     * @param {string} source - 触发来源 ('manual' | 'canvas' | 'system')
-     */
-    const setActiveTool = (tool, tab = '', source = 'manual') => {
-        // 状态防抖：如果 Tool 和 Tab 都没变，且侧边栏也是激活状态，则不执行
-        if (state.activeTool === tool && state.activeTab === tab && !state.isSidebarDisabled) {
-            return;
-        }
-
-        state.activeTool = tool;
-        state.activeTab = tab; // 更新二级路由
-        state.navigationSource = source;
-
-        // 副作用处理
-        state.isDrawing = false; // 切换工具默认退出绘制模式
-        state.isSidebarDisabled = false; // 只要切换工具，必定激活面板
-    };
-
-    // ✨ [核心补全] 切换二级 Tab (专门给 UI 组件用来清理状态)
-    const setActiveTab = (tab) => {
-        state.activeTab = tab;
-    };
-
-    const toggleDrawing = (status) => {
-        state.isDrawing = status;
-    };
-
-    const setHistoryState = (canUndo, canRedo) => {
-        state.canUndo = canUndo;
-        state.canRedo = canRedo;
-    };
-
-    const setLoading = (status, text = '处理中...') => {
-        state.isLoading = status;
-        state.loadingText = text;
-    };
-
-    const setSidebarDisabled = (status) => {
-        state.isSidebarDisabled = status;
-    };
-
-    // === ✨ 核心：智能路由系统 ===
-
-    /**
-     * 根据 Canvas 选中的对象，自动路由到对应的工具面板
-     * @param {Object} target - Fabric 对象实例
-     * @returns {boolean} - 是否成功匹配并跳转
-     */
-    const routeToObject = (target) => {
-        if (!target) return false;
-
-        // 1. 优先读取对象上的自定义路由配置 (如标尺)
-        if (target.customTab) {
-            console.log(`[Router] Custom routing: Tool[${target.customTool || 'adjust'}] Tab[${target.customTab}]`);
-
-            // 激活对应的工具栏
-            setActiveTool(target.customTool || 'adjust');
-
-            // ✨ 强制刷新机制：
-            // 解决“状态死锁”：如果当前 activeTab 已经是这个 tab (比如 'ruler')，
-            // 直接赋值 Vue 不会认为发生了变化，因此 watch 不会触发。
-            // 我们先把它置空，利用 setTimeout 在下一帧改回来，强制触发 UI 展开。
-            if (state.activeTab === target.customTab) {
-                state.activeTab = '';
-                setTimeout(() => {
-                    state.activeTab = target.customTab;
-                }, 0);
-            } else {
-                state.activeTab = target.customTab;
-            }
-
-            return true;
-        }
-
-        // 2. 默认路由规则
-        if (target.type === "i-text") {
-            setActiveTool("text");
-            return true;
-        }
-
-        // ... 其他默认规则可在此补充 ...
-
-        return false;
-    };
-
-    return {
-        state: readonly(state), // 导出只读状态
-        setActiveTool,
-        setActiveTab,       // ✨ 确保导出此函数
-        toggleDrawing,
-        setHistoryState,
-        setLoading,
-        setSidebarDisabled,
-        routeToObject // 导出路由动作供 useCanvas 使用
-    };
-}
-
-// 全局聚焦系数 (保留)
-export const ZOOM_PADDING = 0.921;
-</file>
-
-<file path=".spec/active-context.md">
-# Active Context & Development State
-
-> **Version**: 2.3 (Object-Driven Navigation & Routing)
-> **Last Updated**: 2025-12-23
-> **Current Focus**: Global Navigation Architecture & Event-Driven UI, Fix Ruler Navigation
-
-## 1. 当前开发状态 (Current Status)
-
-### ✅ 已完成模块 (Completed Modules)
-
-#### 1.1 核心编辑 (Core Editing)
-
-- **剪裁 (Crop)**:
-  - [x] **手动选区**: 实现了 `startManualSelection`，支持自定义框选区域。
-  - [x] **比例锁定**: 支持原图比例、自由比例及常用预设 (1:1, 16:9 等)。
-  - [x] **旋转翻转**: 90° 步进旋转与 XY 轴翻转。
-- **尺寸调整 (Resize)**:
-  - [x] **高清重制**: 引入 `useOffscreenHelper`，实现了基于原图分辨率的高清缩放。
-  - [x] **保真模式**: 支持锁定长宽比计算。
-- **补白 (White/Padding)**:
-  - [x] **社媒预设**: 集成 Instagram/Youtube 等常用尺寸模板。
-  - [x] **智能吸色**: 支持背景色吸取及透明背景设置。
-
-#### 1.2 拼图系统 (Puzzle System)
-
-- **网格布局**:
-  - [x] **动态模板**: 基于 `config.js` 实现了 1-16 张图片的网格布局解析。
-  - [x] **自动布局**: 图片拖入自动计算 Cover 裁剪，保证填满格子不留白。
-- **交互逻辑**:
-  - [x] **拖拽交换**: 实现了平滑的交换动画 (`animateSwap`) 和失败回弹。
-  - [x] **物理约束**: 应用 `useConstraint` 防止图片脱离格子可视区。
-- **样式调整**:
-  - [x] **全局参数**: 支持动态调整间距、边距和圆角。
-
-#### 1.3 智能与特效 (AI & Effects)
-
-- **智能消除 (Inpaint)**:
-  - [x] **离屏遮罩**: 解决闪烁问题，通过离屏 Canvas 生成 Mask。
-  - [x] **双模交互**: 支持画笔 (Brush) 和 矩形框选 (Rect)。
-- **一键抠图 (Rembg)**:
-  - [x] **API 集成**: 封装 `src/api/ai.js` 支持一键移除背景。
-- **马赛克 (Mosaic)**:
-  - [x] **无损处理**: 采用“预览层 + 离屏应用”策略。
-- **滤镜与调色**:
-  - [x] **ColorMatrix**: 实现亮度、对比度等 6 维调节。
-  - [x] **LUT 模拟**: 内置“复古”、“电影”等滤镜预设。
-
-#### 1.4 辅助工具与交互 (Tools & Interaction)
-
-- **快捷键系统 (Shortcuts)**:
-  - [x] **可视化面板**: 实现 Keycap 风格的侧边抽屉速查表 (`ShortcutsPanel`)。
-  - [x] **通用操作**: 覆盖复制粘贴、图层移动、锁定等。
-- **测量工具 (Measure)**:
-  - [x] **精准路由**: 点击标尺组件自动跳转至 `Adjust -> Ruler` 面板。
-  - [x] **交互绘制**: 支持拖拽创建测量线，自动计算长度。
-- **交互优化 (Interaction Polish)**:
-  - [x] **右键菜单**: 修复粘贴坐标偏移，实现基于鼠标位置的左上角对齐。
-  - [x] **悬浮菜单**: 实现事件隔离，防止在悬浮条上操作时误触底层 Canvas。
-  - [x] **剪贴板**: 重构为单例模式 (`clipboardState`)。
-
-#### 1.5 全局导航系统 (Global Navigation System) `Major Upgrade`
-
-- **对象驱动路由 (Object-Driven Routing)**:
-  - [x] **智能分发**: 实现了 `useEditorState` 中的 `routeToObject`，根据 Canvas 选中对象自动切换 UI。
-  - [x] **二级导航 (Level 2 Support)**: 支持精确跳转至特定折叠面板 (如 `Tool: Adjust` + `Tab: Ruler`)。
-  - [x] **元数据注入 (Metadata Injection)**: 支持通过 `customTab` / `customTool` 属性覆盖默认路由行为。
-  - [x] **Fix Ruler Navigation**: 修复点击标尺组件自动触发侧边栏跳转的 Bug。
-  - [x] **Fix Crop/Rotate Navigation**: 修复点击裁剪/旋转模块跳转到边框模块的 Bug。
-- **视图解耦**:
-  - [x] **状态监听**: 侧边栏组件 (`index.vue`) 通过 `watch` 监听全局路由状态自动展开对应模块。
-  - [x] **去除残影**: 移除了未选中时的 Sidebar Disabled 状态，保持界面始终可用。
-
----
-
-## 2. 系统架构备忘 (Architecture Memo)
-
-### 2.1 高清离屏渲染管线 (High-Res Offscreen Pipeline)
-
-> **Pattern**: `src/composables/useOffscreenHelper.js`
-
-- **逻辑**: 获取原图原始分辨率 -> 创建临时 StaticCanvas -> 映射效果 -> 导出高清图。
-
-### 2.2 物理约束系统 (Constraint System)
-
-> **Pattern**: `src/composables/useConstraint.js`
-
-- **逻辑**: 计算对象相对于容器的溢出值，Resizing 时实时修正，Puzzle 拖拽时触发回弹。
-
-### 2.3 状态与快捷键 (State & Shortcuts)
-
-- **State**: 使用 `useEditorState.js` (Reactive 单例) 管理全局状态。
-- **Shortcuts**: 采用配置化策略，`ShortcutsPanel` UI 与 `useKeyboardShortcuts` 逻辑共用同一份配置源。
-
-### 2.4 对象驱动路由架构 (Object-Driven Routing Architecture) `NEW`
-
-> **Core Philosophy**: Canvas 是路由触发器，State 是控制器，Sidebar 是视图。
-
-- **配置层 (Configuration)**:
-  - `OBJECT_TO_TOOL_MAP` (in `useEditorState.js`): 定义类型到面板的映射 (e.g., `'i-text' -> { tool: 'text', tab: 'style' }`)。
-- **感知层 (Sensor)**:
-  - `useCanvas.js`: 监听 `mouse:up`, `selection:created`, `selection:updated`。
-  - 过滤多选 (`activeSelection`) 和特殊对象，提取 `customTab` 信标。
-- **注入层 (Injection)**:
-  - 在创建特殊对象 (如标尺、素材) 时，注入 `{ customTab: 'ruler' }` 属性实现精确跳转。
-- **视图层 (View)**:
-  - 左侧菜单高亮 `state.activeTool`。
-  - 二级面板 (如 AdjustPanel) 监听 `state.activeTab` 并自动展开对应模块。
-
-### 2.4 强制类型安全原则 (Type Safety)
-
-- **问题记录**：UI 输入控件（Slider/Input）绑定的响应式数据，在用户交互后会自动退化为 String 类型，导致数学计算（尤其是 + 运算）出错。
-
-- **强制规范**：
-
-    1. 在 Vue 模板中，所有数值型输入必须严格使用 v-model.number 修饰符。
-
-    2. 在 JS 逻辑处理计算前，必须对所有来自 UI 的变量进行防御性转换，例如 Number(value) 或 parseFloat(value)。
-
-    3. 禁止直接信任 UI 绑定的变量类型。
-
----
-
-## 3. 待办事项 (Backlog & Roadmap)
-
-### 📅 近期计划 (Next Sprint)
-
-### 🐛 已知优化点 (Refactoring)
+<file path="src/main.js">
+import { createApp } from 'vue'
+import './style.css' // 确保这里引入了我们新写的通用 CSS (包含 .ie-btn 等样式)
+import App from './App.vue'
+import { applyTheme } from './config/theme.js';
+// 1. 创建 Vue 实例
+const app = createApp(App)
+
+// 2. 应用主题
+applyTheme();
+
+
+// 3. 挂载
+app.mount('#app')
 </file>
 
 <file path="package.json">
@@ -7127,6 +7244,286 @@ export const addImageToCell = (url, cellIndex, options = {}) => {
     if (saveHistoryFn) saveHistoryFn();
   }, { crossOrigin: 'anonymous' });
 };
+</file>
+
+<file path="src/composables/useEditorState.js">
+import { reactive, readonly } from 'vue';
+
+/**
+ * ✨ 全局路由配置表 (Single Source of Truth)
+ * 定义 Fabric 对象类型 -> 工具面板(Tool) + 子选项卡(Tab) 的映射关系
+ */
+export const OBJECT_TO_TOOL_MAP = {
+    // === 基础形状 ===
+    'i-text': { tool: 'text', tab: 'style' },    // 文本 -> 文本面板-样式Tab
+    'textbox': { tool: 'text', tab: 'style' },
+    'image': { tool: 'adjust', tab: 'filter' }, // 图片 -> 调整面板-滤镜Tab
+    'group': { tool: 'adjust', tab: '' },       // 组 -> 调整面板 (根据业务需求)
+
+    // === 绘制/矢量 ===
+    'path': { tool: 'draw', tab: '' },         // 路径 -> 绘制面板
+
+    // === 几何图形 (通常归类为素材或边框，根据你的业务定) ===
+    'rect': { tool: 'border', tab: 'style' },
+    'circle': { tool: 'material', tab: 'basic' },
+    'triangle': { tool: 'material', tab: 'basic' },
+
+    // === 自定义业务类型 ===
+    'puzzle': { tool: 'puzzle', tab: 'template' }
+};
+
+// 单例状态
+const state = reactive({
+    activeTool: 'adjust', // 一级菜单 ID
+    activeTab: '',        // ✨ 新增: 二级菜单 ID (例如 'style', 'color', 'filter')
+
+    isDrawing: false,     // 是否处于自由绘制模式
+
+    canUndo: false,       // 历史记录状态
+    canRedo: false,
+
+    isLoading: false,
+    loadingText: '处理中...',
+
+    isSidebarDisabled: false, // 侧边栏残影模式
+    isGlobalDragMode: false,  // 全局拖动模式
+
+    /**
+     * ✨ 导航来源标记
+     * 'system': 初始化或系统重置
+     * 'manual': 用户手动点击侧边栏 (优先级最高，应有点击反馈)
+     * 'canvas': 画布对象选中触发自动跳转 (应平滑过渡，无干扰)
+     */
+    navigationSource: 'system',
+    
+    // 新增：是否正在进行拼图操作
+    isPuzzleMode: false,
+});
+
+export function useEditorState() {
+
+    /**
+     * 切换当前激活的工具和选项卡
+     * @param {string} tool - 一级工具 ID
+     * @param {string} tab - (可选) 二级选项卡 ID
+     * @param {string} source - 触发来源 ('manual' | 'canvas' | 'system')
+     */
+    const setActiveTool = (tool, tab = '', source = 'manual') => {
+        // 状态防抖：如果 Tool 和 Tab 都没变，且侧边栏也是激活状态，则不执行
+        if (state.activeTool === tool && state.activeTab === tab && !state.isSidebarDisabled) {
+            return;
+        }
+
+        state.activeTool = tool;
+        state.activeTab = tab; // 更新二级路由
+        state.navigationSource = source;
+
+        // 副作用处理
+        state.isDrawing = false; // 切换工具默认退出绘制模式
+        state.isSidebarDisabled = false; // 只要切换工具，必定激活面板
+    };
+
+    // ✨ 新增：设置拖拽模式
+    const setGlobalDragMode = (val) => {
+        state.isGlobalDragMode = val;
+        console.log(`[State] Global Drag Mode: ${val ? 'ON' : 'OFF'}`);
+    };
+
+
+    // ✨ [核心补全] 切换二级 Tab (专门给 UI 组件用来清理状态)
+    const setActiveTab = (tab) => {
+        state.activeTab = tab;
+    };
+
+    const toggleDrawing = (status) => {
+        state.isDrawing = status;
+    };
+
+    const setHistoryState = (canUndo, canRedo) => {
+        state.canUndo = canUndo;
+        state.canRedo = canRedo;
+    };
+
+    const setLoading = (status, text = '处理中...') => {
+        state.isLoading = status;
+        state.loadingText = text;
+    };
+
+    const setSidebarDisabled = (status) => {
+        state.isSidebarDisabled = status;
+    };
+
+    // 新增：设置是否正在进行拼图操作
+    const setPuzzleMode = (status) => {
+        state.isPuzzleMode = status;
+    };
+
+    // === ✨ 核心：智能路由系统 ===
+
+    /**
+     * 根据 Canvas 选中的对象，自动路由到对应的工具面板
+     * @param {Object} target - Fabric 对象实例
+     * @returns {boolean} - 是否成功匹配并跳转
+     */
+    const routeToObject = (target) => {
+        if (!target) return false;
+
+        // 1. 优先读取对象上的自定义路由配置 (如标尺)
+        if (target.customTab) {
+            console.log(`[Router] Custom routing: Tool[${target.customTool || 'adjust'}] Tab[${target.customTab}]`);
+
+            // 激活对应的工具栏
+            setActiveTool(target.customTool || 'adjust');
+
+            // ✨ 强制刷新机制：
+            // 解决“状态死锁”：如果当前 activeTab 已经是这个 tab (比如 'ruler')，
+            // 直接赋值 Vue 不会认为发生了变化，因此 watch 不会触发。
+            // 我们先把它置空，利用 setTimeout 在下一帧改回来，强制触发 UI 展开。
+            if (state.activeTab === target.customTab) {
+                state.activeTab = '';
+                setTimeout(() => {
+                    state.activeTab = target.customTab;
+                }, 0);
+            } else {
+                state.activeTab = target.customTab;
+            }
+
+            return true;
+        }
+
+        // 2. 默认路由规则
+        if (target.type === "i-text") {
+            setActiveTool("text");
+            return true;
+        }
+
+        // ... 其他默认规则可在此补充 ...
+
+        return false;
+    };
+
+    return {
+        state: readonly(state), // 导出只读状态
+        setActiveTool,
+        setActiveTab,       // ✨ 确保导出此函数
+        toggleDrawing,
+        setHistoryState,
+        setLoading,
+        setSidebarDisabled,
+        setPuzzleMode,
+        routeToObject, // 导出路由动作供 useCanvas 使用
+        setGlobalDragMode // 导出全局拖动模式设置
+    };
+}
+
+// 全局聚焦系数 (保留)
+export const ZOOM_PADDING = 0.921;
+</file>
+
+<file path=".spec/active-context.md">
+# Active Context & Development State
+
+> **Version**: 3.0 (Hand Mode & Smart Sensing Integration)
+> **Last Updated**: 2025-12-24
+> **Current Focus**: 全局交互状态切换、标尺智能感知与光标优先级体系
+
+## 1. 当前开发状态 (Current Status)
+
+### ✅ 已完成模块 (Completed Modules)
+
+#### 1.1 核心编辑 (Core Editing)
+- **剪裁 (Crop)**:
+  - [x] **手动选区**: 实现了 `startManualSelection`，支持自定义框选区域。
+  - [x] **比例锁定**: 支持原图比例、自由比例及常用预设 (1:1, 16:9 等)。
+  - [x] **旋转翻转**: 90° 步进旋转与 XY 轴翻转。
+- **尺寸调整 (Resize)**:
+  - [x] **高清重制**: 引入 `useOffscreenHelper`，实现了基于原图分辨率的高清缩放。
+  - [x] **保真模式**: 支持锁定长宽比计算。
+  - [x] **通用锁集成**: 成功接入 `useCanvasLock`，锁定除主图外的一切对象。
+- **补白 (White/Padding)**:
+  - [x] **架构对齐**: 统一使用 `useCanvasLock` 管理交互锁。
+  - [x] **母带重制**: 实现了基于原始分辨率的高清补白与视图比例修正。
+
+#### 1.2 拼图系统 (Puzzle System)
+- **网格布局**:
+  - [x] **动态模板**: 基于 `config.js` 实现了 1-16 张图片的网格布局解析。
+  - [x] **自动布局**: 图片拖入自动计算 Cover 裁剪，保证填满格子不留白。
+- **交互逻辑**:
+  - [x] **拖拽交换**: 实现了平滑的交换动画 (`animateSwap`) 和失败回弹。
+  - [x] **物理约束**: 应用 `useConstraint` 防止图片脱离格子可视区。
+- **样式调整**:
+  - [x] **全局参数**: 支持动态调整间距、边距和圆角。
+
+#### 1.3 智能与特效 (AI & Effects)
+- **智能消除 (Inpaint)**:
+  - [x] **离屏遮罩**: 解决闪烁问题，通过离屏 Canvas 生成 Mask。
+  - [x] **双模交互**: 支持画笔 (Brush) 和 矩形框选 (Rect)。
+- **一键抠图 (Rembg)**:
+  - [x] **API 集成**: 封装 `src/api/ai.js` 支持一键移除背景。
+- **滤镜与调色**:
+  - [x] **ColorMatrix**: 实现亮度、对比度等 6 维调节。
+  - [x] **LUT 模拟**: 内置“复古”、“电影”等滤镜预设。
+
+#### 1.4 全局交互与标尺智能 `NEW`
+- **全局手形模式 (Hand/Drag Mode)**:
+  - [x] **状态管理**: 在 `useEditorState.js` 中新增全局 `isGlobalDragMode` 状态。
+  - [x] **UI 部署**: 在 `Workspace.vue` 右下角部署手形按钮，实现模式实时切换。
+  - [x] **时序修复**: 通过监听 `image:updated` 解决了异步加载导致的物理锁失效问题。
+- **测量标尺 (AdjustRuler)**:
+  - [x] **智能感知绘制**: 实现了“按下即绘制”逻辑。点击空白处（穿透主图）启动绘制，点击已有标尺则选中。
+  - [x] **光标优先级**: 确立了 `grab` (手形) > `crosshair` (标尺) > `default` (默认) 的优先级体系。
+  - [x] **对象反馈**: 锁定状态下的标尺对象强制显示 `hoverCursor: 'move'`，以明确其可编辑性。
+
+---
+
+## 2. 系统架构备忘 (Architecture Memo)
+
+### 2.1 高清离屏渲染管线 (High-Res Offscreen Pipeline)
+- **逻辑**: 获取原图原始分辨率 -> 创建临时 StaticCanvas -> 映射效果 -> 导出高清图。
+
+### 2.2 物理约束系统 (Constraint System)
+- **逻辑**: 计算对象相对于容器的溢出值，Resizing 时实时修正，Puzzle 拖拽时触发回弹。
+
+### 2.3 身份识别标准 (Identity Standards) `NEW`
+- **主图 (Main Image)**: 必须具备 `isMainImage: true` 标识。
+- **标尺 (Ruler)**: 具备 `isRuler: true` 标识，用于豁免物理锁并切换 `hoverCursor`。
+
+### 2.4 对象驱动路由架构 (Object-Driven Routing)
+- **核心理念**: Canvas 是路由触发器，State 是控制器，Sidebar 是视图。
+- **二级导航**: 支持通过 `customTab` 属性精确跳转至特定面板 (如标尺)。
+
+### 2.5 配置驱动型物理锁 (Configuration-Driven Lock) `MAJOR UPGRADE`
+- **File**: `src/composables/useCanvasLock.js`
+- **核心逻辑**: 定义 `LOCK_CONFIG` 常量池作为唯一真相来源。
+- **对称性**: 锁定阶段执行 `lockedValue`，豁免/解锁阶段执行 `interactiveValue`，二者共享同一套循环遍历。
+- **原子备份**: 只有当 `WeakMap` 中不存在该对象记录时才备份，确保存储的是“最原始状态”。
+
+### 2.6 交互协议 (Interaction Protocol) `NEW`
+- **逻辑**: 废弃用户手动的“反问/文件索取”提醒，将其下放到 AI 的默认行为层。
+- **执行准则**: 
+  1. 识别提议。
+  2. 触发 `project-charter` 中的反问逻辑。
+  3. 检索受影响的文件并向用户索取。
+---
+
+## 3. 故障排查与最佳实践 (Troubleshooting & Best Practices)
+
+### 3.1 解决初始化后主图仍可拖动的问题
+- **原因**: 异步加载的主图在 `onMounted` 锁执行后才被添加，覆盖了锁定态。
+- **方案**: 采用“双重加锁”：`onMounted` 锁一次，并在 `image:updated` 事件中再次执行 `syncLockState`。
+
+### 3.2 标尺模块语法错误 (startDrawMode 不存在)
+- **原因**: 重构为智能感知模式后，删除了手动的绘制开关，合并入 `startRulerMode`。
+- **方案**: 更新 `AdjustRuler.vue`，统一使用新的模式控制接口。
+
+### 3.3 物理锁 (useCanvasLock) 失效预防
+- **规范**: 模块初始化时必须显式设置 `mainImg.isMainImage = true`，否则主图会被误锁。
+
+### 3.4 为什么切回模块后功能“残缺” (如能选但不能动)？
+- **现象**: 标尺组件切回后出现蓝框，但无法移动。
+- **原因**: 之前的物理锁在豁免逻辑中采用了“硬编码恢复”，只恢复了 `selectable`，却遗漏了 `lockMovementX/Y` 等属性。
+- **终极解决方案**: 废弃硬编码，改用**配置驱动模式**。通过遍历属性池，确保每一项被锁定的属性在豁免时都能被精准解锁。
+- **教训**: “可以用配置驱动的都不要用硬编码”，保持逻辑的高度对称性。
 </file>
 
 <file path="src/components/modules/adjust/useCanvasResize.js">
@@ -8162,721 +8559,6 @@ onUnmounted(() => {
 </style>
 </file>
 
-<file path="src/components/Workspace.vue">
-<template>
-  <div class="workspace-container">
-    <div class="canvas-center" ref="canvasContainer" @contextmenu.prevent="handleRightClick">
-      <canvas id="c"></canvas>
-    </div>
-
-    <FloatingObjectMenu />
-
-    <CanvasContextMenu :visible="showContextMenu" :position="contextMenuPos" @close="closeContextMenu"
-      @paste="handleMenuPaste" />
-
-    <ShortcutsPanel :visible="showShortcuts" @close="showShortcuts = false" />
-
-    <div class="zoom-controls">
-      <button class="ie-btn ie-btn-circle" title="快捷键列表" @click="showShortcuts = true">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-          <path d="M6 8h.01"></path>
-          <path d="M10 8h.01"></path>
-          <path d="M14 8h.01"></path>
-          <path d="M18 8h.01"></path>
-          <path d="M6 12h.01"></path>
-          <path d="M18 12h.01"></path>
-          <path d="M7 16h10"></path>
-          <path d="M12 12v-1"></path>
-        </svg>
-
-      </button>
-
-      <div class="divider"></div>
-
-      <button class="ie-btn ie-btn-circle" title="缩小" @click="handleZoomOut">
-        <svg viewBox="0 0 1024 1024" width="16" height="16">
-          <path d="M128 544h768a32 32 0 1 0 0-64H128a32 32 0 1 0 0 64z" fill="currentColor" />
-        </svg>
-      </button>
-
-      <span class="zoom-text" @click="handleReset" title="点击重置为100%">
-        {{ zoomPercentage }}%
-      </span>
-
-      <button class="ie-btn ie-btn-circle" title="放大" @click="handleZoomIn">
-        <svg viewBox="0 0 1024 1024" width="16" height="16">
-          <path
-            d="M480 480H160a32 32 0 0 0 0 64h320v320a32 32 0 0 0 64 0V544h320a32 32 0 0 0 0-64H544V160a32 32 0 0 0-64 0v320z"
-            fill="currentColor" />
-        </svg>
-      </button>
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { onMounted, inject, ref, computed, onUnmounted, unref } from 'vue';
-import FloatingObjectMenu from "./common/FloatingObjectMenu.vue";
-import CanvasContextMenu from "./common/CanvasContextMenu.vue";
-import { useObjectActions } from "@/composables/useObjectActions";
-import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
-import ShortcutsPanel from "@/components/common/ShortcutsPanel.vue";
-
-const props = defineProps({
-  imageUrl: {
-    type: String,
-    default: ''
-  },
-});
-
-const canvasAPI = inject('canvasAPI');
-const canvasContainer = ref(null);
-const pastePosition = ref(null);
-const showShortcuts = ref(false);
-
-// 计算属性
-const zoomPercentage = computed(() => {
-  return canvasAPI?.zoom?.value ? Math.round(canvasAPI.zoom.value * 100) : 100;
-});
-
-// 操作处理
-const handleZoomIn = () => canvasAPI?.zoomIn && canvasAPI.zoomIn();
-const handleZoomOut = () => canvasAPI?.zoomOut && canvasAPI.zoomOut();
-const handleReset = () => canvasAPI?.zoomReset && canvasAPI.zoomReset();
-
-const updateZoomState = () => {
-  const fabricCanvas = canvasAPI?.canvas?.value;
-  if (fabricCanvas && canvasAPI.zoom) {
-    canvasAPI.zoom.value = fabricCanvas.getZoom();
-  }
-};
-
-// === 右键菜单逻辑 ===
-const actions = useObjectActions();
-useKeyboardShortcuts(actions);
-const showContextMenu = ref(false);
-const contextMenuPos = ref({ x: 0, y: 0 });
-
-const closeContextMenu = () => {
-  showContextMenu.value = false;
-};
-
-const onGlobalClick = () => {
-  if (showContextMenu.value) closeContextMenu();
-};
-
-const handleRightClick = (e) => {
-  if (e.target.closest('.floating-wrapper')) return;
-
-  contextMenuPos.value = { x: e.clientX, y: e.clientY };
-
-  const canvas = unref(canvasAPI.canvas);
-  if (canvas) {
-    const pointer = canvas.getPointer(e);
-    pastePosition.value = pointer;
-  }
-
-  showContextMenu.value = true;
-};
-
-const handleMenuPaste = () => {
-  actions.pasteActive(pastePosition.value);
-};
-
-onMounted(() => {
-  window.addEventListener('click', onGlobalClick);
-  if (canvasAPI && canvasAPI.init) {
-    const width = canvasContainer.value.clientWidth || 1900;
-    const height = canvasContainer.value.clientHeight || 1000;
-    canvasAPI.init('c', width, height);
-
-    const fabricCanvas = canvasAPI.canvas.value;
-    if (fabricCanvas) {
-      fabricCanvas.on('zoom:change', updateZoomState);
-      fabricCanvas.on('mouse:wheel', updateZoomState);
-    }
-  } else {
-    console.error('CanvasAPI not found.');
-  }
-});
-
-onUnmounted(() => {
-  const fabricCanvas = canvasAPI?.canvas?.value;
-  if (fabricCanvas) {
-    fabricCanvas.off('zoom:change', updateZoomState);
-    fabricCanvas.off('mouse:wheel', updateZoomState);
-  }
-  window.removeEventListener('click', onGlobalClick);
-});
-</script>
-
-<style scoped>
-.workspace-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  background-color: #f0f2f5;
-  overflow: hidden;
-}
-
-.canvas-center {
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-  width: 95%;
-  height: 95%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.zoom-controls {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  background: white;
-  padding: 8px 12px;
-  border-radius: 24px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  z-index: 100;
-}
-
-.zoom-text {
-  font-size: 13px;
-  color: #606266;
-  min-width: 45px;
-  text-align: center;
-  user-select: none;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.zoom-text:hover {
-  color: var(--ie-primary-color);
-}
-
-/* ✅ 修复3: 必须添加按钮样式，否则按钮是透明的或者看不到 */
-.ie-btn {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  color: #606266;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-
-.ie-btn:hover {
-  color: var(--ie-primary-color);
-  /* 或者您的主题色 */
-  background-color: #ecf5ff;
-}
-
-.ie-btn-circle {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-}
-
-.zoom-controls .divider {
-  width: 1px;
-  height: 16px;
-  background: #ebeef5;
-  margin: 0 4px;
-}
-</style>
-</file>
-
-<file path="src/components/modules/adjust/AdjustResize.vue">
-<template>
-  <div class="tool-group">
-    <div class="tool-item" :class="{ 'is-expanded': isExpanded }" @click="handleToggle">
-      <div class="left">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
-          <path d="M15 3h6v6" />
-          <path d="M9 21H3v-6" />
-          <path d="M21 3l-7 7" />
-          <path d="M3 21l7-7" />
-        </svg>
-        <span>调整尺寸</span>
-      </div>
-      <div class="right-icon">
-        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </div>
-    </div>
-
-    <div v-if="isExpanded" class="tool-content">
-
-      <div class="preset-grid">
-        <div class="preset-item custom-item" :class="{ active: isCustomMode }" @click="selectCustomMode">
-          <span>自定义</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="12" y1="8" x2="12" y2="16"></line>
-            <line x1="8" y1="12" x2="16" y2="12"></line>
-          </svg>
-
-        </div>
-
-        <div v-for="(preset, index) in presets" :key="index" class="preset-item"
-          :class="{ active: activePresetIndex === index }" @click="selectPreset(preset, index)">
-          <span class="preset-name">{{ preset.label }}</span>
-          <span class="preset-dim">{{ preset.w }}×{{ preset.h }}</span>
-        </div>
-      </div>
-
-      <div class="resize-input-box">
-
-        <div class="input-controls">
-          <div class="input-wrapper">
-            <input type="number" v-model.number="width" class="ie-input" @input="onInputChanged">
-            <span class="suffix">W</span>
-          </div>
-
-          <div class="link-icon-btn" @click="toggleAdaptive" :title="isAdaptive ? '锁定比例' : '自由比例'">
-            <svg v-if="isAdaptive" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="var(--ie-primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-            </svg>
-            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-              <line x1="4" y1="4" x2="20" y2="20" stroke="#999"></line>
-            </svg>
-          </div>
-
-          <div class="input-wrapper">
-            <input type="number" v-model.number="height" class="ie-input" @input="onInputChanged">
-            <span class="suffix">H</span>
-          </div>
-        </div>
-
-        <div class="switch-row">
-          <div class="ie-switch" :class="{ 'is-checked': isAdaptive }" @click="toggleAdaptive">
-            <span class="ie-switch-core"></span>
-          </div>
-          <span class="switch-label">锁定长宽比 (保真模式)</span>
-        </div>
-
-        <!-- <div class="reset-row">
-           <span class="reset-link" @click="resetToOriginal">恢复原图尺寸</span>
-        </div> -->
-
-      </div>
-
-      <div class="action-buttons">
-        <button class="ie-btn ie-primary full" @click="handleApply">应用修改</button>
-        <button class="ie-btn full" @click="handleCancel">取消</button>
-      </div>
-
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, inject, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
-import { registerResizeModule, getCurrentSize, applyResize, startPreview, updatePreview, stopPreview } from './useCanvasResize';
-
-const props = defineProps({
-  isExpanded: { type: Boolean, default: false }
-});
-
-const emit = defineEmits(['toggle']);
-const canvasAPI = inject('canvasAPI');
-
-// === 状态定义 ===
-const width = ref(0);
-const height = ref(0);
-const isAdaptive = ref(true);
-const originalRatio = ref(1);
-const activePresetIndex = ref(-1);
-const isInternalUpdate = ref(false); // 防止循环更新
-
-// 预设数据 (可根据需要扩展)
-const presets = [
-  { label: '方形主图', w: 800, h: 800 },
-  { label: 'Temu服装图', w: 1340, h: 1785 },
-  { label: '方形主图', w: 1000, h: 1000 },
-  { label: '竖图主图', w: 750, h: 1000 },
-  { label: '方形主图', w: 500, h: 500 },
-  { label: '竖图主图', w: 1000, h: 1200 },
-  { label: 'Youtube视频封面', w: 1280, h: 720 },
-  { label: 'Pinterest帖子', w: 750, h: 1120 },
-  { label: 'Facebook封面', w: 851, h: 315 },
-];
-
-const isCustomMode = computed(() => activePresetIndex.value === -1);
-
-// === 核心逻辑：获取当前应遵循的比例 ===
-// 对应表格逻辑：如果是预设，用预设比例；如果是自定义，用原图比例
-const currentTargetRatio = computed(() => {
-  if (activePresetIndex.value >= 0) {
-    const p = presets[activePresetIndex.value];
-    return p.h !== 0 ? (p.w / p.h) : 1;
-  } else {
-    return originalRatio.value;
-  }
-});
-
-// === 初始化 ===
-const initSize = () => {
-  if (canvasAPI && canvasAPI.canvas) {
-    registerResizeModule(canvasAPI.canvas, canvasAPI.saveHistory);
-    const size = getCurrentSize();
-
-    if (size.height > 0) {
-      originalRatio.value = size.width / size.height;
-    }
-
-    width.value = size.width;
-    height.value = size.height;
-    activePresetIndex.value = -1; // 默认选中自定义
-    isAdaptive.value = true;      // 默认开启保真
-
-    // 立即启动预览 (显示蓝色虚线框)
-    nextTick(() => {
-      startPreview(width.value, height.value, !isAdaptive.value);
-    });
-  }
-};
-
-// === 交互逻辑 ===
-
-const selectCustomMode = () => {
-  activePresetIndex.value = -1;
-  // 切换到自定义时，恢复到原图尺寸，或者保持当前输入但切换比例基准
-  // 这里选择：重置回原图尺寸，符合直觉
-  resetToOriginal();
-};
-
-const selectPreset = (preset, index) => {
-  activePresetIndex.value = index;
-  // 选中预设 -> 立即应用预设数值
-  isInternalUpdate.value = true;
-  width.value = preset.w;
-  height.value = preset.h;
-  // 选中预设通常意味着用户希望遵循该比例，所以自动开启保真
-  isAdaptive.value = true;
-  nextTick(() => {
-    isInternalUpdate.value = false;
-    updatePreviewBox(); // 更新预览
-  });
-};
-
-const toggleAdaptive = () => {
-  isAdaptive.value = !isAdaptive.value;
-  // 打开开关瞬间，根据当前 Width 和 目标比例 修正 Height
-  if (isAdaptive.value && width.value > 0) {
-    isInternalUpdate.value = true;
-    height.value = Math.round(width.value / currentTargetRatio.value);
-    nextTick(() => {
-      isInternalUpdate.value = false;
-      updatePreviewBox();
-    });
-  } else {
-    // 修改点 2：如果是关闭保真（进入拉伸模式），也立即刷新预览，触发图片拉伸效果
-    updatePreviewBox();
-  }
-};
-
-const resetToOriginal = () => {
-  const size = getCurrentSize();
-  width.value = size.width;
-  height.value = size.height;
-  // 恢复原尺寸预览
-  updatePreviewBox();
-};
-
-// === 监听输入 (实现表格矩阵逻辑) ===
-
-// 监听宽度变化
-watch(width, (newW) => {
-  if (isInternalUpdate.value) return;
-
-  // 表格逻辑 1 & 3 & 5: 保真开启 -> 自动计算高度
-  if (isAdaptive.value && newW > 0) {
-    isInternalUpdate.value = true;
-    height.value = Math.round(newW / currentTargetRatio.value);
-    nextTick(() => { isInternalUpdate.value = false; });
-  }
-  // 表格逻辑 2 & 4: 保真关闭 -> 高度不变 (导致变形)
-});
-
-// 监听高度变化
-watch(height, (newH) => {
-  if (isInternalUpdate.value) return;
-
-  if (isAdaptive.value && newH > 0) {
-    isInternalUpdate.value = true;
-    width.value = Math.round(newH * currentTargetRatio.value);
-    nextTick(() => { isInternalUpdate.value = false; });
-  }
-});
-
-// === 预览更新 ===
-// 只要输入变化，就通知 canvas 更新虚线框
-const onInputChanged = () => {
-  updatePreviewBox();
-};
-
-const updatePreviewBox = () => {
-  if (width.value > 0 && height.value > 0) {
-    // 修改点 3：传入拉伸状态 (!isAdaptive.value)
-    updatePreview(width.value, height.value, !isAdaptive.value);
-  } else {
-    stopPreview();
-  }
-};
-
-// 监听展开状态
-watch(() => props.isExpanded, (val) => {
-  if (val) initSize();
-  else stopPreview();
-});
-
-// === 应用与取消 ===
-const handleApply = () => {
-  // 修改点 4：传入拉伸状态
-  applyResize(width.value, height.value, !isAdaptive.value);
-  emit('toggle');
-};
-
-const handleCancel = () => {
-  stopPreview();
-  emit('toggle');
-}
-
-const handleToggle = () => {
-  emit('toggle');
-};
-
-onMounted(() => {
-  if (props.isExpanded) initSize();
-});
-
-onUnmounted(() => stopPreview());
-</script>
-
-<style scoped>
-/* Grid 布局实现矩阵效果 */
-.preset-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  /* 两列 */
-  gap: 8px;
-  margin-bottom: 16px;
-  max-height: 280px;
-  overflow-y: auto;
-}
-
-.preset-item {
-  background-color: #f5f7fa;
-  padding: 10px;
-  border-radius: 6px;
-  font-size: 13px;
-  color: #606266;
-  cursor: pointer;
-  border: 1px solid transparent;
-  display: flex;
-  flex-direction: column;
-  /* 垂直排列文字 */
-  align-items: center;
-  justify-content: space-between;
-  text-align: center;
-  transition: all 0.2s;
-}
-
-.preset-item:hover {
-  background-color: #e6f7ff;
-  border-color: #c0c4cc;
-}
-
-.preset-item.active {
-  background-color: #ecf5ff;
-  color: var(--ie-primary-color);
-  border-color: var(--ie-primary-color);
-  font-weight: 500;
-}
-
-/* 自定义项特殊样式 */
-.custom-item {
-  flex-direction: row;
-  /* 横向 */
-  grid-column: span 2;
-  /* 占满一行 */
-  background-color: #fff;
-  border: 1px dashed #dcdfe6;
-}
-
-.custom-item.active {
-  border-style: solid;
-}
-
-.preset-name {
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-
-.preset-dim {
-  font-size: 11px;
-  color: #909399;
-}
-
-/* 输入框区域样式优化 */
-.resize-input-box {
-  background-color: #fff;
-  padding: 4px 0;
-}
-
-.input-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.input-wrapper {
-  position: relative;
-  width: 40%;
-}
-
-.ie-input {
-  text-align: center;
-  padding-right: 20px;
-  font-weight: bold;
-  color: #333;
-  width: 100%;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  height: 32px;
-  font-size: 13px;
-}
-
-.ie-input:focus {
-  border-color: var(--ie-primary-color);
-  outline: none;
-}
-
-.suffix {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #c0c4cc;
-  font-size: 11px;
-  pointer-events: none;
-}
-
-.link-icon-btn {
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-}
-
-.link-icon-btn:hover {
-  background-color: #f0f0f0;
-}
-
-.switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 12px;
-}
-
-.switch-label {
-  font-size: 12px;
-  color: #606266;
-  margin-left: 8px;
-  cursor: pointer;
-}
-
-.ie-switch {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  width: 32px;
-  height: 16px;
-  border-radius: 10px;
-  background-color: #dcdfe6;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.ie-switch.is-checked {
-  background-color: var(--ie-primary-color);
-}
-
-.ie-switch-core {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  border-radius: 100%;
-  width: 12px;
-  height: 12px;
-  background-color: #fff;
-  transition: all 0.3s;
-}
-
-.ie-switch.is-checked .ie-switch-core {
-  left: 100%;
-  margin-left: -14px;
-}
-
-.reset-row {
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.reset-link {
-  font-size: 12px;
-  color: #909399;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.reset-link:hover {
-  color: var(--ie-primary-color);
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-}
-
-.full {
-  flex: 1;
-}
-
-.tool-item:hover .arrow {
-  transform: translateX(2px);
-  transition: transform 0.2s;
-}
-
-.tool-content {
-  padding: 16px;
-  border: 1px solid #eee;
-  border-top: none;
-}
-</style>
-</file>
-
 <file path="src/components/modules/adjust/index.vue">
 <template>
   <div class="panel-adjust">
@@ -9595,6 +9277,892 @@ export {
 };
 </file>
 
+<file path="src/components/Workspace.vue">
+<template>
+  <div class="workspace-container">
+    <div class="canvas-center" ref="canvasContainer" @contextmenu.prevent="handleRightClick">
+      <canvas id="c"></canvas>
+    </div>
+
+    <FloatingObjectMenu />
+
+    <CanvasContextMenu :visible="showContextMenu" :position="contextMenuPos" @close="closeContextMenu"
+      @paste="handleMenuPaste" />
+
+    <ShortcutsPanel :visible="showShortcuts" @close="showShortcuts = false" />
+
+    <div class="zoom-controls">
+      <button 
+        class="ie-btn ie-btn-circle control-btn" 
+        :class="{ 'is-active': state.isGlobalDragMode }"
+        @click="toggleDragMode"
+        :title="state.isGlobalDragMode ? '退出拖拽模式' : '进入拖拽模式 (空格键)'"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+           <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v5" />
+           <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v10" />
+           <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
+           <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+        </svg>
+      </button>
+
+      <button class="ie-btn ie-btn-circle" title="快捷键列表" @click="showShortcuts = true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+          <path d="M6 8h.01"></path>
+          <path d="M10 8h.01"></path>
+          <path d="M14 8h.01"></path>
+          <path d="M18 8h.01"></path>
+          <path d="M6 12h.01"></path>
+          <path d="M18 12h.01"></path>
+          <path d="M7 16h10"></path>
+          <path d="M12 12v-1"></path>
+        </svg>
+      </button>
+
+      <div class="divider"></div>
+
+      <button class="ie-btn ie-btn-circle" title="缩小" @click="handleZoomOut">
+        <svg viewBox="0 0 1024 1024" width="16" height="16">
+          <path d="M128 544h768a32 32 0 1 0 0-64H128a32 32 0 1 0 0 64z" fill="currentColor" />
+        </svg>
+      </button>
+
+      <span class="zoom-text" @click="handleReset" title="点击重置为100%">
+        {{ zoomPercentage }}%
+      </span>
+
+      <button class="ie-btn ie-btn-circle" title="放大" @click="handleZoomIn">
+        <svg viewBox="0 0 1024 1024" width="16" height="16">
+          <path
+            d="M480 480H160a32 32 0 0 0 0 64h320v320a32 32 0 0 0 64 0V544h320a32 32 0 0 0 0-64H544V160a32 32 0 0 0-64 0v320z"
+            fill="currentColor" />
+        </svg>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { onMounted, inject, ref, watch, computed, onUnmounted, unref } from 'vue';
+import FloatingObjectMenu from "./common/FloatingObjectMenu.vue";
+import CanvasContextMenu from "./common/CanvasContextMenu.vue";
+import { useObjectActions } from "@/composables/useObjectActions";
+import { useKeyboardShortcuts } from "@/composables/useKeyboardShortcuts";
+import ShortcutsPanel from "@/components/common/ShortcutsPanel.vue";
+import { useEditorState } from '@/composables/useEditorState';
+import { useCanvasLock } from '@/composables/useCanvasLock';
+
+const { state, setGlobalDragMode } = useEditorState();
+const { setBackgroundLock } = useCanvasLock();
+
+const props = defineProps({
+  imageUrl: {
+    type: String,
+    default: ''
+  },
+});
+
+const canvasAPI = inject('canvasAPI');
+const canvasContainer = ref(null);
+const pastePosition = ref(null);
+const showShortcuts = ref(false);
+
+// 计算属性
+const zoomPercentage = computed(() => {
+  return canvasAPI?.zoom?.value ? Math.round(canvasAPI.zoom.value * 100) : 100;
+});
+
+// 操作处理
+const handleZoomIn = () => canvasAPI?.zoomIn && canvasAPI.zoomIn();
+const handleZoomOut = () => canvasAPI?.zoomOut && canvasAPI.zoomOut();
+const handleReset = () => canvasAPI?.zoomReset && canvasAPI.zoomReset();
+
+const updateZoomState = () => {
+  const fabricCanvas = canvasAPI?.canvas?.value;
+  if (fabricCanvas && canvasAPI.zoom) {
+    canvasAPI.zoom.value = fabricCanvas.getZoom();
+  }
+};
+
+/**
+ * ✨ 同步物理锁状态
+ * 增加 isRulerMode 标记传递
+ */
+const syncLockState = () => {
+  const canvas = unref(canvasAPI.canvas);
+  if (!canvas) return;
+
+  const isRulerModule = state.activeTab === 'ruler';
+  
+  setBackgroundLock(canvas, true, { 
+      excludeRulers: isRulerModule, 
+      dragMode: state.isGlobalDragMode,
+      isRulerMode: isRulerModule // ✨ 明确告知物理锁当前是否在标尺模式
+  });
+};
+
+const toggleDragMode = () => {
+    const newMode = !state.isGlobalDragMode;
+    setGlobalDragMode(newMode);
+    syncLockState();
+};
+
+// === 右键菜单逻辑 ===
+const actions = useObjectActions();
+useKeyboardShortcuts(actions);
+const showContextMenu = ref(false);
+const contextMenuPos = ref({ x: 0, y: 0 });
+
+const closeContextMenu = () => {
+  showContextMenu.value = false;
+};
+
+const onGlobalClick = () => {
+  if (showContextMenu.value) closeContextMenu();
+};
+
+const handleRightClick = (e) => {
+  if (e.target.closest('.floating-wrapper')) return;
+
+  contextMenuPos.value = { x: e.clientX, y: e.clientY };
+
+  const canvas = unref(canvasAPI.canvas);
+  if (canvas) {
+    const pointer = canvas.getPointer(e);
+    pastePosition.value = pointer;
+  }
+
+  showContextMenu.value = true;
+};
+
+const handleMenuPaste = () => {
+  actions.pasteActive(pastePosition.value);
+};
+
+onMounted(() => {
+  window.addEventListener('click', onGlobalClick);
+  if (canvasAPI && canvasAPI.init) {
+    const width = canvasContainer.value.clientWidth || 1900;
+    const height = canvasContainer.value.clientHeight || 1000;
+    canvasAPI.init('c', width, height);
+
+    const fabricCanvas = canvasAPI.canvas.value;
+    if (fabricCanvas) {
+      fabricCanvas.on('zoom:change', updateZoomState);
+      fabricCanvas.on('mouse:wheel', updateZoomState);
+      fabricCanvas.on('image:updated', syncLockState);
+      window.canvas = fabricCanvas; // ✨ 临时暴露给全局，方便调试
+    }
+  }
+
+  syncLockState();
+});
+
+watch(() => state.activeTab, () => {
+  syncLockState();
+});
+
+
+onUnmounted(() => {
+  const fabricCanvas = canvasAPI?.canvas?.value;
+  if (fabricCanvas) {
+    fabricCanvas.off('zoom:change', updateZoomState);
+    fabricCanvas.off('mouse:wheel', updateZoomState);
+    fabricCanvas.off('image:updated', syncLockState);
+  }
+  window.removeEventListener('click', onGlobalClick);
+  
+  const canvas = unref(canvasAPI.canvas);
+  if (canvas) {
+    setBackgroundLock(canvas, true, { dragMode: false });
+  }
+});
+</script>
+
+<style scoped>
+.workspace-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  background-color: #f0f2f5;
+  overflow: hidden;
+}
+
+.canvas-center {
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  width: 95%;
+  height: 95%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.zoom-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+}
+
+.zoom-text {
+  font-size: 13px;
+  color: #606266;
+  min-width: 45px;
+  text-align: center;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.zoom-text:hover {
+  color: var(--ie-primary-color);
+}
+
+.ie-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #606266;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.ie-btn:hover {
+  color: var(--ie-primary-color);
+  background-color: #ecf5ff;
+}
+
+.ie-btn-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.control-btn.is-active {
+  background: var(--ie-primary-color);
+  color: white;
+  border-color: var(--ie-primary-color);
+}
+
+.zoom-controls .divider {
+  width: 1px;
+  height: 16px;
+  background: #ebeef5;
+  margin: 0 4px;
+}
+</style>
+</file>
+
+<file path="src/components/modules/adjust/AdjustResize.vue">
+<template>
+  <div class="tool-group">
+    <div
+      class="tool-item"
+      :class="{ 'is-expanded': isExpanded }"
+      @click="handleToggle"
+    >
+      <div class="left">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          style="margin-right: 8px"
+        >
+          <path d="M15 3h6v6" />
+          <path d="M9 21H3v-6" />
+          <path d="M21 3l-7 7" />
+          <path d="M3 21l7-7" />
+        </svg>
+        <span>调整尺寸</span>
+      </div>
+      <div class="right-icon">
+        <svg
+          class="arrow"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+      </div>
+    </div>
+
+    <div v-if="isExpanded" class="tool-content">
+      <div class="preset-grid">
+        <div
+          class="preset-item custom-item"
+          :class="{ active: isCustomMode }"
+          @click="selectCustomMode"
+        >
+          <span>自定义</span>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+        </div>
+
+        <div
+          v-for="(preset, index) in presets"
+          :key="index"
+          class="preset-item"
+          :class="{ active: activePresetIndex === index }"
+          @click="selectPreset(preset, index)"
+        >
+          <span class="preset-name">{{ preset.label }}</span>
+          <span class="preset-dim">{{ preset.w }}×{{ preset.h }}</span>
+        </div>
+      </div>
+
+      <div class="resize-input-box">
+        <div class="input-controls">
+          <div class="input-wrapper">
+            <input
+              type="number"
+              v-model.number="width"
+              class="ie-input"
+              @input="onInputChanged"
+            />
+            <span class="suffix">W</span>
+          </div>
+
+          <div
+            class="link-icon-btn"
+            @click="toggleAdaptive"
+            :title="isAdaptive ? '锁定比例' : '自由比例'"
+          >
+            <svg
+              v-if="isAdaptive"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="var(--ie-primary-color)"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+              ></path>
+              <path
+                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+              ></path>
+            </svg>
+            <svg
+              v-else
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#999"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              style="opacity: 0.6"
+            >
+              <path
+                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+              ></path>
+              <path
+                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+              ></path>
+              <line x1="4" y1="4" x2="20" y2="20" stroke="#999"></line>
+            </svg>
+          </div>
+
+          <div class="input-wrapper">
+            <input
+              type="number"
+              v-model.number="height"
+              class="ie-input"
+              @input="onInputChanged"
+            />
+            <span class="suffix">H</span>
+          </div>
+        </div>
+
+        <div class="switch-row">
+          <div
+            class="ie-switch"
+            :class="{ 'is-checked': isAdaptive }"
+            @click="toggleAdaptive"
+          >
+            <span class="ie-switch-core"></span>
+          </div>
+          <span class="switch-label">锁定长宽比 (保真模式)</span>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button class="ie-btn ie-primary full" @click="handleApply">
+          应用修改
+        </button>
+        <button class="ie-btn full" @click="handleCancel">取消</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import {
+  ref,
+  inject,
+  watch,
+  onMounted,
+  onUnmounted,
+  nextTick,
+  computed,
+  unref,
+} from "vue";
+import {
+  registerResizeModule,
+  getCurrentSize,
+  applyResize,
+  startPreview,
+  updatePreview,
+  stopPreview,
+} from "./useCanvasResize";
+// ✨ 1. 引入物理锁
+import { useCanvasLock } from "@/composables/useCanvasLock";
+
+const props = defineProps({
+  isExpanded: { type: Boolean, default: false },
+});
+
+const emit = defineEmits(["toggle"]);
+const canvasAPI = inject("canvasAPI");
+
+// ✨ 2. 获取锁方法
+const { setBackgroundLock } = useCanvasLock();
+
+// === 状态定义 ===
+const width = ref(0);
+const height = ref(0);
+const isAdaptive = ref(true);
+const originalRatio = ref(1);
+const activePresetIndex = ref(-1);
+const isInternalUpdate = ref(false); // 防止循环更新
+
+// 预设数据 (保留原样)
+const presets = [
+  { label: "方形主图", w: 800, h: 800 },
+  { label: "Temu服装图", w: 1340, h: 1785 },
+  { label: "方形主图", w: 1000, h: 1000 },
+  { label: "竖图主图", w: 750, h: 1000 },
+  { label: "方形主图", w: 500, h: 500 },
+  { label: "竖图主图", w: 1000, h: 1200 },
+  { label: "Youtube视频封面", w: 1280, h: 720 },
+  { label: "Pinterest帖子", w: 750, h: 1120 },
+  { label: "Facebook封面", w: 851, h: 315 },
+];
+
+const isCustomMode = computed(() => activePresetIndex.value === -1);
+
+// === 核心逻辑：获取当前应遵循的比例 ===
+const currentTargetRatio = computed(() => {
+  if (activePresetIndex.value >= 0) {
+    const p = presets[activePresetIndex.value];
+    return p.h !== 0 ? p.w / p.h : 1;
+  } else {
+    return originalRatio.value;
+  }
+});
+
+// === 初始化 ===
+const initSize = () => {
+  if (canvasAPI && canvasAPI.canvas) {
+    registerResizeModule(canvasAPI.canvas, canvasAPI.saveHistory);
+    const canvas = unref(canvasAPI.canvas);
+    
+    if (canvas) {
+      // 确保主图被标记，以便被锁逻辑豁免
+      const mainImg = canvas.getObjects().find((o) => o.isMainImage || o.type === 'image');
+      if (mainImg) {
+        if (!mainImg.isMainImage) mainImg.isMainImage = true; // 动态补全标识
+        canvas.setActiveObject(mainImg);
+      }
+      canvas.requestRenderAll();
+    }
+
+    const size = getCurrentSize();
+
+    if (size.height > 0) {
+      originalRatio.value = size.width / size.height;
+    }
+
+    width.value = size.width;
+    height.value = size.height;
+    activePresetIndex.value = -1; // 默认选中自定义
+    isAdaptive.value = true; // 默认开启保真
+
+    // 立即启动预览 (显示蓝色虚线框)
+    nextTick(() => {
+      startPreview(width.value, height.value, !isAdaptive.value);
+      if (canvas) setBackgroundLock(canvas, true);
+    });
+  }
+};
+
+// === 清理逻辑 (封装) ===
+const cleanup = () => {
+  stopPreview();
+
+  // ✨✨✨ 4. 注入解锁逻辑：恢复交互 ✨✨✨
+  const canvas = unref(canvasAPI.canvas);
+  if (canvas) {
+    setBackgroundLock(canvas, false);
+    canvas.discardActiveObject();
+    canvas.requestRenderAll();
+  }
+};
+
+// === 交互逻辑 (保留原样) ===
+
+const selectCustomMode = () => {
+  activePresetIndex.value = -1;
+  resetToOriginal();
+};
+
+const selectPreset = (preset, index) => {
+  activePresetIndex.value = index;
+  isInternalUpdate.value = true;
+  width.value = preset.w;
+  height.value = preset.h;
+  isAdaptive.value = true;
+  nextTick(() => {
+    isInternalUpdate.value = false;
+    updatePreviewBox();
+  });
+};
+
+const toggleAdaptive = () => {
+  isAdaptive.value = !isAdaptive.value;
+  if (isAdaptive.value && width.value > 0) {
+    isInternalUpdate.value = true;
+    height.value = Math.round(width.value / currentTargetRatio.value);
+    nextTick(() => {
+      isInternalUpdate.value = false;
+      updatePreviewBox();
+    });
+  } else {
+    updatePreviewBox();
+  }
+};
+
+const resetToOriginal = () => {
+  const size = getCurrentSize();
+  width.value = size.width;
+  height.value = size.height;
+  updatePreviewBox();
+};
+
+// === 监听输入 ===
+
+watch(width, (newW) => {
+  if (isInternalUpdate.value) return;
+  if (isAdaptive.value && newW > 0) {
+    isInternalUpdate.value = true;
+    height.value = Math.round(newW / currentTargetRatio.value);
+    nextTick(() => {
+      isInternalUpdate.value = false;
+    });
+  }
+});
+
+watch(height, (newH) => {
+  if (isInternalUpdate.value) return;
+  if (isAdaptive.value && newH > 0) {
+    isInternalUpdate.value = true;
+    width.value = Math.round(newH * currentTargetRatio.value);
+    nextTick(() => {
+      isInternalUpdate.value = false;
+    });
+  }
+});
+
+const onInputChanged = () => {
+  updatePreviewBox();
+};
+
+const updatePreviewBox = () => {
+  if (width.value > 0 && height.value > 0) {
+    updatePreview(width.value, height.value, !isAdaptive.value);
+  } else {
+    stopPreview();
+  }
+};
+
+// 监听展开状态
+watch(
+  () => props.isExpanded,
+  (val) => {
+    if (val) initSize();
+    else cleanup(); // 使用 cleanup 替代原来的 stopPreview
+  }
+);
+
+// === 应用与取消 ===
+const handleApply = () => {
+  applyResize(width.value, height.value, !isAdaptive.value);
+  emit("toggle"); // 关闭会自动触发 watch -> cleanup -> 解锁
+};
+
+const handleCancel = () => {
+  cleanup(); // 显式调用清理
+  emit("toggle");
+};
+
+const handleToggle = () => {
+  emit("toggle");
+};
+
+onMounted(() => {
+  if (props.isExpanded) initSize();
+});
+
+onUnmounted(() => cleanup());
+</script>
+
+<style scoped>
+/* Grid 布局实现矩阵效果 */
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  /* 两列 */
+  gap: 8px;
+  margin-bottom: 16px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.preset-item {
+  background-color: #f5f7fa;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #606266;
+  cursor: pointer;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  /* 垂直排列文字 */
+  align-items: center;
+  justify-content: space-between;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.preset-item:hover {
+  background-color: #e6f7ff;
+  border-color: #c0c4cc;
+}
+
+.preset-item.active {
+  background-color: #ecf5ff;
+  color: var(--ie-primary-color);
+  border-color: var(--ie-primary-color);
+  font-weight: 500;
+}
+
+/* 自定义项特殊样式 */
+.custom-item {
+  flex-direction: row;
+  /* 横向 */
+  grid-column: span 2;
+  /* 占满一行 */
+  background-color: #fff;
+  border: 1px dashed #dcdfe6;
+}
+
+.custom-item.active {
+  border-style: solid;
+}
+
+.preset-name {
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.preset-dim {
+  font-size: 11px;
+  color: #909399;
+}
+
+/* 输入框区域样式优化 */
+.resize-input-box {
+  background-color: #fff;
+  padding: 4px 0;
+}
+
+.input-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.input-wrapper {
+  position: relative;
+  width: 40%;
+}
+
+.ie-input {
+  text-align: center;
+  padding-right: 20px;
+  font-weight: bold;
+  color: #333;
+  width: 100%;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  height: 32px;
+  font-size: 13px;
+}
+
+.ie-input:focus {
+  border-color: var(--ie-primary-color);
+  outline: none;
+}
+
+.suffix {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #c0c4cc;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.link-icon-btn {
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.link-icon-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.switch-label {
+  font-size: 12px;
+  color: #606266;
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.ie-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 32px;
+  height: 16px;
+  border-radius: 10px;
+  background-color: #dcdfe6;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.ie-switch.is-checked {
+  background-color: var(--ie-primary-color);
+}
+
+.ie-switch-core {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  border-radius: 100%;
+  width: 12px;
+  height: 12px;
+  background-color: #fff;
+  transition: all 0.3s;
+}
+
+.ie-switch.is-checked .ie-switch-core {
+  left: 100%;
+  margin-left: -14px;
+}
+
+.reset-row {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.reset-link {
+  font-size: 12px;
+  color: #909399;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.reset-link:hover {
+  color: var(--ie-primary-color);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.full {
+  flex: 1;
+}
+
+.tool-item:hover .arrow {
+  transform: translateX(2px);
+  transition: transform 0.2s;
+}
+
+.tool-content {
+  padding: 16px;
+  border: 1px solid #eee;
+  border-top: none;
+}
+</style>
+</file>
+
 <file path="src/components/modules/puzzle/index.vue">
 <template>
   <div class="puzzle-module">
@@ -9910,20 +10478,10 @@ export {
 
     <Modal
       v-model="showSaveModal"
-      title="保存"
       @confirm="handleConfirmSave"
       @cancel="showSaveModal = false"
       @discard="showSaveModal = false"
-    >
-      <div class="confirm-content">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#909399" stroke-width="2" style="margin-right: 8px;">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        <span>注意：使用拼图后会覆盖原图所有内容</span>
-      </div>
-      </Modal>
+    />
   </div>
 </template>
 
@@ -9946,9 +10504,11 @@ export {
     restoreSnapshotBeforeLayout,
     completeExitPuzzle // 引入完成拼图的方法
   } from './useCanvasPuzzle.js';
+  import { useEditorState } from '@/composables/useEditorState';
 
   const canvasAPI = inject('canvasAPI');
   const fileInput = ref(null);
+  const { setPuzzleMode } = useEditorState();
   
   let pendingCellIndex = -1;
   const selectedCellIndex = ref(-1);
@@ -10049,6 +10609,7 @@ export {
     
     curTemp.value = template;
     showControlPanel.value = true;
+    setPuzzleMode(true); // 切换到拼图模式
     sub.value = 1;
     applyTemplate(template);
     zoomToPuzzleArea();
@@ -10062,6 +10623,7 @@ export {
   const cancel = () => {
     restoreSnapshotBeforeLayout();
     showControlPanel.value = false;
+    setPuzzleMode(false); // 退出拼图模式
     curTemp.value = {};
   };
 
@@ -10120,6 +10682,7 @@ export {
     
     // 3. 返回
     showControlPanel.value = false;
+    setPuzzleMode(false); // 退出拼图模式
   };
 
   // === Sub 3 逻辑 ===
@@ -11160,7 +11723,7 @@ defineExpose({
 <file path="src/composables/useCanvas.js">
 import { ref, shallowRef, markRaw, toRaw, unref, onMounted, onUnmounted } from "vue";
 import { fabric } from "fabric";
-// ✨ 引入 routeToObject 用于路由跳转
+// ✨ 引入 state 以便读取当前的 activeTool/activeTab
 import { useEditorState, ZOOM_PADDING } from "./useEditorState";
 
 import {
@@ -11176,8 +11739,8 @@ const ROUTING_ALLOWLIST = ['ruler'];
 
 export function useCanvas() {
   const canvas = shallowRef(null);
-  // ✨ 获取 routeToObject
-  const { setHistoryState, setActiveTool, setSidebarDisabled, routeToObject } = useEditorState();
+  // ✨ 获取 state 对象
+  const { state, setHistoryState, setActiveTool, setSidebarDisabled, routeToObject } = useEditorState();
   const zoom = ref(1);
 
   // 交互状态变量
@@ -11196,7 +11759,7 @@ export function useCanvas() {
     }
     const json = JSON.stringify(
       canvas.value.toJSON([
-        "id", "selectable", "name", "isMainImage", "isPuzzleImage",
+        "id", "selectable", "name", "isMainImage", "isPuzzleImage", 
         "cellIndex", "isMaskObject",
         "customTab", "customTool", "isRuler", "excludeFromExport"
       ])
@@ -11214,7 +11777,7 @@ export function useCanvas() {
     setHistoryState(historyIndex > 0, historyIndex < history.length - 1);
   };
 
-  const undo = () => { /* ...保持原样... */
+  const undo = () => { /* ...保持原样... */ 
     if (!canvas.value || historyIndex <= 0 || historyProcessing) return;
     if (cropObject.value) cancelCrop();
     historyProcessing = true;
@@ -11227,7 +11790,7 @@ export function useCanvas() {
     });
   };
 
-  const redo = () => { /* ...保持原样... */
+  const redo = () => { /* ...保持原样... */ 
     if (!canvas.value || historyIndex >= history.length - 1 || historyProcessing) return;
     if (cropObject.value) cancelCrop();
     historyProcessing = true;
@@ -11240,7 +11803,7 @@ export function useCanvas() {
     });
   };
 
-  const zoomToRect = (rect, minZoomLimit = 0.1) => { /* ...保持原样... */
+  const zoomToRect = (rect, minZoomLimit = 0.1) => { /* ...保持原样... */ 
     if (!canvas.value) return;
     const width = canvas.value.width;
     const height = canvas.value.height;
@@ -11255,100 +11818,69 @@ export function useCanvas() {
     canvas.value.requestRenderAll();
   };
 
-  // === 🕵️‍♂️ 调试核心：Handle Selection ===
+  // === 🛡️ 路由安保核心 ===
   const handleSelection = (eventOrObject) => {
-    console.group('🔍 [Router Debug] handleSelection Triggered');
-
     let target = null;
-    let source = '';
-
-    // 情况 A: 传入的是 Fabric 事件对象
+    
+    // 1. 解析目标
     if (eventOrObject && eventOrObject.selected) {
-      source = 'Event Object';
-      console.log('📋 Raw Selected Array:', eventOrObject.selected.map(o => ({
-        type: o.type,
-        customTab: o.customTab,
-        isRuler: o.isRuler,
-        id: o.id
-      })));
-
-      // 智能雷达扫描
-      target = eventOrObject.selected.find(obj =>
-        obj.customTab && ROUTING_ALLOWLIST.includes(obj.customTab)
-      );
-
-      if (target) {
-        console.log('✅ Smart Scan found WhiteListed Target:', target.customTab);
-      } else {
-        console.log('⚠️ Smart Scan failed, fallback to index 0');
-        target = eventOrObject.selected[0];
-      }
-    }
-    // 情况 B: 传入的是直接的对象
-    else {
-      source = 'Direct Object';
-      target = eventOrObject;
-      console.log('📦 Direct Target:', target ? { type: target.type, customTab: target.customTab } : 'NULL');
+        target = eventOrObject.selected.find(obj => 
+            obj.customTab && ROUTING_ALLOWLIST.includes(obj.customTab)
+        );
+        if (!target) target = eventOrObject.selected[0];
+    } else {
+        target = eventOrObject;
     }
 
-    // 1. 无效目标
     if (!target) {
-      console.log('❌ Target is null -> Disabling Sidebar');
+      if (state.activeTool === 'adjust' && state.activeTab) return; 
       setSidebarDisabled(true);
-      console.groupEnd();
       return;
     }
 
-    // 2. 特殊对象过滤
-    if (target.isMaskObject || target.excludeFromExport) {
-      console.log('🛑 Ignored: Mask or ExcludeFromExport');
-      console.groupEnd();
-      return;
+    // ✨✨✨ 独占模式拦截器 (Exclusive Mode Guard) 优化 ✨✨✨
+    if (state.activeTool === 'adjust' && state.activeTab) {
+        // ✨ 增加容错：如果点击的目标就是标尺，且我们正在处理标尺逻辑，则直接放行
+        // 防止 state.activeTab 还没来得及更新导致的死锁
+        const isRulerEmergency = target.isRuler || target.customTab === 'ruler';
+        
+        if (!isRulerEmergency && target.customTab !== state.activeTab) {
+            console.log(`[Router] Blocked by Exclusive Mode. Current: ${state.activeTab}`);
+            return;
+        }
     }
 
-    // 3. 多选过滤
-    if (target.type === 'activeSelection') {
-      console.log('🛑 Ignored: Multi-selection');
-      console.groupEnd();
-      return;
-    }
+    if (target.isMaskObject || target.excludeFromExport) return;
 
-    // 4. 白名单路由检查
-    console.log(`🧐 Checking Whitelist for [${target.customTab}]...`);
+    // 白名单路由
     if (target.customTab && ROUTING_ALLOWLIST.includes(target.customTab)) {
-      console.log('🚀 PASS! Routing to object...');
-      const routed = routeToObject(target);
-      console.log('🎉 Route Result:', routed);
+        routeToObject(target);
     } else {
-      console.log(`⛔ REJECTED: customTab '${target.customTab}' is not in allowlist:`, ROUTING_ALLOWLIST);
-      setSidebarDisabled(false); // 保持开启但不跳转
+        setSidebarDisabled(false);
     }
-    console.groupEnd();
   };
 
-  // === 🕵️‍♂️ 调试核心：Handle Mouse Down ===
   const handleMouseDown = (opt) => {
-    const target = opt.target;
-    // 只记录有意义的点击
-    if (!target) return;
+      const target = opt.target;
+      if (!target) return;
 
-    console.group('🖱️ [Click Debug] Mouse Down');
-    console.log('🎯 Clicked Target:', { type: target.type, customTab: target.customTab, isRuler: target.isRuler });
+      // ✨ 唤醒逻辑也受独占模式约束
+      if (state.activeTool === 'adjust' && state.activeTab && target.customTab !== state.activeTab) {
+          return; // 拦截唤醒
+      }
 
-    const activeObj = canvas.value?.getActiveObject();
-    console.log('🌟 Current Active Object:', activeObj ? { type: activeObj.type, customTab: activeObj.customTab } : 'NULL');
-
-    // 如果点击的对象 **已经是** 当前激活的对象
-    if (activeObj === target) {
-      console.log('⚡ Wakeup Triggered! (Clicking already active object)');
-      handleSelection({ selected: [target] });
-    } else {
-      console.log('💤 Normal Click (Fabric will handle selection:created)');
-    }
-    console.groupEnd();
+      const activeObj = canvas.value?.getActiveObject();
+      if (activeObj === target) {
+          handleSelection({ selected: [target] });
+      }
   };
+
+  // ... 初始化与辅助函数 (init, addImage, setZoom, etc.) 保持原样 ...
+  // 为节省篇幅，后续函数未变动，请保持您原有的代码
+  // 仅需确保 handleSelection 和 handleMouseDown 已按上述逻辑更新
 
   const init = (id, width, height) => {
+    // ... 原有 init 代码 ...
     console.log("init canvas", id, width, height);
     const c = new fabric.Canvas(id, {
       width: width,
@@ -11382,7 +11914,6 @@ export function useCanvas() {
       isPotentialClick = true;
       const pointer = c.getPointer(opt.e);
       dragStartPoint = { x: pointer.x, y: pointer.y };
-      // [调试] 绑定点击唤醒
       handleMouseDown(opt);
     });
 
@@ -11394,78 +11925,71 @@ export function useCanvas() {
         Math.pow(pointer.y - dragStartPoint.y, 2)
       );
       if (dist > 5) {
-        isPotentialClick = false;
+        isPotentialClick = false; 
       }
     });
 
     c.on("mouse:up", (opt) => {
       if (!isPotentialClick || c.isDrawingMode || cropObject.value) return;
-      // 这里的 handleSelection 是为了兜底，防止 Fabric 事件没触发
-      // 但在 mouse:down 里我们已经处理了 wakeup，所以这里主要是为了处理“点击空白取消选中”
       const target = c.getActiveObject();
-      // 如果没有点到任何东西，target 为 null，handleSelection 会处理 disable sidebar
       if (!target) {
-        handleSelection(null);
+          handleSelection(null);
       }
     });
 
-    // 路由触发点
     c.on("selection:created", (e) => {
       if (!isPotentialClick && (e.target || (e.selected && e.selected.length > 0))) {
-        console.log('📡 Event: selection:created');
-        handleSelection(e);
+        handleSelection(e); 
       }
     });
 
     c.on("selection:updated", (e) => {
-      console.log('📡 Event: selection:updated');
-      handleSelection(e);
+      handleSelection(e); 
     });
 
     c.on("selection:cleared", () => {
-      console.log('📡 Event: selection:cleared');
       setSidebarDisabled(true);
     });
-
-    // Zoom 事件 ... (保持原样)
+    
+    // ... zoom event ...
     const canvasEl = c.upperCanvasEl;
-    canvasEl.addEventListener(
-      "wheel",
-      (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const delta = e.deltaY;
-        let newZoom = c.getZoom();
-        newZoom *= 0.999 ** delta;
-        if (newZoom > 50) newZoom = 50;
-        if (newZoom < 0.1) newZoom = 0.1;
-        c.zoomToPoint({ x: e.offsetX, y: e.offsetY }, newZoom);
-        zoom.value = newZoom;
-      },
-      { passive: false }
-    );
+      canvasEl.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const delta = e.deltaY;
+          let newZoom = c.getZoom();
+          newZoom *= 0.999 ** delta;
+          if (newZoom > 50) newZoom = 50;
+          if (newZoom < 0.1) newZoom = 0.1;
+          c.zoomToPoint({ x: e.offsetX, y: e.offsetY }, newZoom);
+          zoom.value = newZoom;
+        },
+        { passive: false }
+      );
 
     saveHistory();
   };
-
-  // ... 辅助函数 (addImage, addText 等) ...
+  
+  // ... helper functions ...
   const addImage = (url) => {
     fabric.Image.fromURL(url, (img) => {
-      const canvasWidth = canvas.value.width;
-      const canvasHeight = canvas.value.height;
-      if (img.width > canvasWidth || img.height > canvasHeight) {
-        const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * ZOOM_PADDING;
-        img.scale(scale);
-      }
-      img.set({ isMainImage: true, id: 'main-image' });
-      zoom.value = canvas.value.getZoom();
-      historyProcessing = true;
-      canvas.value?.add(img);
-      canvas.value?.centerObject(img);
-      canvas.value?.setActiveObject(img);
-      historyProcessing = false;
-      saveHistory();
-      canvas.value.fire('image:updated');
+        const canvasWidth = canvas.value.width;
+        const canvasHeight = canvas.value.height;
+        if (img.width > canvasWidth || img.height > canvasHeight) {
+          const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * ZOOM_PADDING;
+          img.scale(scale);
+        }
+        img.set({ isMainImage: true, id: 'main-image' });
+        zoom.value = canvas.value.getZoom();
+        historyProcessing = true;
+        canvas.value?.add(img);
+        canvas.value?.centerObject(img);
+        canvas.value?.setActiveObject(img);
+        historyProcessing = false;
+        saveHistory();
+        canvas.value.fire('image:updated');
     }, { crossOrigin: "anonymous" });
   };
 
@@ -11562,10 +12086,10 @@ export function useCanvas() {
     const activeObj = canvas.value?.getActiveObject();
     if (!activeObj || activeObj.type !== "image") return;
     activeObj.setSrc(newUrl, () => {
-      canvas.value.renderAll();
-      saveHistory();
-      canvas.value.fire('image:updated');
-    }, { crossOrigin: "anonymous" }
+        canvas.value.renderAll();
+        saveHistory();
+        canvas.value.fire('image:updated');
+      }, { crossOrigin: "anonymous" }
     );
   };
 
@@ -11577,7 +12101,7 @@ export function useCanvas() {
     });
     canvas.value.add(text);
     canvas.value.setActiveObject(text);
-    canvas.value.requestRenderAll();
+    canvas.value.requestRenderAll(); 
     saveHistory();
   };
 

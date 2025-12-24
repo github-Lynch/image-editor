@@ -12,8 +12,8 @@
                         <slot>{{ content }}</slot>
                     </div>
                     <div class="modal-footer">
-                        <button class="ie-btn btn-secondary" @click="$emit('discard')">不保存</button>
-                        <button class="ie-btn btn-primary" @click="$emit('confirm')">保存并退出</button>
+                        <button class="ie-btn btn-secondary" @click="$emit('discard')">{{ cancelText }}</button>
+                        <button class="ie-btn btn-primary" @click="$emit('confirm')">{{ confirmText }}</button>
                     </div>
                 </div>
             </div>
@@ -24,8 +24,10 @@
 <script setup>
 defineProps({
     modelValue: Boolean,
-    title: { type: String, default: '提示' },
-    content: String
+    title: { type: String, default: '保存?' },
+    content: { type: String, default: '注意: 使用拼图后会覆盖原图所有内容' },
+    cancelText: { type: String, default: '取消' },
+    confirmText: { type: String, default: '确认' },
 });
 defineEmits(['update:modelValue', 'confirm', 'discard', 'cancel']);
 </script>

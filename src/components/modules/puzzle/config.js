@@ -315,35 +315,6 @@ export const countOptions = [
   ...Array.from({ length: 4 }, (_, i) => ({ value: `${i + 1}`, label: `${i + 1}` })),
 ];
 
-// =========================================================================
-// 3. 核心工具函数：生成和解析网格
-// =========================================================================
-
-/**
- * 动态生成 NxM 网格的单元格数据
- * @param {Number} rows 行数
- * @param {Number} cols 列数
- * @returns {Array} 单元格数组
- */
-export const generateGridCells = (rows, cols) => {
-  const cells = [];
-  const w = 1 / cols;
-  const h = 1 / rows;
-
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      cells.push({
-        index: r * cols + c,
-        x: c * w,
-        y: r * h,
-        w,
-        h
-      });
-    }
-  }
-  return cells;
-};
-
 /**
  * 解析 CSS Grid Area 模板为百分比坐标
  * 兼容格式如: "1 / 1 / 2 / 2" (rowStart / colStart / rowEnd / colEnd)

@@ -1,12 +1,10 @@
 // src/components/modules/puzzle/useCanvasPuzzle.js
 import { unref, reactive, toRaw } from "vue";
 import { fabric } from "fabric";
-import { parseTemplateToCells, generateGridCells } from "./config";
 import { constrainObjectToRect, animateRebound } from '@/composables/useConstraint';
 
 // === 内部变量 ===
 let canvasRef = null;
-let saveHistoryFn = null;
 let zoomToRectFn = null;
 let uiCallbacks = { onCellClick: null, onImageSelect: null, onDeselect: null };
 let prePuzzleSnapshot = null;
@@ -32,8 +30,6 @@ const DEFAULTS = {
   width: 1000,
   height: 1000,
   bgColor: '#ffffff',
-  rows: 1,
-  cols: 1
 };
 
 const puzzleState = reactive({
@@ -51,9 +47,8 @@ const puzzleState = reactive({
   rawCells: [] // 存储原始格子定义
 });
 
-export const registerPuzzleModule = (canvas, saveHistory, callbacks = {}, zoomToRect = null) => {
+export const registerPuzzleModule = (canvas, callbacks = {}, zoomToRect = null) => {
   canvasRef = canvas;
-  saveHistoryFn = saveHistory;
   uiCallbacks = { ...uiCallbacks, ...callbacks };
   zoomToRectFn = zoomToRect;
 };
@@ -82,10 +77,8 @@ export const restoreSnapshotBeforeLayout = () => {
     
     // 3. Reset interactions
     unbindEvents(); // Prevent double binding
-    bindEvents();
     
     canvas.requestRenderAll();
-    if (saveHistoryFn) saveHistoryFn();
   });
 };
 
@@ -100,7 +93,7 @@ export const zoomToPuzzleArea = () => {
   zoomToRectFn(rect);
 };
 
-export const initPuzzleMode = (initialTemplate = null) => {
+export const initPuzzleMode = () => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
 
@@ -132,7 +125,13 @@ export const initPuzzleMode = (initialTemplate = null) => {
 
   bindEvents();
 
-  const cells = initialTemplate ? parseTemplateToCells(initialTemplate) : generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
+  const cells = [{
+    w: 1,
+    h: 1,
+    x: 0,
+    y: 0,
+    index: 0
+  }]
   updateLayout(cells);
 
   zoomToPuzzleArea();
@@ -173,7 +172,6 @@ export const completeExitPuzzle = (action = 'save') => {
       img.scaleToWidth(puzzleState.width);
       canvas.add(img);
       canvas.setViewportTransform(savedVpt);
-      if (saveHistoryFn) saveHistoryFn();
       canvas.requestRenderAll();
     }, { crossOrigin: 'anonymous' });
 
@@ -189,22 +187,6 @@ export const completeExitPuzzle = (action = 'save') => {
       });
     }
   }
-};
-
-export const resetPuzzle = () => {
-  const canvas = unref(canvasRef);
-  if (!canvas) return;
-
-  puzzleState.padding = DEFAULTS.padding;
-  puzzleState.spacing = DEFAULTS.spacing;
-  puzzleState.radius = DEFAULTS.radius;
-  puzzleState.bgColor = DEFAULTS.bgColor;
-
-  const defaultCells = generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
-  updateLayout(defaultCells);
-  zoomToPuzzleArea();
-
-  if (saveHistoryFn) saveHistoryFn();
 };
 
 export const exitPuzzleMode = () => {
@@ -625,7 +607,6 @@ const animateSwap = (idxA, idxB) => {
     if (ctrlA) ctrlA.cellIndex = idxB;
     if (ctrlB) ctrlB.cellIndex = idxA;
     refreshPuzzleObjects();
-    if (saveHistoryFn) saveHistoryFn();
   });
 };
 
@@ -711,7 +692,6 @@ export const updateLayout = (cellDefinitions = null, config = {}) => {
   });
 
   refreshPuzzleObjects(!!cellDefinitions);
-  if (saveHistoryFn) saveHistoryFn();
 };
 
 const refreshPuzzleObjects = (shouldResetImages = false) => {
@@ -882,7 +862,6 @@ export const deleteImageFromCell = (cellIndex) => {
   );
   canvas.remove(...objs);
   refreshPuzzleObjects();
-  if (saveHistoryFn) saveHistoryFn();
 };
 
 const drawPlaceholder = (canvas, cell) => {
@@ -953,6 +932,5 @@ export const addImageToCell = (url, cellIndex, options = {}) => {
     canvas.setActiveObject(controller);
 
     refreshPuzzleObjects();
-    if (saveHistoryFn) saveHistoryFn();
   }, { crossOrigin: 'anonymous' });
 };

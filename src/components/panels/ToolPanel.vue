@@ -2,10 +2,9 @@
   <div class="tool-panel">
     <component :is="currentModule" />
 
-    <Modal v-model="showPuzzleConfirm" title="保存拼图修改？" @confirm="handleConfirmExit(true)"
-      @discard="handleConfirmExit(false)" @cancel="handleCancelExit">
-      检测到您正在拼图模块，离开将无法再次调整当前的格子布局。是否将当前拼图结果保存为一张新图片？
-    </Modal>
+    <Modal v-model="showPuzzleConfirm" cancel-text="不保存" confirm-text="保存" @confirm="handleConfirmExit(true)"
+      @discard="handleConfirmExit(false)" @cancel="handleCancelExit"
+      />
   </div>
 </template>
 
@@ -15,13 +14,12 @@ import { useEditorState } from '../../composables/useEditorState';
 import Modal from '../common/Modal.vue';
 import { completeExitPuzzle } from '../modules/puzzle/useCanvasPuzzle';
 
-const { state, setActiveTool } = useEditorState();
+const { state, setActiveTool, setPuzzleMode } = useEditorState();
 
 // 内部驱动 UI 的工具状态
 const localActiveTool = ref(state.activeTool);
 const showPuzzleConfirm = ref(false);
 let pendingTool = null; // 记录用户点击的目标工具
-let isInternalSwitch = false; // 防止 watch 循环触发
 
 // 动态映射表保持不变
 const modules = {
@@ -41,18 +39,11 @@ const currentModule = computed(() => {
 
 // === 核心逻辑：拦截切换 ===
 watch(() => state.activeTool, (newTool, oldTool) => {
-  if (isInternalSwitch) {
-    isInternalSwitch = false;
-    return;
-  }
-
   // 如果从拼图模块切往别的模块
-  if (oldTool === 'puzzle' && newTool !== 'puzzle') {
+  if (oldTool === 'puzzle' && state.isPuzzleMode) {
     pendingTool = newTool; // 记住想去的地方
     showPuzzleConfirm.value = true; // 弹出提示
 
-    // 强制将全局状态重置回 puzzle，让侧边栏高亮保持在拼图上
-    isInternalSwitch = true;
     setActiveTool('puzzle');
   } else {
     // 普通切换直接同步
@@ -69,11 +60,12 @@ const handleConfirmExit = (isSave) => {
 
   if (pendingTool) {
     // 确认后，执行真正的全局跳转
-    isInternalSwitch = true;
     setActiveTool(pendingTool);
     localActiveTool.value = pendingTool;
     pendingTool = null;
   }
+
+  setPuzzleMode(false);
 };
 
 const handleCancelExit = () => {
