@@ -180,6 +180,11 @@
   }
 
   /* === 工具栏布局样式 === */
+  .panel-adjust {
+    height: 100%;
+    overflow-y: auto;
+    padding: 16px;
+  }
 
   .tool-list {
     display: flex;
@@ -372,11 +377,13 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--ie-primary-color); /* 关键：使用主题色变量 */
+  background: var(--ie-primary-color);
+  /* 关键：使用主题色变量 */
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  margin-top: -6px; /* 调整垂直对齐 */
+  margin-top: -6px;
+  /* 调整垂直对齐 */
 }
 
 /* Firefox 浏览器 */
@@ -385,7 +392,8 @@
   height: 16px;
   border: 2px solid white;
   border-radius: 50%;
-  background: var(--ie-primary-color); /* 关键：使用主题色变量 */
+  background: var(--ie-primary-color);
+  /* 关键：使用主题色变量 */
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
@@ -393,7 +401,8 @@
 /* 修正滑块轨道颜色 (可选，视全局样式而定) */
 .ie-slider::-webkit-slider-runnable-track {
   height: 4px;
-  background: #e4e7ed; /* 轨道背景色 */
+  background: #e4e7ed;
+  /* 轨道背景色 */
   border-radius: 2px;
 }
 
@@ -401,8 +410,10 @@
 
 /* === 通用小号数字输入框 (修复背景色与隐藏箭头) === */
 .ie-small-input {
-  background-color: #ffffff; /* 1. 强制白色背景 */
-  color: #606266;            /* 2. 标准文字颜色 */
+  background-color: #ffffff;
+  /* 1. 强制白色背景 */
+  color: #606266;
+  /* 2. 标准文字颜色 */
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   text-align: center;
@@ -410,7 +421,7 @@
   transition: border-color 0.2s;
   width: 50px;
   /* Firefox 移除箭头 */
-  -moz-appearance: textfield; 
+  -moz-appearance: textfield;
 }
 
 .ie-small-input:focus {
@@ -425,30 +436,32 @@
 }
 
 /* === 标准化数值输入框 (配合 Slider 使用) === */
-  /* 宪法 6.2 规定：固定宽 50px，高 28px */
-  .ie-input-number {
-    width: 50px;
-    height: 28px;
-    padding: 0;
-    border: 1px solid var(--ie-border-color);
-    border-radius: 4px;
-    text-align: center;
-    font-size: 12px;
-    color: #606266;
-    background-color: #ffffff;
-    outline: none;
-    transition: border-color 0.2s;
-    appearance: textfield; /* 标准属性 */
-    -moz-appearance: textfield; /* Firefox */
-  }
+/* 宪法 6.2 规定：固定宽 50px，高 28px */
+.ie-input-number {
+  width: 50px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--ie-border-color);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: #606266;
+  background-color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: textfield;
+  /* 标准属性 */
+  -moz-appearance: textfield;
+  /* Firefox */
+}
 
-  .ie-input-number:focus {
-    border-color: var(--ie-primary-color);
-  }
+.ie-input-number:focus {
+  border-color: var(--ie-primary-color);
+}
 
-  /* 移除 Webkit 浏览器的原生箭头 */
-  .ie-input-number::-webkit-outer-spin-button,
-  .ie-input-number::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
+/* 移除 Webkit 浏览器的原生箭头 */
+.ie-input-number::-webkit-outer-spin-button,
+.ie-input-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
