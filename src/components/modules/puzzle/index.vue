@@ -1,16 +1,9 @@
 <template>
   <div class="puzzle-module">
-    <!-- sub page count: 3 -->
-    <!-- 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板) -->
-    <!-- 2. 模板选择页 -->
-    <!-- 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1 -->
-
-    <!-- 初始页 -->
     <div
       v-if="sub === 1"
       class="puzzle-main"
     >
-      <!-- 选项卡 -->
       <div class="puzzle-tabs">
         <div
           class="tab-item"
@@ -28,9 +21,7 @@
         </div>
       </div>
 
-      <!-- 操作内容 -->
       <div>
-        <!-- 网格选项卡内容 -->
         <div v-if="activeTab === 'grid'">
           <button
             class="select-btn"
@@ -62,12 +53,10 @@
             >取消</span>
           </button>
 
-          <!-- 控制组件 -->
           <div
             v-if="showControlPanel"
             class="control-panel"
           >
-            <!-- 拼图尺寸 -->
             <div class="control-group">
               <label>拼图尺寸</label>
               <div class="size-controls">
@@ -140,46 +129,42 @@
               </div>
             </div>
 
-            <!-- 边框 -->
             <div class="control-group">
               <label>边框</label>
               <input
-                v-model="puzzleSettings.border"
+                v-model.number="puzzleSettings.padding"
                 type="range"
                 min="0"
                 max="100"
                 step="1"
                 @change="updateStyle"
               />
-              <span class="value-display">{{ puzzleSettings.border }}px</span>
+              <span class="value-display">{{ puzzleSettings.padding }} px</span>
             </div>
 
-            <!-- 间距 -->
             <div class="control-group">
               <label>间距</label>
               <input
                 type="range"
-                v-model="puzzleSettings.spacing"
+                v-model.number="puzzleSettings.spacing"
                 min="0"
                 max="100"
                 step="1"
                 @change="updateStyle"
               />
-              <span class="value-display">{{ puzzleSettings.spacing }}px</span>
+              <span class="value-display">{{ puzzleSettings.spacing }} px</span>
             </div>
 
-            <!-- 拼图背景 -->
             <div class="control-group">
               <label>拼图背景颜色</label>
               <input
                 type="color"
                 class="color"
                 v-model="puzzleSettings.bgColor"
-                @change="updateStyle"
+                @input="updateStyle"
               />
             </div>
 
-            <!-- 保存按钮 -->
             <button
               class="save-btn"
               @click="save"
@@ -189,7 +174,6 @@
           </div>
         </div>
 
-        <!-- 拼接选项卡内容 -->
         <div v-else>
           <button class="select-btn">
             <div class="icon-wrap">
@@ -221,12 +205,10 @@
       </div>
     </div>
 
-    <!-- 模板选择面板 -->
     <div
       v-if="sub === 2"
       class="grid-templates"
     >
-      <!-- 返回按钮 -->
       <div
         class="back-header"
         @click="backToMain"
@@ -234,7 +216,6 @@
         <span class="back-icon">‹</span> 网格
       </div>
 
-      <!-- 图片数量选择 -->
       <div class="image-count-selector">
         <label>图片数量</label>
         <select v-model="selectedImageCount">
@@ -246,17 +227,14 @@
         </select>
       </div>
 
-      <!-- 网格模板列表 -->
       <div class="grid-list">
         <div
           v-for="(group, count) in filteredTemplates"
           :key="count"
           class="grid-group"
         >
-          <!-- 图片数量标题 -->
           <div class="grid-group-title">{{ count }}</div>
 
-          <!-- 该数量下的所有模板 -->
           <div class="grid-templates-row">
             <div
               v-for="template in group"
@@ -277,51 +255,53 @@
       </div>
     </div>
 
-    <!-- 图片的配置页 -->
     <div
       v-if="sub === 3"
       class="p-20"
     >
-      <div class="operate-tabs">
-        <div class="tab-item border">
-          替换图片
-        </div>
-        <div
-          v-if="false"
-          class="tab-item border"
-        >
-          删除图片
-        </div>
+      <div class="operate-buttons">
+         <button class="ie-btn full" @click="triggerReplace">替换图片</button>
+         <button 
+            v-if="currentImgCount > 1" 
+            class="ie-btn btn-danger" 
+            style="margin-left: 8px;"
+            @click="handleDelete"
+         >删除</button>
       </div>
 
-      <!-- 透明度 -->
+      <div class="divider-line"></div>
+
       <div class="control-group">
-        <label>透明度</label>
+        <div class="label-row">
+            <label>透明度</label>
+            <span class="val">{{ transparent }}%</span>
+        </div>
         <input
-          v-model="transparent"
+          v-model.number="transparent"
           type="range"
           min="0"
           max="100"
           step="1"
+          @input="onParamsChange"
         />
-        <span class="value-display">{{ transparent }}px</span>
       </div>
 
-      <!-- 放大 -->
       <div class="control-group">
-        <label>放大</label>
+        <div class="label-row">
+            <label>放大 (Zoom)</label>
+            <span class="val">{{ Math.round(zoomScale * 100) }}%</span>
+        </div>
         <input
           type="range"
-          v-model="zoom"
-          min="100"
-          max="300"
-          step="1"
+          v-model.number="zoomScale"
+          min="0.1"
+          max="3"
+          step="0.01"
+          @input="onParamsChange"
         />
-        <span class="value-display">{{ zoom }}px</span>
       </div>
     </div>
 
-    <!-- 隐藏的上传入口 -->
     <input
       type="file"
       ref="fileInput"
@@ -329,25 +309,59 @@
       style="display:none"
       @change="onFileSelected"
     >
+
+    <Modal
+      v-model="showSaveModal"
+      title="保存"
+      @confirm="handleConfirmSave"
+      @cancel="showSaveModal = false"
+      @discard="showSaveModal = false"
+    >
+      <div class="confirm-content">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#909399" stroke-width="2" style="margin-right: 8px;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <span>注意：使用拼图后会覆盖原图所有内容</span>
+      </div>
+      </Modal>
   </div>
 </template>
 
 <script setup>
   import { ref, reactive, computed, inject, onMounted, onUnmounted } from 'vue';
   import { toast } from '@/utils/toast';
-  import { gridTemplates, countOptions, generateGridCells, parseTemplateToCells } from './config.js';
+  import Modal from '@/components/common/Modal.vue'; // 引入 Modal 组件
+  import { gridTemplates, parseTemplateToCells, countOptions } from './config.js';
   import {
     registerPuzzleModule,
     initPuzzleMode,
     exitPuzzleMode,
     updateLayout,
     addImageToCell,
+    deleteImageFromCell,
+    updatePuzzleImageParams,
+    getPuzzleImageCount,
+    zoomToPuzzleArea,
+    saveSnapshotBeforeLayout,
+    restoreSnapshotBeforeLayout,
+    completeExitPuzzle // 引入完成拼图的方法
   } from './useCanvasPuzzle.js';
 
-  // 获取编辑器状态和Canvas API
   const canvasAPI = inject('canvasAPI');
   const fileInput = ref(null);
+  
   let pendingCellIndex = -1;
+  const selectedCellIndex = ref(-1);
+
+  // 图片参数状态
+  const transparent = ref(100);
+  const zoomScale = ref(1);
+  const currentImgCount = ref(1);
+
+  // 弹窗控制状态
+  const showSaveModal = ref(false);
 
   onMounted(() => {
     if (canvasAPI) {
@@ -358,13 +372,30 @@
             fileInput.value.value = '';
             fileInput.value.click();
           }
+        },
+        onImageSelect: (index, params) => {
+           selectedCellIndex.value = index;
+           pendingCellIndex = index;
+           
+           transparent.value = Math.round((params.opacity || 1) * 100);
+           zoomScale.value = params.scale || 1;
+           
+           currentImgCount.value = getPuzzleImageCount();
+           sub.value = 3;
+        },
+        onDeselect: () => {
+           sub.value = 1;
+           selectedCellIndex.value = -1;
         }
-      });
+      },
+        canvasAPI.zoomToRect
+      );
       initPuzzleMode();
     }
   });
 
   onUnmounted(() => {
+    // 离开组件时如果不保存，也应该执行退出清理逻辑
     exitPuzzleMode();
   });
 
@@ -378,24 +409,19 @@
     if (pendingCellIndex >= 0) {
       const url = URL.createObjectURL(file);
       addImageToCell(url, pendingCellIndex);
-      pendingCellIndex = -1;
+      if (sub.value === 3) {
+        transparent.value = 100;
+      } else {
+        pendingCellIndex = -1;
+      }
     }
   };
 
-  /**
-   * sub page count: 3
-   * 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板)
-   * 2. 模板选择页
-   * 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1
-   */
   const sub = ref(1);
   const showControlPanel = ref(false);
-
-  // 状态管理
   const selectedImageCount = ref('all');
   const activeTab = ref('grid');
 
-  // 过滤显示的网格模板
   const filteredTemplates = computed(() => {
     if (selectedImageCount.value === 'all') {
       return gridTemplates;
@@ -411,40 +437,41 @@
     }
   });
 
-  // 返回上一级
   const backToMain = () => {
     sub.value = 1;
     selectedImageCount.value = 'all';
   };
 
-  // 选择网格模板
   const curTemp = ref({});
   const selectTemplate = (template) => {
+    // Only capture snapshot if we are starting a new selection (curTemp is empty)
+    if (!curTemp.value.id) {
+      saveSnapshotBeforeLayout();
+    }
+    
     curTemp.value = template;
     showControlPanel.value = true;
     sub.value = 1;
-
-    // 应用模板到工作区
     applyTemplate(template);
+    zoomToPuzzleArea();
   };
 
   const applyTemplate = (templ) => {
     const cells = parseTemplateToCells(templ);
-    updateLayout(cells);
+    updateLayout(cells, puzzleSettings);
   };
 
   const cancel = () => {
+    restoreSnapshotBeforeLayout();
     showControlPanel.value = false;
     curTemp.value = {};
-    // sub.value = 1; // 本来就在 1
   };
 
-  // 配置面板数据
   const puzzleSettings = reactive({
-    width: 1200,
-    height: 1200,
+    width: 1000,
+    height: 1000,
     lockRatio: false,
-    border: 15,
+    padding: 15,
     spacing: 15,
     bgColor: '#ffffff'
   });
@@ -459,16 +486,13 @@
     }
   };
 
-  // 更新尺寸
   const updateSize = (dimension) => {
-    // 确保尺寸在有效范围内
     if (puzzleSettings[dimension] < min) {
       puzzleSettings[dimension] = min;
     } else if (puzzleSettings[dimension] > max) {
       puzzleSettings[dimension] = max;
     }
 
-    // 如果锁定宽高比，同时更新另一个维度
     if (puzzleSettings.lockRatio) {
       if (dimension === 'width') {
         puzzleSettings.height = Math.round(puzzleSettings.width / ratio);
@@ -484,12 +508,54 @@
     updateLayout(null, puzzleSettings);
   };
 
-  // 保存拼图
-  const save = () => { };
+  // === 保存逻辑 ===
+  const save = () => { 
+    showSaveModal.value = true;
+  };
 
-  // sub 3
-  const transparent = ref(100);
-  const zoom = ref(100);
+  const handleConfirmSave = () => {
+    // 1. 调用核心逻辑：生成图片并替换画布内容
+    completeExitPuzzle('save');
+    
+    // 2. 关闭弹窗
+    showSaveModal.value = false;
+    
+    // 3. 返回
+    showControlPanel.value = false;
+  };
+
+  // === Sub 3 逻辑 ===
+
+  const deselectImage = () => {
+      sub.value = 1;
+      selectedCellIndex.value = -1;
+      if (canvasAPI && canvasAPI.canvas) {
+          canvasAPI.canvas.value.discardActiveObject();
+          canvasAPI.canvas.value.requestRenderAll();
+      }
+  };
+
+  const triggerReplace = () => {
+      if (fileInput.value) {
+          fileInput.value.value = '';
+          fileInput.value.click();
+      }
+  };
+
+  const handleDelete = () => {
+      if (selectedCellIndex.value === -1) return;
+      deleteImageFromCell(selectedCellIndex.value);
+      toast.success('图片已删除');
+      deselectImage();
+  };
+
+  const onParamsChange = () => {
+      if (selectedCellIndex.value === -1) return;
+      updatePuzzleImageParams(selectedCellIndex.value, {
+          opacity: transparent.value / 100,
+          scale: zoomScale.value
+      });
+  };
 </script>
 
 <style scoped>
@@ -499,7 +565,6 @@
     background-color: #fff;
   }
 
-  /* 主面板样式 */
   .puzzle-main {
     padding: 20px;
   }
@@ -543,7 +608,7 @@
   .icon-wrap {
     width: 40px;
     height: 40px;
-    border-radius: 4;
+    border-radius: 4px;
     background-color: #fff;
     font-size: 24px;
     line-height: 40px;
@@ -554,7 +619,6 @@
   .small-grid-template {
     height: 100%;
     display: grid;
-    /* border-radius: 4px; */
     overflow: hidden;
   }
 
@@ -568,7 +632,6 @@
     cursor: pointer;
   }
 
-  /* 网格模板选择面板样式 */
   .grid-templates {
     padding: 20px 12px 20px;
   }
@@ -654,7 +717,6 @@
     border: 1px solid #fff;
   }
 
-  /* 控制面板样式 */
   .control-panel {
     display: flex;
     flex-direction: column;
@@ -680,7 +742,6 @@
     border: none;
   }
 
-  /* 尺寸控制 */
   .size-controls {
     display: flex;
     align-items: center;
@@ -716,7 +777,6 @@
     cursor: pointer;
   }
 
-  /* 滑块控制 */
   .control-group input[type="range"] {
     width: 100%;
     height: 4px;
@@ -751,7 +811,6 @@
     text-align: right;
   }
 
-  /* 保存按钮 */
   .save-btn {
     padding: 12px 20px;
     margin-top: 20px;
@@ -773,12 +832,48 @@
     padding: 20px;
   }
 
-  .operate-tabs {
+  .operate-buttons {
     display: flex;
-    margin-bottom: 16px;
+    margin-top: 10px;
   }
 
-  .border {
-    border: 1px solid #dcdfe6;
+  .full {
+    flex: 1;
+  }
+
+  .btn-danger {
+    background-color: #fef0f0;
+    color: #f56c6c;
+    border-color: #fbc4c4;
+  }
+  .btn-danger:hover {
+    background-color: #f56c6c;
+    color: #fff;
+    border-color: #f56c6c;
+  }
+
+  .divider-line {
+    height: 1px;
+    background: #ebeef5;
+    margin: 20px 0;
+  }
+
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #606266;
+  }
+
+  .val {
+    font-family: monospace;
+  }
+
+  .confirm-content {
+    display: flex;
+    align-items: center;
+    color: #606266;
+    font-size: 14px;
   }
 </style>

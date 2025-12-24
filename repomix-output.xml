@@ -5505,124 +5505,6 @@ export default defineConfig({
 })
 </file>
 
-<file path=".spec/active-context.md">
-# Active Context & Development State
-
-> **Version**: 2.3 (Object-Driven Navigation & Routing)
-> **Last Updated**: 2025-12-23
-> **Current Focus**: Global Navigation Architecture & Event-Driven UI, Fix Ruler Navigation
-
-## 1. 当前开发状态 (Current Status)
-
-### ✅ 已完成模块 (Completed Modules)
-
-#### 1.1 核心编辑 (Core Editing)
-
-- **剪裁 (Crop)**:
-  - [x] **手动选区**: 实现了 `startManualSelection`，支持自定义框选区域。
-  - [x] **比例锁定**: 支持原图比例、自由比例及常用预设 (1:1, 16:9 等)。
-  - [x] **旋转翻转**: 90° 步进旋转与 XY 轴翻转。
-- **尺寸调整 (Resize)**:
-  - [x] **高清重制**: 引入 `useOffscreenHelper`，实现了基于原图分辨率的高清缩放。
-  - [x] **保真模式**: 支持锁定长宽比计算。
-- **补白 (White/Padding)**:
-  - [x] **社媒预设**: 集成 Instagram/Youtube 等常用尺寸模板。
-  - [x] **智能吸色**: 支持背景色吸取及透明背景设置。
-
-#### 1.2 拼图系统 (Puzzle System)
-
-- **网格布局**:
-  - [x] **动态模板**: 基于 `config.js` 实现了 1-16 张图片的网格布局解析。
-  - [x] **自动布局**: 图片拖入自动计算 Cover 裁剪，保证填满格子不留白。
-- **交互逻辑**:
-  - [x] **拖拽交换**: 实现了平滑的交换动画 (`animateSwap`) 和失败回弹。
-  - [x] **物理约束**: 应用 `useConstraint` 防止图片脱离格子可视区。
-- **样式调整**:
-  - [x] **全局参数**: 支持动态调整间距、边距和圆角。
-
-#### 1.3 智能与特效 (AI & Effects)
-
-- **智能消除 (Inpaint)**:
-  - [x] **离屏遮罩**: 解决闪烁问题，通过离屏 Canvas 生成 Mask。
-  - [x] **双模交互**: 支持画笔 (Brush) 和 矩形框选 (Rect)。
-- **一键抠图 (Rembg)**:
-  - [x] **API 集成**: 封装 `src/api/ai.js` 支持一键移除背景。
-- **马赛克 (Mosaic)**:
-  - [x] **无损处理**: 采用“预览层 + 离屏应用”策略。
-- **滤镜与调色**:
-  - [x] **ColorMatrix**: 实现亮度、对比度等 6 维调节。
-  - [x] **LUT 模拟**: 内置“复古”、“电影”等滤镜预设。
-
-#### 1.4 辅助工具与交互 (Tools & Interaction)
-
-- **快捷键系统 (Shortcuts)**:
-  - [x] **可视化面板**: 实现 Keycap 风格的侧边抽屉速查表 (`ShortcutsPanel`)。
-  - [x] **通用操作**: 覆盖复制粘贴、图层移动、锁定等。
-- **测量工具 (Measure)**:
-  - [x] **精准路由**: 点击标尺组件自动跳转至 `Adjust -> Ruler` 面板。
-  - [x] **交互绘制**: 支持拖拽创建测量线，自动计算长度。
-- **交互优化 (Interaction Polish)**:
-  - [x] **右键菜单**: 修复粘贴坐标偏移，实现基于鼠标位置的左上角对齐。
-  - [x] **悬浮菜单**: 实现事件隔离，防止在悬浮条上操作时误触底层 Canvas。
-  - [x] **剪贴板**: 重构为单例模式 (`clipboardState`)。
-
-#### 1.5 全局导航系统 (Global Navigation System) `Major Upgrade`
-
-- **对象驱动路由 (Object-Driven Routing)**:
-  - [x] **智能分发**: 实现了 `useEditorState` 中的 `routeToObject`，根据 Canvas 选中对象自动切换 UI。
-  - [x] **二级导航 (Level 2 Support)**: 支持精确跳转至特定折叠面板 (如 `Tool: Adjust` + `Tab: Ruler`)。
-  - [x] **元数据注入 (Metadata Injection)**: 支持通过 `customTab` / `customTool` 属性覆盖默认路由行为。
-  - [x] **Fix Ruler Navigation**: 修复点击标尺组件自动触发侧边栏跳转的 Bug。
-  - [x] **Fix Crop/Rotate Navigation**: 修复点击裁剪/旋转模块跳转到边框模块的 Bug。
-- **视图解耦**:
-  - [x] **状态监听**: 侧边栏组件 (`index.vue`) 通过 `watch` 监听全局路由状态自动展开对应模块。
-  - [x] **去除残影**: 移除了未选中时的 Sidebar Disabled 状态，保持界面始终可用。
-
----
-
-## 2. 系统架构备忘 (Architecture Memo)
-
-### 2.1 高清离屏渲染管线 (High-Res Offscreen Pipeline)
-
-> **Pattern**: `src/composables/useOffscreenHelper.js`
-
-- **逻辑**: 获取原图原始分辨率 -> 创建临时 StaticCanvas -> 映射效果 -> 导出高清图。
-
-### 2.2 物理约束系统 (Constraint System)
-
-> **Pattern**: `src/composables/useConstraint.js`
-
-- **逻辑**: 计算对象相对于容器的溢出值，Resizing 时实时修正，Puzzle 拖拽时触发回弹。
-
-### 2.3 状态与快捷键 (State & Shortcuts)
-
-- **State**: 使用 `useEditorState.js` (Reactive 单例) 管理全局状态。
-- **Shortcuts**: 采用配置化策略，`ShortcutsPanel` UI 与 `useKeyboardShortcuts` 逻辑共用同一份配置源。
-
-### 2.4 对象驱动路由架构 (Object-Driven Routing Architecture) `NEW`
-
-> **Core Philosophy**: Canvas 是路由触发器，State 是控制器，Sidebar 是视图。
-
-- **配置层 (Configuration)**:
-  - `OBJECT_TO_TOOL_MAP` (in `useEditorState.js`): 定义类型到面板的映射 (e.g., `'i-text' -> { tool: 'text', tab: 'style' }`)。
-- **感知层 (Sensor)**:
-  - `useCanvas.js`: 监听 `mouse:up`, `selection:created`, `selection:updated`。
-  - 过滤多选 (`activeSelection`) 和特殊对象，提取 `customTab` 信标。
-- **注入层 (Injection)**:
-  - 在创建特殊对象 (如标尺、素材) 时，注入 `{ customTab: 'ruler' }` 属性实现精确跳转。
-- **视图层 (View)**:
-  - 左侧菜单高亮 `state.activeTool`。
-  - 二级面板 (如 AdjustPanel) 监听 `state.activeTab` 并自动展开对应模块。
-
----
-
-## 3. 待办事项 (Backlog & Roadmap)
-
-### 📅 近期计划 (Next Sprint)
-
-### 🐛 已知优化点 (Refactoring)
-</file>
-
 <file path="src/components/modules/adjust/AdjustInpaint.vue">
 <template>
   <div class="tool-group">
@@ -5972,49 +5854,49 @@ import { reactive, readonly } from 'vue';
  */
 export const OBJECT_TO_TOOL_MAP = {
     // === 基础形状 ===
-    'i-text':  { tool: 'text', tab: 'style' },    // 文本 -> 文本面板-样式Tab
+    'i-text': { tool: 'text', tab: 'style' },    // 文本 -> 文本面板-样式Tab
     'textbox': { tool: 'text', tab: 'style' },
-    'image':   { tool: 'adjust', tab: 'filter' }, // 图片 -> 调整面板-滤镜Tab
-    'group':   { tool: 'adjust', tab: '' },       // 组 -> 调整面板 (根据业务需求)
-    
+    'image': { tool: 'adjust', tab: 'filter' }, // 图片 -> 调整面板-滤镜Tab
+    'group': { tool: 'adjust', tab: '' },       // 组 -> 调整面板 (根据业务需求)
+
     // === 绘制/矢量 ===
-    'path':    { tool: 'draw', tab: '' },         // 路径 -> 绘制面板
-    
+    'path': { tool: 'draw', tab: '' },         // 路径 -> 绘制面板
+
     // === 几何图形 (通常归类为素材或边框，根据你的业务定) ===
-    'rect':     { tool: 'border', tab: 'style' },
-    'circle':   { tool: 'material', tab: 'basic' },
+    'rect': { tool: 'border', tab: 'style' },
+    'circle': { tool: 'material', tab: 'basic' },
     'triangle': { tool: 'material', tab: 'basic' },
-    
+
     // === 自定义业务类型 ===
-    'puzzle':   { tool: 'puzzle', tab: 'template' }
+    'puzzle': { tool: 'puzzle', tab: 'template' }
 };
 
 // 单例状态
 const state = reactive({
     activeTool: 'adjust', // 一级菜单 ID
     activeTab: '',        // ✨ 新增: 二级菜单 ID (例如 'style', 'color', 'filter')
-    
+
     isDrawing: false,     // 是否处于自由绘制模式
-    
+
     canUndo: false,       // 历史记录状态
     canRedo: false,
-    
+
     isLoading: false,
     loadingText: '处理中...',
-    
+
     isSidebarDisabled: false, // 侧边栏残影模式
-    
+
     /**
      * ✨ 导航来源标记
      * 'system': 初始化或系统重置
      * 'manual': 用户手动点击侧边栏 (优先级最高，应有点击反馈)
      * 'canvas': 画布对象选中触发自动跳转 (应平滑过渡，无干扰)
      */
-    navigationSource: 'system' 
+    navigationSource: 'system'
 });
 
 export function useEditorState() {
-    
+
     /**
      * 切换当前激活的工具和选项卡
      * @param {string} tool - 一级工具 ID
@@ -6030,10 +5912,15 @@ export function useEditorState() {
         state.activeTool = tool;
         state.activeTab = tab; // 更新二级路由
         state.navigationSource = source;
-        
+
         // 副作用处理
         state.isDrawing = false; // 切换工具默认退出绘制模式
         state.isSidebarDisabled = false; // 只要切换工具，必定激活面板
+    };
+
+    // ✨ [核心补全] 切换二级 Tab (专门给 UI 组件用来清理状态)
+    const setActiveTab = (tab) => {
+        state.activeTab = tab;
     };
 
     const toggleDrawing = (status) => {
@@ -6064,50 +5951,44 @@ export function useEditorState() {
     const routeToObject = (target) => {
         if (!target) return false;
 
-        // 1. 优先检查对象实例级元数据 (Custom Payload)
-    // 允许在代码中 addText 时注入 { customTab: 'color' } 来覆盖默认行为
-    if (target.customTool || target.customTab) {
-        // 获取该类型的基础配置，如果没有则默认为 adjust
-        const baseConfig = OBJECT_TO_TOOL_MAP[target.type] || { tool: 'adjust' };
-        const targetTool = target.customTool || baseConfig.tool || 'adjust';
-        const targetTab = target.customTab || baseConfig.tab || '';
-        
-        console.log(`[Router] Custom routing: Tool[${targetTool}] Tab[${targetTab}]`);
-        setActiveTool(targetTool, targetTab, 'canvas');
-        return true;
-    }
+        // 1. 优先读取对象上的自定义路由配置 (如标尺)
+        if (target.customTab) {
+            console.log(`[Router] Custom routing: Tool[${target.customTool || 'adjust'}] Tab[${target.customTab}]`);
 
-        // 2. 提取并标准化对象类型
-        let type = target.type;
-        
-        // 处理自定义标识
-        if (target.isPuzzleImage || target.isPuzzleController) {
-            type = 'puzzle';
-        }
-        
-        // ⚠️ 已移除 activeSelection (多选) 的判断逻辑
-        // 如果你需要多选时保持在当前页面或去特定页面，可在此重新添加
+            // 激活对应的工具栏
+            setActiveTool(target.customTool || 'adjust');
 
-        // 3. 查表
-        const config = OBJECT_TO_TOOL_MAP[type];
-        
-        if (config) {
-            // 兼容配置是字符串的情况 (旧逻辑兼容)
-            const toolId = typeof config === 'string' ? config : config.tool;
-            const tabId = typeof config === 'string' ? '' : config.tab;
-            
-            // 触发跳转，标记来源为 'canvas'
-            setActiveTool(toolId, tabId, 'canvas');
+            // ✨ 强制刷新机制：
+            // 解决“状态死锁”：如果当前 activeTab 已经是这个 tab (比如 'ruler')，
+            // 直接赋值 Vue 不会认为发生了变化，因此 watch 不会触发。
+            // 我们先把它置空，利用 setTimeout 在下一帧改回来，强制触发 UI 展开。
+            if (state.activeTab === target.customTab) {
+                state.activeTab = '';
+                setTimeout(() => {
+                    state.activeTab = target.customTab;
+                }, 0);
+            } else {
+                state.activeTab = target.customTab;
+            }
+
             return true;
         }
-        
-        // 4. 未匹配到路由 (例如辅助线、背景控制点等)
+
+        // 2. 默认路由规则
+        if (target.type === "i-text") {
+            setActiveTool("text");
+            return true;
+        }
+
+        // ... 其他默认规则可在此补充 ...
+
         return false;
     };
 
     return {
         state: readonly(state), // 导出只读状态
         setActiveTool,
+        setActiveTab,       // ✨ 确保导出此函数
         toggleDrawing,
         setHistoryState,
         setLoading,
@@ -6120,20 +6001,191 @@ export function useEditorState() {
 export const ZOOM_PADDING = 0.921;
 </file>
 
+<file path=".spec/active-context.md">
+# Active Context & Development State
+
+> **Version**: 2.3 (Object-Driven Navigation & Routing)
+> **Last Updated**: 2025-12-23
+> **Current Focus**: Global Navigation Architecture & Event-Driven UI, Fix Ruler Navigation
+
+## 1. 当前开发状态 (Current Status)
+
+### ✅ 已完成模块 (Completed Modules)
+
+#### 1.1 核心编辑 (Core Editing)
+
+- **剪裁 (Crop)**:
+  - [x] **手动选区**: 实现了 `startManualSelection`，支持自定义框选区域。
+  - [x] **比例锁定**: 支持原图比例、自由比例及常用预设 (1:1, 16:9 等)。
+  - [x] **旋转翻转**: 90° 步进旋转与 XY 轴翻转。
+- **尺寸调整 (Resize)**:
+  - [x] **高清重制**: 引入 `useOffscreenHelper`，实现了基于原图分辨率的高清缩放。
+  - [x] **保真模式**: 支持锁定长宽比计算。
+- **补白 (White/Padding)**:
+  - [x] **社媒预设**: 集成 Instagram/Youtube 等常用尺寸模板。
+  - [x] **智能吸色**: 支持背景色吸取及透明背景设置。
+
+#### 1.2 拼图系统 (Puzzle System)
+
+- **网格布局**:
+  - [x] **动态模板**: 基于 `config.js` 实现了 1-16 张图片的网格布局解析。
+  - [x] **自动布局**: 图片拖入自动计算 Cover 裁剪，保证填满格子不留白。
+- **交互逻辑**:
+  - [x] **拖拽交换**: 实现了平滑的交换动画 (`animateSwap`) 和失败回弹。
+  - [x] **物理约束**: 应用 `useConstraint` 防止图片脱离格子可视区。
+- **样式调整**:
+  - [x] **全局参数**: 支持动态调整间距、边距和圆角。
+
+#### 1.3 智能与特效 (AI & Effects)
+
+- **智能消除 (Inpaint)**:
+  - [x] **离屏遮罩**: 解决闪烁问题，通过离屏 Canvas 生成 Mask。
+  - [x] **双模交互**: 支持画笔 (Brush) 和 矩形框选 (Rect)。
+- **一键抠图 (Rembg)**:
+  - [x] **API 集成**: 封装 `src/api/ai.js` 支持一键移除背景。
+- **马赛克 (Mosaic)**:
+  - [x] **无损处理**: 采用“预览层 + 离屏应用”策略。
+- **滤镜与调色**:
+  - [x] **ColorMatrix**: 实现亮度、对比度等 6 维调节。
+  - [x] **LUT 模拟**: 内置“复古”、“电影”等滤镜预设。
+
+#### 1.4 辅助工具与交互 (Tools & Interaction)
+
+- **快捷键系统 (Shortcuts)**:
+  - [x] **可视化面板**: 实现 Keycap 风格的侧边抽屉速查表 (`ShortcutsPanel`)。
+  - [x] **通用操作**: 覆盖复制粘贴、图层移动、锁定等。
+- **测量工具 (Measure)**:
+  - [x] **精准路由**: 点击标尺组件自动跳转至 `Adjust -> Ruler` 面板。
+  - [x] **交互绘制**: 支持拖拽创建测量线，自动计算长度。
+- **交互优化 (Interaction Polish)**:
+  - [x] **右键菜单**: 修复粘贴坐标偏移，实现基于鼠标位置的左上角对齐。
+  - [x] **悬浮菜单**: 实现事件隔离，防止在悬浮条上操作时误触底层 Canvas。
+  - [x] **剪贴板**: 重构为单例模式 (`clipboardState`)。
+
+#### 1.5 全局导航系统 (Global Navigation System) `Major Upgrade`
+
+- **对象驱动路由 (Object-Driven Routing)**:
+  - [x] **智能分发**: 实现了 `useEditorState` 中的 `routeToObject`，根据 Canvas 选中对象自动切换 UI。
+  - [x] **二级导航 (Level 2 Support)**: 支持精确跳转至特定折叠面板 (如 `Tool: Adjust` + `Tab: Ruler`)。
+  - [x] **元数据注入 (Metadata Injection)**: 支持通过 `customTab` / `customTool` 属性覆盖默认路由行为。
+  - [x] **Fix Ruler Navigation**: 修复点击标尺组件自动触发侧边栏跳转的 Bug。
+  - [x] **Fix Crop/Rotate Navigation**: 修复点击裁剪/旋转模块跳转到边框模块的 Bug。
+- **视图解耦**:
+  - [x] **状态监听**: 侧边栏组件 (`index.vue`) 通过 `watch` 监听全局路由状态自动展开对应模块。
+  - [x] **去除残影**: 移除了未选中时的 Sidebar Disabled 状态，保持界面始终可用。
+
+---
+
+## 2. 系统架构备忘 (Architecture Memo)
+
+### 2.1 高清离屏渲染管线 (High-Res Offscreen Pipeline)
+
+> **Pattern**: `src/composables/useOffscreenHelper.js`
+
+- **逻辑**: 获取原图原始分辨率 -> 创建临时 StaticCanvas -> 映射效果 -> 导出高清图。
+
+### 2.2 物理约束系统 (Constraint System)
+
+> **Pattern**: `src/composables/useConstraint.js`
+
+- **逻辑**: 计算对象相对于容器的溢出值，Resizing 时实时修正，Puzzle 拖拽时触发回弹。
+
+### 2.3 状态与快捷键 (State & Shortcuts)
+
+- **State**: 使用 `useEditorState.js` (Reactive 单例) 管理全局状态。
+- **Shortcuts**: 采用配置化策略，`ShortcutsPanel` UI 与 `useKeyboardShortcuts` 逻辑共用同一份配置源。
+
+### 2.4 对象驱动路由架构 (Object-Driven Routing Architecture) `NEW`
+
+> **Core Philosophy**: Canvas 是路由触发器，State 是控制器，Sidebar 是视图。
+
+- **配置层 (Configuration)**:
+  - `OBJECT_TO_TOOL_MAP` (in `useEditorState.js`): 定义类型到面板的映射 (e.g., `'i-text' -> { tool: 'text', tab: 'style' }`)。
+- **感知层 (Sensor)**:
+  - `useCanvas.js`: 监听 `mouse:up`, `selection:created`, `selection:updated`。
+  - 过滤多选 (`activeSelection`) 和特殊对象，提取 `customTab` 信标。
+- **注入层 (Injection)**:
+  - 在创建特殊对象 (如标尺、素材) 时，注入 `{ customTab: 'ruler' }` 属性实现精确跳转。
+- **视图层 (View)**:
+  - 左侧菜单高亮 `state.activeTool`。
+  - 二级面板 (如 AdjustPanel) 监听 `state.activeTab` 并自动展开对应模块。
+
+### 2.4 强制类型安全原则 (Type Safety)
+
+- **问题记录**：UI 输入控件（Slider/Input）绑定的响应式数据，在用户交互后会自动退化为 String 类型，导致数学计算（尤其是 + 运算）出错。
+
+- **强制规范**：
+
+    1. 在 Vue 模板中，所有数值型输入必须严格使用 v-model.number 修饰符。
+
+    2. 在 JS 逻辑处理计算前，必须对所有来自 UI 的变量进行防御性转换，例如 Number(value) 或 parseFloat(value)。
+
+    3. 禁止直接信任 UI 绑定的变量类型。
+
+---
+
+## 3. 待办事项 (Backlog & Roadmap)
+
+### 📅 近期计划 (Next Sprint)
+
+### 🐛 已知优化点 (Refactoring)
+</file>
+
+<file path="package.json">
+{
+  "name": "image-editor-sdk",
+  "version": "1.0.0",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/image-editor.umd.cjs",
+  "module": "./dist/image-editor.js",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "import": "./dist/image-editor.js",
+      "require": "./dist/image-editor.umd.cjs"
+    },
+    "./style.css": "./dist/index.css"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "npx": "npx repomix"
+  },
+  "dependencies": {
+    "fabric": "^5.3.0",
+    "file-saver": "^2.0.5"
+  },
+  "peerDependencies": {
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.2.4",
+    "vite-plugin-dts": "^4.5.4"
+  }
+}
+</file>
+
 <file path="src/components/modules/puzzle/useCanvasPuzzle.js">
 // src/components/modules/puzzle/useCanvasPuzzle.js
-import { unref, reactive } from "vue";
+import { unref, reactive, toRaw } from "vue";
 import { fabric } from "fabric";
 import { parseTemplateToCells, generateGridCells } from "./config";
-
-// 【引入通用规范】
 import { constrainObjectToRect, animateRebound } from '@/composables/useConstraint';
 
 // === 内部变量 ===
 let canvasRef = null;
 let saveHistoryFn = null;
-let uiCallbacks = { onCellClick: null };
+let zoomToRectFn = null;
+let uiCallbacks = { onCellClick: null, onImageSelect: null, onDeselect: null };
 let prePuzzleSnapshot = null;
+
+// Snapshot variables for the "Cancel" feature
+let snapshotBeforeLayout = null;
+let stateBackup = null;
+
 // 交互状态
 let isDragging = false;
 let dragOriginPoint = null;
@@ -6145,7 +6197,7 @@ let isCreatingProxy = false;
 
 // 默认配置
 const DEFAULTS = {
-  padding: 20,
+  padding: 0,
   spacing: 10,
   radius: 0,
   width: 1000,
@@ -6164,20 +6216,68 @@ const puzzleState = reactive({
   width: DEFAULTS.width,
   height: DEFAULTS.height,
   bgColor: DEFAULTS.bgColor,
-  startX: 0, // 新增：拼图区域的左上角逻辑坐标
-  startY: 0  // 新增
+  startX: 0,
+  startY: 0,
+  originalBg: null,
+  rawCells: [] // 存储原始格子定义
 });
 
-export const registerPuzzleModule = (canvas, saveHistory, callbacks = {}) => {
+export const registerPuzzleModule = (canvas, saveHistory, callbacks = {}, zoomToRect = null) => {
   canvasRef = canvas;
   saveHistoryFn = saveHistory;
   uiCallbacks = { ...uiCallbacks, ...callbacks };
+  zoomToRectFn = zoomToRect;
+};
+
+// === 新增：保存选择网格前的状态 ===
+export const saveSnapshotBeforeLayout = () => {
+  const canvas = unref(canvasRef);
+  if (!canvas) return;
+  // 1. Save Canvas visual state (includes images, text, existing puzzle items)
+  snapshotBeforeLayout = JSON.stringify(canvas.toJSON(["id", "selectable", "name", "isPuzzleItem", "cellIndex", "isPuzzleController", "isPuzzleBackground", "originalSrc"]));
+  // 2. Save Reactive State (grid config, padding, spacing)
+  stateBackup = JSON.parse(JSON.stringify(toRaw(puzzleState)));
+};
+
+// === 新增：恢复选择网格前的状态 ===
+export const restoreSnapshotBeforeLayout = () => {
+  const canvas = unref(canvasRef);
+  if (!canvas || !snapshotBeforeLayout) return;
+
+  // 1. Restore Canvas objects
+  canvas.loadFromJSON(snapshotBeforeLayout, () => {
+    // 2. Restore Reactive State
+    if (stateBackup) {
+      Object.assign(puzzleState, stateBackup);
+    }
+    
+    // 3. Reset interactions
+    unbindEvents(); // Prevent double binding
+    bindEvents();
+    
+    canvas.requestRenderAll();
+    if (saveHistoryFn) saveHistoryFn();
+  });
+};
+
+export const zoomToPuzzleArea = () => {
+  if (!zoomToRectFn) return;
+  const rect = {
+    left: puzzleState.startX,
+    top: puzzleState.startY,
+    width: puzzleState.width,
+    height: puzzleState.height
+  };
+  zoomToRectFn(rect);
 };
 
 export const initPuzzleMode = (initialTemplate = null) => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
+
+  puzzleState.originalBg = canvas.backgroundColor;
   prePuzzleSnapshot = JSON.stringify(canvas.toJSON(["id", "selectable", "name"]));
+
   if (puzzleState.savedHistoryData && puzzleState.savedHistoryData.length > 0) {
     restorePuzzleData();
     bindEvents();
@@ -6186,7 +6286,6 @@ export const initPuzzleMode = (initialTemplate = null) => {
 
   puzzleState.isActive = true;
 
-  // 【优化】计算拼图区域的位置：使其与原图位置重合或在画布中心
   const activeImg = canvas.getObjects().find(o => o.type === 'image');
   if (activeImg) {
     const rect = activeImg.getBoundingRect();
@@ -6195,7 +6294,6 @@ export const initPuzzleMode = (initialTemplate = null) => {
     puzzleState.startX = rect.left;
     puzzleState.startY = rect.top;
   } else {
-    // 如果没有原图，则在画布中心开启 1000x1000 的区域
     const center = canvas.getCenter();
     puzzleState.width = 1000;
     puzzleState.height = 1000;
@@ -6208,28 +6306,22 @@ export const initPuzzleMode = (initialTemplate = null) => {
   const cells = initialTemplate ? parseTemplateToCells(initialTemplate) : generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
   updateLayout(cells);
 
+  zoomToPuzzleArea();
 };
 
-/**
- * 唯一的业务出口函数
- * @param {string} action 'save' | 'discard'
- */
 export const completeExitPuzzle = (action = 'save') => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
 
-  // 记录视角，防止切换模块后画面“瞬移”
   const savedVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
 
-  // 先执行一次通用退出清理
   exitPuzzleMode();
 
   if (action === 'save') {
-    // --- 保存逻辑：生成并固化图片 ---
-    const auxObjs = canvas.getObjects().filter(o =>
-      o.isPuzzleController || o.isDeleteBtn || o.isPlaceholder || o.isGhost
+    const hiddenObjs = canvas.getObjects().filter(o =>
+      o.isPuzzleController || o.isPlaceholder || o.isGhost || o.isPuzzleBackground
     );
-    auxObjs.forEach(o => o.visible = false);
+    hiddenObjs.forEach(o => o.visible = false);
 
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
     canvas.renderAll();
@@ -6257,18 +6349,19 @@ export const completeExitPuzzle = (action = 'save') => {
     }, { crossOrigin: 'anonymous' });
 
   } else {
-    // --- 【不保存逻辑】直接通过快照还原 ---
     if (prePuzzleSnapshot) {
-      // loadFromJSON 会自动调用 clear() 清空当前所有（拼图后的）图片
       canvas.loadFromJSON(prePuzzleSnapshot, () => {
         canvas.setViewportTransform(savedVpt);
-        canvas.requestRenderAll();
+        if (puzzleState.originalBg !== null) {
+          canvas.setBackgroundColor(puzzleState.originalBg, () => canvas.requestRenderAll());
+        } else {
+          canvas.requestRenderAll();
+        }
       });
     }
   }
 };
 
-// === 模块级重置 ===
 export const resetPuzzle = () => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
@@ -6280,86 +6373,33 @@ export const resetPuzzle = () => {
 
   const defaultCells = generateGridCells(DEFAULTS.rows, DEFAULTS.cols);
   updateLayout(defaultCells);
+  zoomToPuzzleArea();
 
   if (saveHistoryFn) saveHistoryFn();
 };
-
-// === 退出逻辑 (核心修复：只导出有效区域) ===
 
 export const exitPuzzleMode = () => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
 
   puzzleState.isActive = false;
-  unbindEvents(); // 仅执行解绑，不操作画布对象
-};
 
-// === 修改后的辅助函数：智能适配屏幕 ===
-const fitPuzzleToScreen = () => {
-  const canvas = unref(canvasRef);
-  if (!canvas) return;
-
-  const { width: puzzleW, height: puzzleH } = puzzleState;
-  // 注意：这里用 width / zoom 换算回逻辑像素，确保对比单位一致
-  const canvasW = canvas.width / canvas.getRetinaScaling();
-  const canvasH = canvas.height / canvas.getRetinaScaling();
-
-  // 1. 计算最佳适配 Zoom (留出 10% 边距)
-  const paddingFactor = 0.9;
-  const zoomX = (canvasW * paddingFactor) / puzzleW;
-  const zoomY = (canvasH * paddingFactor) / puzzleH;
-
-  // 算出“能完全放下拼图”的缩放值
-  let targetZoom = Math.min(zoomX, zoomY);
-
-  // 2. 【核心修改】智能阈值处理
-  // 如果计算出的缩放比例大于 0.9 (说明图片其实跟屏幕差不多大，或者比屏幕小)
-  // 我们就强制设为 1 (100%)，保证画质清晰度，只有图特别大时才缩小
-  if (targetZoom > 0.9) {
-    targetZoom = 1;
+  if (puzzleState.originalBg !== null) {
+    canvas.setBackgroundColor(puzzleState.originalBg, () => canvas.requestRenderAll());
   }
 
-  // 3. 应用缩放
-  canvas.setZoom(targetZoom);
-
-  // 4. 计算 Pan (让拼图中心 对齐 视口中心)
-  const puzzleCenterX = puzzleW / 2;
-  const puzzleCenterY = puzzleH / 2;
-
-  // 视口在当前缩放下的逻辑一半宽高
-  const viewportHalfW = canvasW / (2 * targetZoom);
-  const viewportHalfH = canvasH / (2 * targetZoom);
-
-  const panX = puzzleCenterX - viewportHalfW;
-  const panY = puzzleCenterY - viewportHalfH;
-
-  canvas.absolutePan({ x: panX, y: panY });
-  canvas.requestRenderAll();
-
-  // 同步外部 UI 显示
-  canvas.fire('zoom:change', { zoom: targetZoom });
+  unbindEvents();
 };
 
-
-// 当用户点击“再次编辑”或切换回拼图模块时调用
 export const restorePuzzleData = () => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
 
-  // 1. 清理预览图
-  const previewImg = canvas.getObjects().find(o => o.isPreviewSnapshot);
-  if (previewImg) {
-    canvas.remove(previewImg);
-  }
-
-  // 2. 获取存档数据
   const historyData = puzzleState.savedHistoryData;
-  // 【新增】恢复之前的拼图尺寸设置
   const savedSettings = puzzleState.savedSettings;
 
   if (!historyData || historyData.length === 0) return;
 
-  // 【新增】恢复尺寸状态
   if (savedSettings) {
     puzzleState.width = savedSettings.width;
     puzzleState.height = savedSettings.height;
@@ -6368,13 +6408,10 @@ export const restorePuzzleData = () => {
     puzzleState.radius = savedSettings.radius;
     if (savedSettings.bgColor) {
       puzzleState.bgColor = savedSettings.bgColor;
-      canvas.setBackgroundColor(savedSettings.bgColor, () => { });
     }
   }
 
-  // 3. 异步恢复图片
   let loadedCount = 0;
-  // 标记 loading 状态（如果你的 UI 有 loading 遮罩可以在这开启）
 
   historyData.forEach(item => {
     fabric.Image.fromURL(item.src, (img) => {
@@ -6391,7 +6428,7 @@ export const restorePuzzleData = () => {
         flipY: item.flipY,
         cropX: item.cropX,
         cropY: item.cropY,
-        originX: item.originX || 'center', // 确保锚点正确
+        originX: item.originX || 'center',
         originY: item.originY || 'center',
         cellIndex: item.cellIndex,
         isPuzzleItem: true,
@@ -6405,37 +6442,66 @@ export const restorePuzzleData = () => {
 
       canvas.add(img);
 
-      // 当所有图片加载完毕时
       if (loadedCount === historyData.length) {
         puzzleState.isActive = true;
         refreshPuzzleObjects(false);
-
-        // 【关键修复】所有元素就位后，执行一次镜头对齐！
-        // fitPuzzleToScreen();
-
+        zoomToPuzzleArea();
         canvas.requestRenderAll();
       }
     }, { crossOrigin: 'anonymous' });
   });
 };
-// =========================================================================
-// 核心逻辑：位置计算 (保留用于初始适配)
-// 注意：虽然 animateRebound 能处理回弹，但“初始放入”时的居中逻辑还是需要的
-// =========================================================================
+
+export const getPuzzleImageCount = () => {
+  const canvas = unref(canvasRef);
+  if (!canvas) return 0;
+  return canvas.getObjects().filter(o => o.isPuzzleImage && !o.isGhost && !o.isPuzzleBackground).length;
+};
+
+export const updatePuzzleImageParams = (cellIndex, params = {}) => {
+  const canvas = unref(canvasRef);
+  if (!canvas) return;
+
+  const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === cellIndex);
+  const cell = puzzleState.cells.find(c => c.index === cellIndex);
+  
+  if (img && cell) {
+    if (params.opacity !== undefined) {
+      img.set('opacity', params.opacity);
+    }
+
+    if (params.scale !== undefined) {
+      const minScale = Math.max(cell.width / img.width, cell.height / img.height);
+      let newScale = Math.max(minScale, params.scale); 
+      
+      img.set({ scaleX: newScale, scaleY: newScale });
+      
+      const containerRect = {
+        left: cell.left, top: cell.top, width: cell.width, height: cell.height
+      };
+      constrainObjectToRect(img, containerRect, canvas);
+    }
+    canvas.requestRenderAll();
+  }
+};
+
 const calculateFitPosition = (img, cell) => {
-  // 这里的逻辑是“Cover”模式：确保图片填满格子且居中
-  const minScaleX = cell.width / img.width;
-  const minScaleY = cell.height / img.height;
+  const iW = img.width || 1;
+  const iH = img.height || 1;
+  const cW = Math.max(1, cell.width);
+  const cH = Math.max(1, cell.height);
+
+  const minScaleX = cW / iW;
+  const minScaleY = cH / iH;
   const minScale = Math.max(minScaleX, minScaleY) + 0.0001;
   return {
     scaleX: minScale,
     scaleY: minScale,
-    left: cell.left + cell.width / 2,
-    top: cell.top + cell.height / 2
+    left: cell.left + cW / 2,
+    top: cell.top + cH / 2
   };
 };
 
-// === 事件绑定 ===
 const bindEvents = () => {
   const canvas = unref(canvasRef);
   canvas.on('mouse:down', onMouseDown);
@@ -6460,14 +6526,6 @@ const onMouseDown = (opt) => {
   dragOriginPoint = opt.absolutePointer;
   const pointer = canvas.getPointer(opt.e);
   dragLastPoint = { x: pointer.x, y: pointer.y };
-
-  if (target && target.isDeleteBtn) {
-    deleteImageFromCell(target.cellIndex);
-    isDragging = false;
-    dragOriginCellIndex = -1;
-    dragOriginPoint = null;
-    return;
-  }
 
   if (target && target.isPuzzleController) {
     isDragging = true;
@@ -6509,7 +6567,6 @@ const onMouseMove = (opt) => {
     pointer.y >= cell.top && pointer.y <= cell.top + cell.height;
 
   if (isInsideCell) {
-    // 场景A：在格子内部微调（Pan）
     if (dragProxy) {
       canvas.remove(dragProxy);
       dragProxy = null;
@@ -6521,12 +6578,10 @@ const onMouseMove = (opt) => {
     const deltaY = pointer.y - dragLastPoint.y;
     const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === dragOriginCellIndex);
     if (img) {
-      // 自由拖动，不做实时约束，松手时再回弹
       img.set({ left: img.left + deltaX, top: img.top + deltaY });
       img.setCoords();
     }
   } else {
-    // 场景B：拖出格子（准备交换）
     if (!dragProxy && !isCreatingProxy) {
       isCreatingProxy = true;
       createDragProxy(dragOriginCellIndex, pointer);
@@ -6577,7 +6632,6 @@ const createDragProxy = (cellIndex, pointer) => {
       isGhost: true
     });
 
-    // 保持裁剪样式
     const cellCenterX = cell.left + cell.width / 2;
     const cellCenterY = cell.top + cell.height / 2;
     const offsetX = (cellCenterX - img.left) / img.scaleX;
@@ -6605,7 +6659,6 @@ const onMouseUp = (opt) => {
   isCreatingProxy = false;
 
   if (dragProxy) {
-    // 处理交换逻辑
     const dropCell = getCellFromPoint(pointer.x, pointer.y);
     const originCellIndex = dragOriginCellIndex;
     canvas.remove(dragProxy);
@@ -6616,35 +6669,47 @@ const onMouseUp = (opt) => {
     if (dropCell && dropCell.index !== originCellIndex) {
       animateSwap(originCellIndex, dropCell.index);
     } else {
-      // 没交换成功，弹回去
       animateSnapBack(originCellIndex);
     }
-  } else if (dragOriginPoint) {
-    // 处理点击或内部拖拽结束
+  } 
+  // 正常点击逻辑
+  else if (dragOriginPoint) {
     const dist = Math.sqrt(
       Math.pow(pointer.x - dragOriginPoint.x, 2) +
       Math.pow(pointer.y - dragOriginPoint.y, 2)
     );
 
+    // 判断为点击而非拖拽
     if (dist < 5) {
-      // 点击事件
       const clickedCell = getCellFromPoint(pointer.x, pointer.y);
       if (clickedCell) {
-        const target = opt.target;
-        if (target && target.isDeleteBtn) return;
-
-        const hasImg = canvas.getObjects().some(o => o.isPuzzleImage && o.cellIndex === clickedCell.index);
-
-        if (!hasImg && uiCallbacks.onCellClick) {
-          uiCallbacks.onCellClick(clickedCell.index);
-          canvas.discardActiveObject();
-        } else if (hasImg) {
-          const controller = canvas.getObjects().find(o => o.isPuzzleController && o.cellIndex === clickedCell.index);
-          if (controller) canvas.setActiveObject(controller);
+        // 判断格子内是否有图片
+        const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === clickedCell.index);
+        
+        if (!img) {
+            // A. 点击空格子：上传
+            if (uiCallbacks.onCellClick) {
+                uiCallbacks.onCellClick(clickedCell.index);
+                canvas.discardActiveObject();
+            }
+        } else {
+            // B. 点击有图片的格子：选中并进入配置
+            const controller = canvas.getObjects().find(o => o.isPuzzleController && o.cellIndex === clickedCell.index);
+            if (controller) canvas.setActiveObject(controller);
+            
+            if (uiCallbacks.onImageSelect) {
+                uiCallbacks.onImageSelect(clickedCell.index, {
+                    opacity: img.opacity,
+                    scale: img.scaleX
+                });
+            }
         }
+      } else {
+        // 点击空白处（网格外的区域）
+        if (uiCallbacks.onDeselect) uiCallbacks.onDeselect();
       }
     } else {
-      // 内部拖拽结束，触发回弹
+      // 拖拽了但没产生交换（原地回弹）
       if (dragOriginCellIndex !== -1) animateSnapBack(dragOriginCellIndex);
     }
   }
@@ -6653,25 +6718,27 @@ const onMouseUp = (opt) => {
   canvas.requestRenderAll();
 };
 
-// 【核心修改】替换原有的 animateSnapBack 实现
 const animateSnapBack = (cellIndex) => {
   const canvas = unref(canvasRef);
   const cell = puzzleState.cells.find(c => c.index === cellIndex);
   const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === cellIndex);
 
   if (img && cell) {
-    // 构造容器矩形 (Cell)
-    // 注意：animateRebound 接受的是 {left, top, width, height} 对象
     const containerRect = {
       left: cell.left,
       top: cell.top,
       width: cell.width,
       height: cell.height
     };
-
-    // 直接调用通用物理回弹引擎！
-    // 这样拼图的回弹手感就和 Crop/Resize 完全一样了
-    animateRebound(img, containerRect, canvas);
+    if (typeof animateRebound === 'function') {
+      animateRebound(img, containerRect, canvas);
+    } else {
+      img.set({
+        left: cell.left + cell.width / 2,
+        top: cell.top + cell.height / 2
+      });
+      canvas.requestRenderAll();
+    }
   }
 };
 
@@ -6687,10 +6754,7 @@ const animateSwap = (idxA, idxB) => {
 
   const createSyncAnimation = (img, targetCell) => {
     if (!img || !targetCell) return;
-
-    // 交换时，我们需要重新计算“Cover”状态下的最佳位置
     const targetImgState = calculateFitPosition(img, targetCell);
-
     animations.push(new Promise(resolve => {
       img.animate({
         left: targetImgState.left,
@@ -6745,11 +6809,9 @@ const onMouseWheel = (opt) => {
   const img = canvas.getObjects().find(o => o.isPuzzleImage && o.cellIndex === target.cellIndex);
   if (!cell || !img) return;
 
-  // 缩放逻辑
   let zoom = img.scaleX;
   zoom *= 0.999 ** opt.e.deltaY;
 
-  // 限制缩放范围
   const minScale = Math.max(cell.width / img.width, cell.height / img.height);
   const maxScale = minScale * 5;
   if (zoom < minScale) zoom = minScale;
@@ -6757,7 +6819,6 @@ const onMouseWheel = (opt) => {
 
   img.set({ scaleX: zoom, scaleY: zoom });
 
-  // 【核心修改】使用通用硬约束，实时修正位置，防止缩放露出黑边
   const containerRect = {
     left: cell.left, top: cell.top, width: cell.width, height: cell.height
   };
@@ -6769,54 +6830,97 @@ const onMouseWheel = (opt) => {
 export const updateLayout = (cellDefinitions = null, config = {}) => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
+  if (config.width !== undefined) puzzleState.width = config.width;
+  if (config.height !== undefined) puzzleState.height = config.height;
   if (config.padding !== undefined) puzzleState.padding = config.padding;
   if (config.spacing !== undefined) puzzleState.spacing = config.spacing;
   if (config.radius !== undefined) puzzleState.radius = config.radius;
-  if (config.bgColor) {
-    puzzleState.bgColor = config.bgColor;
-    canvas.setBackgroundColor(config.bgColor, () => canvas.requestRenderAll());
-  }
-  const isTemplateChange = !!cellDefinitions;
-  if (cellDefinitions) puzzleState.rawCells = cellDefinitions;
-  const { width, height, padding, spacing, startX, startY } = puzzleState;
-  const availW = width - (padding * 2);
-  const availH = height - (padding * 2);
 
-  puzzleState.cells = puzzleState.rawCells.map(cell => ({
-    index: cell.index,
-    left: startX + padding + cell.x * availW + spacing / 2,
-    top: startY + padding + cell.y * availH + spacing / 2,
-    width: cell.w * availW - spacing,
-    height: cell.h * availH - spacing
-  }));
-  refreshPuzzleObjects(isTemplateChange);
+  if (config.bgColor) puzzleState.bgColor = config.bgColor;
+
+  if (cellDefinitions) puzzleState.rawCells = cellDefinitions;
+
+  const { width, height, padding, spacing, startX, startY } = puzzleState;
+  const safeW = Math.max(0, width - (padding * 2));
+  const safeH = Math.max(0, height - (padding * 2));
+
+  puzzleState.cells = puzzleState.rawCells.map(cell => {
+    const EPSILON = 0.01;
+    const isLeftEdge = cell.x < EPSILON;
+    const isTopEdge = cell.y < EPSILON;
+    const isRightEdge = Math.abs((cell.x + cell.w) - 1.0) < EPSILON;
+    const isBottomEdge = Math.abs((cell.y + cell.h) - 1.0) < EPSILON;
+
+    let boxLeft = startX + Number(padding) + (cell.x * safeW);
+    let boxTop = startY + Number(padding) + (cell.y * safeH);
+    let boxWidth = cell.w * safeW;
+    let boxHeight = cell.h * safeH;
+
+    if (!isLeftEdge) {
+      boxLeft += spacing / 2;
+      boxWidth -= spacing / 2;
+    }
+    if (!isRightEdge) {
+      boxWidth -= spacing / 2;
+    }
+
+    if (!isTopEdge) {
+      boxTop += spacing / 2;
+      boxHeight -= spacing / 2;
+    }
+    if (!isBottomEdge) {
+      boxHeight -= spacing / 2;
+    }
+
+    return {
+      index: cell.index,
+      left: boxLeft,
+      top: boxTop,
+      width: Math.max(1, boxWidth),
+      height: Math.max(1, boxHeight)
+    };
+  });
+
+  refreshPuzzleObjects(!!cellDefinitions);
   if (saveHistoryFn) saveHistoryFn();
 };
 
-// === 刷新对象 (防重叠 + 自动吸入) ===
 const refreshPuzzleObjects = (shouldResetImages = false) => {
   const canvas = unref(canvasRef);
-  const { radius } = puzzleState;
+  const { radius, startX, startY, width, height, bgColor } = puzzleState;
 
-  const toRemove = canvas.getObjects().filter(o => o.isPlaceholder || o.isPuzzleController || o.isDeleteBtn);
+  const toRemove = canvas.getObjects().filter(o =>
+    o.isPlaceholder || o.isPuzzleController || o.isPuzzleBackground
+  );
   canvas.remove(...toRemove);
 
+  const localBg = new fabric.Rect({
+    left: startX,
+    top: startY,
+    width: width,
+    height: height,
+    fill: bgColor,
+    rx: radius,
+    ry: radius,
+    selectable: false,
+    evented: false,
+    isPuzzleBackground: true,
+    isPuzzleItem: true
+  });
+  canvas.add(localBg);
+  canvas.sendToBack(localBg);
+
   const existingPuzzleImages = canvas.getObjects()
-    .filter(o => o.isPuzzleImage && !o.isGhost && o !== dragProxy)
+    .filter(o => o.isPuzzleImage && !o.isGhost && o !== dragProxy && !o.isPuzzleBackground)
     .sort((a, b) => a.cellIndex - b.cellIndex);
 
-  // 1. 自动吸入普通图片 (修复：不传 scale，强制重新计算 Cover)
   if (shouldResetImages && existingPuzzleImages.length === 0) {
     const rawImages = canvas.getObjects().filter(o => o.type === 'image' && !o.isPuzzleItem);
     if (rawImages.length > 0) {
       const rawImg = rawImages[0];
       const src = rawImg.getSrc();
-      // 这里删除了 currentScale 的获取
       canvas.remove(rawImg);
-
-      // 不传 targetScale，强制使用 addImageToCell 内部的自动居中逻辑
       addImageToCell(src, 0);
-
       puzzleState.cells.forEach(cell => drawPlaceholder(canvas, cell));
       canvas.requestRenderAll();
       return;
@@ -6825,49 +6929,108 @@ const refreshPuzzleObjects = (shouldResetImages = false) => {
 
   puzzleState.cells.forEach((cell, index) => {
     let img = null;
+
     if (shouldResetImages) {
       if (index < existingPuzzleImages.length) {
         img = existingPuzzleImages[index];
         img.cellIndex = cell.index;
         img.set({ opacity: 1, visible: true });
-        // 模板切换：强制居中
         const fitState = calculateFitPosition(img, cell);
-        img.set({ scaleX: fitState.scaleX, scaleY: fitState.scaleY, left: fitState.left, top: fitState.top });
+        img.set({
+          scaleX: fitState.scaleX,
+          scaleY: fitState.scaleY,
+          left: fitState.left,
+          top: fitState.top
+        });
         img.setCoords();
       }
     } else {
       img = existingPuzzleImages.find(o => o.cellIndex === cell.index);
       if (img) {
-        // 布局变动（如调整 Padding）：检查是否填满，不够则放大
-        const minScale = Math.max(cell.width / img.width, cell.height / img.height);
-        if (img.scaleX < minScale - 0.001) {
+        const newCellCenterX = cell.left + cell.width / 2;
+        const newCellCenterY = cell.top + cell.height / 2;
+
+        let targetLeft = newCellCenterX;
+        let targetTop = newCellCenterY;
+
+        if (img.clipPath && img.clipPath.absolutePositioned) {
+          const oldCell = img.clipPath;
+          const oldCellCenterX = oldCell.left + oldCell.width / 2;
+          const oldCellCenterY = oldCell.top + oldCell.height / 2;
+
+          const offsetX = img.left - oldCellCenterX;
+          const offsetY = img.top - oldCellCenterY;
+
+          if (!isNaN(offsetX) && Math.abs(offsetX) < 3000) {
+            targetLeft = newCellCenterX + offsetX;
+            targetTop = newCellCenterY + offsetY;
+          }
+        }
+
+        img.set({ left: targetLeft, top: targetTop });
+
+        const iW = img.width || 100;
+        const iH = img.height || 100;
+        const minScale = Math.max(cell.width / iW, cell.height / iH) + 0.0001;
+
+        if (img.scaleX < minScale) {
           img.set({ scaleX: minScale, scaleY: minScale });
         }
-        // 硬约束防止跑偏
-        const containerRect = { left: cell.left, top: cell.top, width: cell.width, height: cell.height };
+
+        img.setCoords();
+
+        const containerRect = {
+          left: cell.left,
+          top: cell.top,
+          width: cell.width,
+          height: cell.height
+        };
         constrainObjectToRect(img, containerRect, canvas);
+
+        if (!img.intersectsWithObject(new fabric.Rect(containerRect))) {
+          img.set({ left: newCellCenterX, top: newCellCenterY });
+          img.setCoords();
+        }
       }
     }
 
     if (img) {
       const clipRect = new fabric.Rect({
-        left: cell.left, top: cell.top, width: cell.width, height: cell.height,
-        rx: radius, ry: radius, absolutePositioned: true
+        left: cell.left,
+        top: cell.top,
+        width: cell.width,
+        height: cell.height,
+        rx: radius,
+        ry: radius,
+        absolutePositioned: true
       });
-      img.set({ clipPath: clipRect, opacity: 1 });
+      img.set({ clipPath: clipRect, opacity: img.opacity || 1 });
+      img.dirty = true;
       img.setCoords();
 
       const controller = new fabric.Rect({
-        left: cell.left, top: cell.top, width: cell.width, height: cell.height,
-        fill: 'transparent', noScaleCache: false,
-        transparentCorners: false, cornerSize: 8, borderOpacityWhenMoving: 0.5,
-        selectable: true, evented: true, hasControls: true, hasBorders: true,
-        lockMovementX: true, lockMovementY: true,
-        lockRotation: true, lockScalingX: true, lockScalingY: true,
-        isPuzzleItem: true, isPuzzleController: true, cellIndex: cell.index
+        left: cell.left,
+        top: cell.top,
+        width: cell.width,
+        height: cell.height,
+        fill: 'transparent',
+        transparentCorners: false,
+        selectable: true,
+        evented: true,
+        // 🔥 关键修改：禁用控件和边框显示
+        hasControls: false,
+        hasBorders: false,
+        lockMovementX: true,
+        lockMovementY: true,
+        lockRotation: true,
+        lockScalingX: true,
+        lockScalingY: true,
+        isPuzzleItem: true,
+        isPuzzleController: true,
+        cellIndex: cell.index
       });
       canvas.add(controller);
-      drawDeleteBtn(canvas, cell);
+      // 🔥 已移除 drawDeleteBtn 调用
     } else {
       drawPlaceholder(canvas, cell);
     }
@@ -6877,50 +7040,20 @@ const refreshPuzzleObjects = (shouldResetImages = false) => {
     const extras = existingPuzzleImages.slice(puzzleState.cells.length);
     canvas.remove(...extras);
   }
+
+  if (localBg) canvas.sendToBack(localBg);
+
   canvas.requestRenderAll();
 };
 
-const deleteImageFromCell = (cellIndex) => {
+export const deleteImageFromCell = (cellIndex) => {
   const canvas = unref(canvasRef);
   const objs = canvas.getObjects().filter(o =>
-    (o.isPuzzleImage || o.isPuzzleController || o.isDeleteBtn) && o.cellIndex === cellIndex
+    (o.isPuzzleImage || o.isPuzzleController) && o.cellIndex === cellIndex
   );
   canvas.remove(...objs);
   refreshPuzzleObjects();
   if (saveHistoryFn) saveHistoryFn();
-};
-
-const drawDeleteBtn = (canvas, cell) => {
-  const btnRadius = 9;
-  const padding = 6;
-
-  const circle = new fabric.Circle({
-    radius: btnRadius,
-    fill: 'rgba(0, 0, 0, 0.6)',
-    originX: 'center', originY: 'center'
-  });
-
-  const text = new fabric.Text('×', {
-    fill: '#fff',
-    fontSize: 18,
-    fontFamily: 'Arial',
-    originX: 'center', originY: 'center',
-    top: -1
-  });
-
-  const group = new fabric.Group([circle, text], {
-    left: cell.left + cell.width - btnRadius - padding,
-    top: cell.top + btnRadius + padding,
-    originX: 'center', originY: 'center',
-    selectable: false,
-    hoverCursor: 'pointer',
-    isPuzzleItem: true,
-    isDeleteBtn: true,
-    cellIndex: cell.index
-  });
-
-  canvas.add(group);
-  canvas.bringToFront(group);
 };
 
 const drawPlaceholder = (canvas, cell) => {
@@ -6936,7 +7069,6 @@ const drawPlaceholder = (canvas, cell) => {
     selectable: false, evented: false, isPuzzleItem: true, isPlaceholder: true
   });
   canvas.add(rect, plus);
-  canvas.sendToBack(rect);
 };
 
 const getCellFromPoint = (x, y) => {
@@ -6946,10 +7078,9 @@ const getCellFromPoint = (x, y) => {
   );
 };
 
-// === 添加图片的终极修复 (强制居中) ===
 export const addImageToCell = (url, cellIndex, options = {}) => {
   const canvas = unref(canvasRef);
-  const oldObjs = canvas.getObjects().filter(o => (o.isPuzzleImage || o.isPuzzleController || o.isDeleteBtn) && o.cellIndex === cellIndex);
+  const oldObjs = canvas.getObjects().filter(o => (o.isPuzzleImage || o.isPuzzleController) && o.cellIndex === cellIndex);
   canvas.remove(...oldObjs);
 
   fabric.Image.fromURL(url, (img) => {
@@ -6957,19 +7088,15 @@ export const addImageToCell = (url, cellIndex, options = {}) => {
     if (!cell) return;
 
     let scale;
-    // 逻辑：如果有 targetScale 就用，没有就自动 Cover
     if (options.targetScale) {
       scale = options.targetScale;
     } else {
       scale = Math.max(cell.width / img.width, cell.height / img.height) + 0.001;
     }
 
-    // 【关键】设置居中
     img.set({
-      // 1. 设置中心点坐标
       left: cell.left + cell.width / 2,
       top: cell.top + cell.height / 2,
-      // 2. 设置 origin 为中心
       originX: 'center',
       originY: 'center',
       scaleX: scale,
@@ -6978,14 +7105,15 @@ export const addImageToCell = (url, cellIndex, options = {}) => {
       isPuzzleItem: true, isPuzzleImage: true, cellIndex: cellIndex,
     });
 
-    // 3. 立即更新坐标，防止后续计算出错
     img.setCoords();
 
     const controller = new fabric.Rect({
       left: cell.left, top: cell.top, width: cell.width, height: cell.height,
       fill: 'transparent', noScaleCache: false,
       transparentCorners: false, cornerSize: 8, borderOpacityWhenMoving: 0.5,
-      selectable: true, evented: true, hasControls: true, hasBorders: true,
+      selectable: true, evented: true, 
+      hasControls: false, // 禁用
+      hasBorders: false,  // 禁用
       lockMovementX: true, lockMovementY: true,
       lockRotation: true, lockScalingX: true, lockScalingY: true,
       isPuzzleItem: true, isPuzzleController: true, cellIndex: cellIndex,
@@ -6995,133 +7123,10 @@ export const addImageToCell = (url, cellIndex, options = {}) => {
     canvas.add(controller);
     canvas.setActiveObject(controller);
 
-    refreshPuzzleObjects(); // 这里会再次触发 constrain check，但因为已经居中且足够大，不会有副作用
+    refreshPuzzleObjects();
     if (saveHistoryFn) saveHistoryFn();
   }, { crossOrigin: 'anonymous' });
 };
-</file>
-
-<file path="package.json">
-{
-  "name": "image-editor-sdk",
-  "version": "1.0.0",
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "main": "./dist/image-editor.umd.cjs",
-  "module": "./dist/image-editor.js",
-  "files": ["dist"],
-  "exports": {
-    ".": {
-      "import": "./dist/image-editor.js",
-      "require": "./dist/image-editor.umd.cjs"
-    },
-    "./style.css": "./dist/index.css"
-  },
-  "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "preview": "vite preview",
-    "npx": "npx repomix"
-  },
-  "dependencies": {
-    "fabric": "^5.3.0",
-    "file-saver": "^2.0.5"
-  },
-  "peerDependencies": {
-    "vue": "^3.3.0"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.1",
-    "vite": "^7.2.4",
-    "vite-plugin-dts": "^4.5.4"
-  }
-}
-</file>
-
-<file path="src/components/modules/adjust/index.vue">
-<template>
-  <div class="panel-adjust">
-    <div class="tool-list">
-
-      <AdjustCrop :is-expanded="activeCollapse === 'crop'" @toggle="toggle('crop')" />
-
-      <AdjustResize :is-expanded="activeCollapse === 'resize'" @toggle="toggle('resize')" />
-
-      <AdjustInpaint :is-expanded="activeCollapse === 'inpaint'" @toggle="toggle('inpaint')" />
-
-      <AdjustRembg :is-expanded="activeCollapse === 'rembg'" @toggle="toggle('rembg')" />
-
-      <AdjustRuler :is-expanded="activeCollapse === 'ruler'" @toggle="toggle('ruler')" />
-
-      <AdjustWhite :is-expanded="activeCollapse === 'white'" @toggle="toggle('white')" />
-
-      <AdjustColor :is-expanded="activeCollapse === 'color'" @toggle="toggle('color')" />
-
-      <AdjustColorOverlay :is-expanded="activeCollapse === 'overlay'" @toggle="toggle('overlay')" />
-
-      <AdjustFilters :is-expanded="activeCollapse === 'filters'" @toggle="toggle('filters')" />
-
-      <AdjustMosaic :is-expanded="activeCollapse === 'mosaic'" @toggle="toggle('mosaic')" />
-
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, defineAsyncComponent, watch } from 'vue';
-import { toast } from '@/utils/toast';
-import { useEditorState } from '@/composables/useEditorState'; // 假设与当前文件同级，如果在 composables 请修改路径
-
-// 异步组件引入
-const AdjustCrop = defineAsyncComponent(() => import('./AdjustCrop.vue'));
-const AdjustResize = defineAsyncComponent(() => import('./AdjustResize.vue'));
-const AdjustInpaint = defineAsyncComponent(() => import('./AdjustInpaint.vue'));
-const AdjustRembg = defineAsyncComponent(() => import('./AdjustRembg.vue'));
-const AdjustWhite = defineAsyncComponent(() => import('./AdjustWhite.vue'));
-const AdjustColor = defineAsyncComponent(() => import('./AdjustColor.vue'));
-const AdjustFilters = defineAsyncComponent(() => import('./AdjustFilters.vue'));
-const AdjustColorOverlay = defineAsyncComponent(() => import('./AdjustColorOverlay.vue'));
-const AdjustMosaic = defineAsyncComponent(() => import('./AdjustMosaic.vue'));
-const AdjustRuler = defineAsyncComponent(() => import('./AdjustRuler.vue'));
-
-const activeCollapse = ref('');
-// ✨ 获取全局状态
-const { state } = useEditorState();
-
-// ✨✨✨ 核心链路修复：监听路由变化 ✨✨✨
-// 当 state.activeTab 变为 'ruler' 时，自动展开 'ruler' 面板
-watch(
-  () => state.activeTab,
-  (newTab) => {
-    // 这里做一个简单的白名单匹配，防止非 Adjust 面板的 Tab 干扰
-    // 这里的 'ruler' 对应 template 中 toggle('ruler') 的 id
-    const validTabs = ['crop', 'resize', 'inpaint', 'rembg', 'ruler', 'white', 'color', 'overlay', 'filters', 'mosaic'];
-    
-    if (newTab && validTabs.includes(newTab)) {
-      console.log('[AdjustPanel] Auto expanding:', newTab);
-      activeCollapse.value = newTab;
-    }
-  },
-  { immediate: true }
-);
-const toggle = (id) => {
-  activeCollapse.value = activeCollapse.value === id ? '' : id;
-};
-
-const notImplemented = () => {
-  toast.info('功能开发中');
-};
-</script>
-
-<style scoped>
-.panel-adjust {
-  padding: 16px;
-  height: 100%;
-  overflow-y: auto;
-  background-color: #fff;
-  box-sizing: border-box;
-}
-</style>
 </file>
 
 <file path="src/components/modules/adjust/useCanvasResize.js">
@@ -7469,793 +7474,6 @@ export const applyResize = async (width, height, isStretch = false) => {
     if (saveHistoryFn) saveHistoryFn();
   });
 };
-</file>
-
-<file path="src/components/modules/puzzle/index.vue">
-<template>
-  <div class="puzzle-module">
-    <!-- sub page count: 3 -->
-    <!-- 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板) -->
-    <!-- 2. 模板选择页 -->
-    <!-- 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1 -->
-
-    <!-- 初始页 -->
-    <div
-      v-if="sub === 1"
-      class="puzzle-main"
-    >
-      <!-- 选项卡 -->
-      <div class="puzzle-tabs">
-        <div
-          class="tab-item"
-          :class="{ active: activeTab === 'grid' }"
-          @click="activeTab = 'grid'"
-        >
-          网格
-        </div>
-        <div
-          class="tab-item"
-          :class="{ active: activeTab === 'join' }"
-          @click="activeTab = 'join'"
-        >
-          拼接
-        </div>
-      </div>
-
-      <!-- 操作内容 -->
-      <div>
-        <!-- 网格选项卡内容 -->
-        <div v-if="activeTab === 'grid'">
-          <button
-            class="select-btn"
-            @click="sub = 2"
-          >
-            <div class="icon-wrap">
-              <div
-                v-if="showControlPanel"
-                :style="curTemp.wrapStyle"
-                class="small-grid-template"
-              >
-                <div
-                  v-for="(gridArea, i) in curTemp.gridAreas"
-                  :key="i"
-                  class="grid-cell"
-                  :style="`grid-area: ${gridArea};`"
-                ></div>
-              </div>
-              <span
-                v-else
-                class="plus-icon"
-              >+</span>
-            </div>
-            <span>选择网格</span>
-            <span
-              v-if="showControlPanel"
-              class="cancel-btn"
-              @click.stop="cancel"
-            >取消</span>
-          </button>
-
-          <!-- 控制组件 -->
-          <div
-            v-if="showControlPanel"
-            class="control-panel"
-          >
-            <!-- 拼图尺寸 -->
-            <div class="control-group">
-              <label>拼图尺寸</label>
-              <div class="size-controls">
-                <div class="input-wrapper">
-                  <input
-                    type="number"
-                    v-model.number="puzzleSettings.width"
-                    :min="min"
-                    :max="max"
-                    class="ie-input"
-                    @change="updateSize('width')"
-                  >
-                  <span class="suffix">W</span>
-                </div>
-
-                <div
-                  class="link-icon"
-                  title="锁定宽高比"
-                  @click="toggleRatioLock"
-                >
-                  <svg
-                    v-if="puzzleSettings.lockRatio"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#409eff"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                  <svg
-                    v-else
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#909399"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    style="opacity: 0.6"
-                  >
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    <line
-                      x1="4"
-                      y1="4"
-                      x2="20"
-                      y2="20"
-                      stroke="#909399"
-                    />
-                  </svg>
-                </div>
-
-                <div class="input-wrapper">
-                  <input
-                    type="number"
-                    v-model.number="puzzleSettings.height"
-                    :min="min"
-                    :max="max"
-                    class="ie-input"
-                    @change="updateSize('height')"
-                  >
-                  <span class="suffix">H</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 边框 -->
-            <div class="control-group">
-              <label>边框</label>
-              <input
-                v-model="puzzleSettings.border"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                @change="updateStyle"
-              />
-              <span class="value-display">{{ puzzleSettings.border }}px</span>
-            </div>
-
-            <!-- 间距 -->
-            <div class="control-group">
-              <label>间距</label>
-              <input
-                type="range"
-                v-model="puzzleSettings.spacing"
-                min="0"
-                max="100"
-                step="1"
-                @change="updateStyle"
-              />
-              <span class="value-display">{{ puzzleSettings.spacing }}px</span>
-            </div>
-
-            <!-- 拼图背景 -->
-            <div class="control-group">
-              <label>拼图背景颜色</label>
-              <input
-                type="color"
-                class="color"
-                v-model="puzzleSettings.bgColor"
-                @change="updateStyle"
-              />
-            </div>
-
-            <!-- 保存按钮 -->
-            <button
-              class="save-btn"
-              @click="save"
-            >
-              保存
-            </button>
-          </div>
-        </div>
-
-        <!-- 拼接选项卡内容 -->
-        <div v-else>
-          <button class="select-btn">
-            <div class="icon-wrap">
-              <div
-                v-if="showControlPanel"
-                :style="curTemp.wrapStyle"
-                class="small-grid-template"
-              >
-                <div
-                  v-for="(gridArea, i) in curTemp.gridAreas"
-                  :key="i"
-                  class="grid-cell"
-                  :style="`grid-area: ${gridArea};`"
-                ></div>
-              </div>
-              <span
-                v-else
-                class="plus-icon"
-              >+</span>
-            </div>
-            <span>选择拼接</span>
-            <span
-              v-if="showControlPanel"
-              class="cancel-btn"
-              @click.stop="cancel"
-            >取消</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 模板选择面板 -->
-    <div
-      v-if="sub === 2"
-      class="grid-templates"
-    >
-      <!-- 返回按钮 -->
-      <div
-        class="back-header"
-        @click="backToMain"
-      >
-        <span class="back-icon">‹</span> 网格
-      </div>
-
-      <!-- 图片数量选择 -->
-      <div class="image-count-selector">
-        <label>图片数量</label>
-        <select v-model="selectedImageCount">
-          <option
-            v-for="item in countOptions"
-            :key="item.value"
-            :value="item.value"
-          >{{ item.label }}</option>
-        </select>
-      </div>
-
-      <!-- 网格模板列表 -->
-      <div class="grid-list">
-        <div
-          v-for="(group, count) in filteredTemplates"
-          :key="count"
-          class="grid-group"
-        >
-          <!-- 图片数量标题 -->
-          <div class="grid-group-title">{{ count }}</div>
-
-          <!-- 该数量下的所有模板 -->
-          <div class="grid-templates-row">
-            <div
-              v-for="template in group"
-              :key="template.id"
-              :style="template.wrapStyle"
-              class="grid-template"
-              @click="selectTemplate(template)"
-            >
-              <div
-                v-for="(gridArea, i) in template.gridAreas"
-                :key="i"
-                class="grid-cell"
-                :style="`grid-area: ${gridArea};`"
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 图片的配置页 -->
-    <div
-      v-if="sub === 3"
-      class="p-20"
-    >
-      <div class="operate-tabs">
-        <div class="tab-item border">
-          替换图片
-        </div>
-        <div
-          v-if="false"
-          class="tab-item border"
-        >
-          删除图片
-        </div>
-      </div>
-
-      <!-- 透明度 -->
-      <div class="control-group">
-        <label>透明度</label>
-        <input
-          v-model="transparent"
-          type="range"
-          min="0"
-          max="100"
-          step="1"
-        />
-        <span class="value-display">{{ transparent }}px</span>
-      </div>
-
-      <!-- 放大 -->
-      <div class="control-group">
-        <label>放大</label>
-        <input
-          type="range"
-          v-model="zoom"
-          min="100"
-          max="300"
-          step="1"
-        />
-        <span class="value-display">{{ zoom }}px</span>
-      </div>
-    </div>
-
-    <!-- 隐藏的上传入口 -->
-    <input
-      type="file"
-      ref="fileInput"
-      accept="image/png, image/jpeg, image/jpg"
-      style="display:none"
-      @change="onFileSelected"
-    >
-  </div>
-</template>
-
-<script setup>
-  import { ref, reactive, computed, inject, onMounted, onUnmounted } from 'vue';
-  import { toast } from '@/utils/toast';
-  import { gridTemplates, countOptions, generateGridCells, parseTemplateToCells } from './config.js';
-  import {
-    registerPuzzleModule,
-    initPuzzleMode,
-    exitPuzzleMode,
-    updateLayout,
-    addImageToCell,
-  } from './useCanvasPuzzle.js';
-
-  // 获取编辑器状态和Canvas API
-  const canvasAPI = inject('canvasAPI');
-  const fileInput = ref(null);
-  let pendingCellIndex = -1;
-
-  onMounted(() => {
-    if (canvasAPI) {
-      registerPuzzleModule(canvasAPI.canvas, canvasAPI.saveHistory, {
-        onCellClick: (index) => {
-          pendingCellIndex = index;
-          if (fileInput.value) {
-            fileInput.value.value = '';
-            fileInput.value.click();
-          }
-        }
-      });
-      initPuzzleMode();
-    }
-  });
-
-  onUnmounted(() => {
-    exitPuzzleMode();
-  });
-
-  const onFileSelected = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
-      toast.error('仅支持 JPG/PNG 图片格式');
-      return;
-    }
-    if (pendingCellIndex >= 0) {
-      const url = URL.createObjectURL(file);
-      addImageToCell(url, pendingCellIndex);
-      pendingCellIndex = -1;
-    }
-  };
-
-  /**
-   * sub page count: 3
-   * 1. 初始, 网格/拼接 选择页 (包含选择模板后的配置面板)
-   * 2. 模板选择页
-   * 3. 点击 Canvas 图片的配置页 (替换/删除 透明度 缩放) 点击空白处 back to sub 1
-   */
-  const sub = ref(1);
-  const showControlPanel = ref(false);
-
-  // 状态管理
-  const selectedImageCount = ref('all');
-  const activeTab = ref('grid');
-
-  // 过滤显示的网格模板
-  const filteredTemplates = computed(() => {
-    if (selectedImageCount.value === 'all') {
-      return gridTemplates;
-    } else {
-      const curCount = parseInt(selectedImageCount.value);
-      const result = {};
-      for (const count in gridTemplates) {
-        if (parseInt(count) === curCount) {
-          result[count] = gridTemplates[count];
-        }
-      }
-      return result;
-    }
-  });
-
-  // 返回上一级
-  const backToMain = () => {
-    sub.value = 1;
-    selectedImageCount.value = 'all';
-  };
-
-  // 选择网格模板
-  const curTemp = ref({});
-  const selectTemplate = (template) => {
-    curTemp.value = template;
-    showControlPanel.value = true;
-    sub.value = 1;
-
-    // 应用模板到工作区
-    applyTemplate(template);
-  };
-
-  const applyTemplate = (templ) => {
-    const cells = parseTemplateToCells(templ);
-    updateLayout(cells);
-  };
-
-  const cancel = () => {
-    showControlPanel.value = false;
-    curTemp.value = {};
-    // sub.value = 1; // 本来就在 1
-  };
-
-  // 配置面板数据
-  const puzzleSettings = reactive({
-    width: 1200,
-    height: 1200,
-    lockRatio: false,
-    border: 15,
-    spacing: 15,
-    bgColor: '#ffffff'
-  });
-  const min = 400;
-  const max = 3840;
-  let ratio = 1;
-
-  const toggleRatioLock = () => {
-    puzzleSettings.lockRatio = !puzzleSettings.lockRatio;
-    if (puzzleSettings.lockRatio) {
-      ratio = puzzleSettings.width / puzzleSettings.height;
-    }
-  };
-
-  // 更新尺寸
-  const updateSize = (dimension) => {
-    // 确保尺寸在有效范围内
-    if (puzzleSettings[dimension] < min) {
-      puzzleSettings[dimension] = min;
-    } else if (puzzleSettings[dimension] > max) {
-      puzzleSettings[dimension] = max;
-    }
-
-    // 如果锁定宽高比，同时更新另一个维度
-    if (puzzleSettings.lockRatio) {
-      if (dimension === 'width') {
-        puzzleSettings.height = Math.round(puzzleSettings.width / ratio);
-      } else {
-        puzzleSettings.width = Math.round(puzzleSettings.height * ratio);
-      }
-    }
-
-    updateStyle();
-  };
-
-  const updateStyle = () => {
-    updateLayout(null, puzzleSettings);
-  };
-
-  // 保存拼图
-  const save = () => { };
-
-  // sub 3
-  const transparent = ref(100);
-  const zoom = ref(100);
-</script>
-
-<style scoped>
-  .puzzle-module {
-    width: 100%;
-    height: 100%;
-    background-color: #fff;
-  }
-
-  /* 主面板样式 */
-  .puzzle-main {
-    padding: 20px;
-  }
-
-  .puzzle-tabs {
-    display: flex;
-  }
-
-  .tab-item {
-    flex: 1;
-    text-align: center;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #606266;
-  }
-
-  .tab-item.active {
-    background-color: #409eff;
-    color: #fff;
-  }
-
-  .select-btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 14px;
-    border-radius: 4px;
-    width: 100%;
-    cursor: pointer;
-    font-size: 14px;
-    color: #606266;
-    transition: all 0.3s;
-  }
-
-  .select-btn:hover {
-    border-color: #409eff;
-    color: #409eff;
-  }
-
-  .icon-wrap {
-    width: 40px;
-    height: 40px;
-    border-radius: 4;
-    background-color: #fff;
-    font-size: 24px;
-    line-height: 40px;
-    text-align: center;
-    margin-right: 16px;
-  }
-
-  .small-grid-template {
-    height: 100%;
-    display: grid;
-    /* border-radius: 4px; */
-    overflow: hidden;
-  }
-
-  .plus-icon {
-    font-weight: bold;
-  }
-
-  .cancel-btn {
-    color: #409eff;
-    margin-left: 76px;
-    cursor: pointer;
-  }
-
-  /* 网格模板选择面板样式 */
-  .grid-templates {
-    padding: 20px 12px 20px;
-  }
-
-  .back-header {
-    display: flex;
-    align-items: center;
-    font-size: 16px;
-    font-weight: 500;
-    margin-bottom: 20px;
-    cursor: pointer;
-  }
-
-  .back-icon {
-    font-size: 20px;
-    margin-right: 8px;
-    color: #606266;
-  }
-
-  .image-count-selector {
-    margin-bottom: 20px;
-  }
-
-  .image-count-selector label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 14px;
-    color: #606266;
-  }
-
-  .image-count-selector select {
-    width: 100%;
-    padding: 8px 12px;
-    border: 1px solid #dcdfe6;
-    border-radius: 4px;
-    font-size: 14px;
-  }
-
-  .grid-list {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .grid-group {
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .grid-group-title {
-    padding: 10px 15px;
-    background-color: #f5f7fa;
-    font-size: 14px;
-    font-weight: 500;
-    color: #606266;
-  }
-
-  .grid-templates-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 12px 4px;
-  }
-
-  .grid-template {
-    width: 120px;
-    height: 120px;
-    display: grid;
-    border-radius: 4px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-
-  .grid-template:hover {
-    border-color: #409eff;
-    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  }
-
-  .grid-cell {
-    height: 100%;
-    background-color: #f0f0f0;
-    border: 1px solid #fff;
-  }
-
-  /* 控制面板样式 */
-  .control-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding: 15px 0;
-  }
-
-  .control-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .control-group label {
-    font-size: 14px;
-    color: #606266;
-    font-weight: 500;
-  }
-
-  .color {
-    width: 100%;
-    cursor: pointer;
-    border: none;
-  }
-
-  /* 尺寸控制 */
-  .size-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .input-wrapper {
-    position: relative;
-    width: 38%;
-  }
-
-  .ie-input {
-    text-align: center;
-    padding-right: 20px;
-    font-weight: 500;
-    color: #333;
-  }
-
-  .suffix {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #c0c4cc;
-    font-size: 12px;
-    pointer-events: none;
-  }
-
-  .link-icon {
-    width: 24px;
-    display: flex;
-    justify-content: center;
-    cursor: pointer;
-  }
-
-  /* 滑块控制 */
-  .control-group input[type="range"] {
-    width: 100%;
-    height: 4px;
-    border-radius: 2px;
-    background: #dcdfe6;
-    outline: none;
-    -webkit-appearance: none;
-  }
-
-  .control-group input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #409eff;
-    cursor: pointer;
-  }
-
-  .control-group input[type="range"]::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: #409eff;
-    cursor: pointer;
-    border: none;
-  }
-
-  .value-display {
-    font-size: 14px;
-    color: #909399;
-    text-align: right;
-  }
-
-  /* 保存按钮 */
-  .save-btn {
-    padding: 12px 20px;
-    margin-top: 20px;
-    border: none;
-    border-radius: 21px;
-    background-color: #409eff;
-    color: #fff;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-
-  .save-btn:hover {
-    background-color: #66b1ff;
-  }
-
-  .p-20 {
-    padding: 20px;
-  }
-
-  .operate-tabs {
-    display: flex;
-    margin-bottom: 16px;
-  }
-
-  .border {
-    border: 1px solid #dcdfe6;
-  }
-</style>
 </file>
 
 <file path="src/components/layout/NavBar.vue">
@@ -8942,603 +8160,6 @@ onUnmounted(() => {
   flex: 1;
 }
 </style>
-</file>
-
-<file path="src/components/modules/adjust/useCanvasCrop.js">
-// src/components/modules/adjust/useCanvasCrop.js
-import { ref, shallowRef, toRaw } from "vue";
-import { fabric } from "fabric";
-
-// 1. 引入通用规范工具
-import { getLogicRect, animateRebound, constrainObjectToRect } from '@/composables/useConstraint';
-import { renderHighResSnapshot } from '@/composables/useOffscreenHelper';
-
-// === 状态变量 ===
-const cropObject = shallowRef(null);
-const isManualCropping = ref(false);
-const isCropping = ref(false);
-const isRatioLocked = ref(false);
-const currentAspectRatio = ref(null);
-
-// 用于实时向 UI 传递当前选区/裁剪框的宽高
-const currentSelectionDims = ref({ width: 0, height: 0 });
-
-// 内部引用
-let canvasRef = null;
-let saveHistoryFn = null;
-let zoomToRectFn = null;
-
-// 内部变量
-let selectionRect = null;
-let maskRect = null;
-let selectionStartX = 0;
-let selectionStartY = 0;
-let aspectRatioValue = null;
-let savedWheelListeners = [];
-
-// 拖拽图片相关变量
-let isDraggingImage = false;
-let dragLastX = 0;
-let dragLastY = 0;
-
-// 标志位：是否正在应用裁剪
-let isApplyingCrop = false;
-
-export const registerCropModule = (canvas, saveHistory, zoomToRect) => {
-  canvasRef = canvas;
-  saveHistoryFn = saveHistory;
-  zoomToRectFn = zoomToRect;
-};
-
-// =========================================================
-// 辅助工具
-// =========================================================
-
-const updateCurrentDims = (obj) => {
-  if (!obj || !canvasRef?.value) return;
-  const rect = getLogicRect(obj, canvasRef.value);
-  currentSelectionDims.value = {
-    width: Math.round(rect.width),
-    height: Math.round(rect.height)
-  };
-};
-
-const preventZoomWheel = (opt) => {
-  if (!opt || !opt.e) return;
-  opt.e.preventDefault();
-  opt.e.stopPropagation();
-  if (opt.e.stopImmediatePropagation) opt.e.stopImmediatePropagation();
-};
-
-// =========================================================
-// 拖动图片的核心逻辑 (集成通用回弹)
-// =========================================================
-const onCropMouseDown = (opt) => {
-  if (!canvasRef?.value || !cropObject.value) return;
-  const target = opt.target;
-  // 必须点击在剪裁框上（作为容器）
-  if (target !== cropObject.value) return;
-
-  const activeObj = canvasRef.value.getActiveObject();
-  if (activeObj && activeObj.__corner) return;
-
-  // 开始拖动图片
-  isDraggingImage = true;
-  const pointer = canvasRef.value.getPointer(opt.e);
-  dragLastX = pointer.x;
-  dragLastY = pointer.y;
-  canvasRef.value.defaultCursor = 'move';
-};
-
-const onCropMouseMove = (opt) => {
-  if (!isDraggingImage || !canvasRef?.value) return;
-  const canvas = canvasRef.value;
-  const pointer = canvas.getPointer(opt.e);
-  const deltaX = pointer.x - dragLastX;
-  const deltaY = pointer.y - dragLastY;
-
-  const bgImage = canvas.getObjects().find(o => o.type === 'image');
-
-  if (bgImage) {
-    // 自由拖拽，暂不约束，依靠 mouseUp 时的回弹
-    bgImage.left += deltaX;
-    bgImage.top += deltaY;
-    bgImage.setCoords();
-  }
-
-  dragLastX = pointer.x;
-  dragLastY = pointer.y;
-  canvas.requestRenderAll();
-};
-
-const onCropMouseUp = () => {
-  if (isDraggingImage) {
-    if (canvasRef?.value && cropObject.value) {
-      const bgImage = canvasRef.value.getObjects().find(o => o.type === 'image');
-      if (bgImage) {
-        // 【核心升级】使用通用动画回弹，确保图片始终填满裁剪框
-        animateRebound(bgImage, cropObject.value, canvasRef.value);
-      }
-    }
-
-    isDraggingImage = false;
-    if (canvasRef?.value) canvasRef.value.defaultCursor = 'default';
-  }
-};
-
-// =========================================================
-// 面板开关
-// =========================================================
-export const openCropPanel = () => {
-  if (!canvasRef?.value) return;
-  if (isCropping.value) return;
-
-  isApplyingCrop = false;
-
-  const canvas = canvasRef.value;
-  canvas.fire('zoom:change', { from: 'crop-module' });
-
-  if (canvas.__eventListeners && canvas.__eventListeners['mouse:wheel']) {
-    savedWheelListeners = [...canvas.__eventListeners['mouse:wheel']];
-    canvas.off('mouse:wheel');
-  }
-  canvas.on('mouse:wheel', preventZoomWheel);
-
-  isCropping.value = true;
-};
-
-export const closeCropPanel = () => {
-  if (!canvasRef?.value) return;
-  const canvas = canvasRef.value;
-
-  if (isApplyingCrop) {
-    if (isManualCropping.value) endManualSelectionMode();
-    isCropping.value = false;
-    return;
-  }
-
-  if (isManualCropping.value) {
-    endManualSelectionMode();
-  }
-
-  cancelCrop();
-  isCropping.value = false;
-
-  canvas.discardActiveObject();
-  canvas.requestRenderAll();
-  canvas.fire('zoom:change');
-};
-
-// =========================================================
-// 约束裁剪框 (保持在图片范围内)
-// 注意：裁剪框的约束逻辑特殊（Box inside Image），与 Resize（Image inside Box）相反
-// 因此保留了部分特定的尺寸检查逻辑，但位置修正可复用逻辑
-// =========================================================
-export const constrainCrop = (activeObj) => {
-  if (!canvasRef?.value || !activeObj) return;
-  const canvas = canvasRef.value;
-
-  const bgImage = canvas.getObjects().find((o) => o.type === "image");
-  if (!bgImage) return;
-
-  const bgRect = getLogicRect(bgImage, canvas);
-  const bgWidth = bgRect.width;
-  const bgHeight = bgRect.height;
-  const bgLeft = bgRect.left;
-  const bgTop = bgRect.top;
-
-  let currentScaleX = activeObj.scaleX;
-  let currentScaleY = activeObj.scaleY;
-
-  // 1. 尺寸约束：裁剪框不能比图片大
-  let cropCurrentWidth = activeObj.width * currentScaleX;
-  let cropCurrentHeight = activeObj.height * currentScaleY;
-  let sizeChanged = false;
-
-  if (cropCurrentWidth > bgWidth + 0.5) {
-    currentScaleX = bgWidth / activeObj.width;
-    sizeChanged = true;
-  }
-  if (cropCurrentHeight > bgHeight + 0.5) {
-    currentScaleY = bgHeight / activeObj.height;
-    sizeChanged = true;
-  }
-  if (sizeChanged) {
-    activeObj.set({ scaleX: currentScaleX, scaleY: currentScaleY });
-    activeObj.setCoords();
-  }
-
-  // 2. 位置约束：裁剪框必须在图片内部
-  // 计算边界
-  const finalCropWidth = activeObj.getScaledWidth();
-  const finalCropHeight = activeObj.getScaledHeight();
-
-  // 限制左上角坐标
-  const minLeft = bgLeft;
-  const maxLeft = bgLeft + bgWidth - finalCropWidth;
-  const minTop = bgTop;
-  const maxTop = bgTop + bgHeight - finalCropHeight;
-
-  let newLeft = Math.max(minLeft, Math.min(activeObj.left, maxLeft));
-  let newTop = Math.max(minTop, Math.min(activeObj.top, maxTop));
-
-  activeObj.set({ left: newLeft, top: newTop });
-  activeObj.setCoords();
-
-  updateCurrentDims(activeObj);
-  canvas.requestRenderAll();
-};
-
-// =========================================================
-// 取消裁剪 (清理)
-// =========================================================
-export const cancelCrop = (shouldRender = true) => {
-  if (canvasRef?.value && cropObject.value) {
-    const rawObj = toRaw(cropObject.value);
-
-    // 解绑拖拽图片事件
-    canvasRef.value.off('mouse:down', onCropMouseDown);
-    canvasRef.value.off('mouse:move', onCropMouseMove);
-    canvasRef.value.off('mouse:up', onCropMouseUp);
-
-    canvasRef.value.remove(rawObj);
-    cropObject.value = null;
-    isDraggingImage = false;
-
-    if (shouldRender) {
-      canvasRef.value.renderAll();
-    }
-  }
-};
-
-// ... (手动选区逻辑保持不变) ...
-export const endManualSelectionMode = () => {
-  if (!canvasRef?.value) return;
-  const canvas = canvasRef.value;
-  canvas.defaultCursor = 'default';
-  canvas.hoverCursor = 'move';
-  canvas.selection = true;
-  canvas.getObjects().forEach(o => {
-    if (o !== maskRect && o !== selectionRect) {
-      o.selectable = true;
-      o.evented = true;
-    }
-  });
-  canvas.off('mouse:down', onSelectionDown);
-  canvas.off('mouse:move', onSelectionMove);
-  canvas.off('mouse:up', onSelectionUp);
-  if (selectionRect) { canvas.remove(selectionRect); selectionRect = null; }
-  if (maskRect) { canvas.remove(maskRect); maskRect = null; }
-  isManualCropping.value = false;
-  canvas.requestRenderAll();
-};
-
-const onSelectionDown = (opt) => {
-  const canvas = canvasRef.value;
-  if (!canvas) return;
-  const pointer = canvas.getPointer(opt.e);
-  selectionStartX = pointer.x;
-  selectionStartY = pointer.y;
-  selectionRect = new fabric.Rect({
-    left: selectionStartX, top: selectionStartY, width: 0, height: 0,
-    fill: 'transparent', stroke: '#fff', strokeWidth: 2, strokeDashArray: [6, 6],
-    selectable: false, evented: false
-  });
-  canvas.add(selectionRect);
-  canvas.bringToFront(selectionRect);
-};
-
-const onSelectionMove = (opt) => {
-  if (!selectionRect || !canvasRef.value) return;
-  const pointer = canvasRef.value.getPointer(opt.e);
-  let w = Math.abs(pointer.x - selectionStartX);
-  let h = Math.abs(pointer.y - selectionStartY);
-  let left = selectionStartX;
-  let top = selectionStartY;
-  if (pointer.x < selectionStartX) left = pointer.x;
-  if (pointer.y < selectionStartY) top = pointer.y;
-  selectionRect.set({ left, top, width: w, height: h });
-  currentSelectionDims.value = { width: Math.round(w), height: Math.round(h) };
-  canvasRef.value.requestRenderAll();
-};
-
-const onSelectionUp = () => {
-  if (!selectionRect) {
-    endManualSelectionMode();
-    if (cropObject.value) cancelCrop();
-    return;
-  }
-  const box = {
-    left: selectionRect.left, top: selectionRect.top,
-    width: selectionRect.width, height: selectionRect.height
-  };
-  endManualSelectionMode();
-  if (box.width < 10 || box.height < 10) return;
-  startCrop(null, box);
-  if (zoomToRectFn) zoomToRectFn(box);
-};
-
-export const startManualSelection = () => {
-  if (!canvasRef?.value) return;
-  if (isManualCropping.value) endManualSelectionMode();
-  const canvas = canvasRef.value;
-  cancelCrop();
-  canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
-  maskRect = new fabric.Rect({
-    left: -5000, top: -5000, width: 20000, height: 20000,
-    fill: 'rgba(0, 0, 0, 0.45)', selectable: false, evented: false, excludeFromExport: true
-  });
-  canvas.add(maskRect);
-  canvas.defaultCursor = 'crosshair';
-  canvas.hoverCursor = 'crosshair';
-  canvas.selection = false;
-  isManualCropping.value = true;
-  canvas.on('mouse:down', onSelectionDown);
-  canvas.on('mouse:move', onSelectionMove);
-  canvas.on('mouse:up', onSelectionUp);
-  canvas.requestRenderAll();
-};
-
-// ... (setCropRatio 保持不变) ...
-export const setCropRatio = (ratio) => {
-  if (!canvasRef?.value) return;
-  const canvas = canvasRef.value;
-  if (ratio === null) {
-    isRatioLocked.value = false;
-    currentAspectRatio.value = null;
-    if (cropObject.value) {
-      cropObject.value.set({ lockUniScaling: false });
-      canvas.requestRenderAll();
-    }
-    return;
-  }
-  isRatioLocked.value = true;
-  currentAspectRatio.value = ratio;
-  let baseW, baseH, left, top;
-  const activeObj = canvas.getObjects().find((obj) => obj.type === "image");
-  if (!activeObj) return;
-
-  // 使用 getLogicRect 获取准确的包围盒
-  const rect = getLogicRect(activeObj, canvas);
-  baseW = rect.width; baseH = rect.height; left = rect.left; top = rect.top;
-
-  const currentRatio = baseW / baseH;
-  let newW, newH;
-  if (currentRatio > ratio) {
-    newH = baseH; newW = newH * ratio; left += (baseW - newW) / 2;
-  } else {
-    newW = baseW; newH = newW / ratio; top += (baseH - newH) / 2;
-  }
-  if (cropObject.value) {
-    cropObject.value.set({
-      width: newW, height: newH, left: left, top: top,
-      scaleX: 1, scaleY: 1, lockUniScaling: false
-    });
-    cropObject.value.setCoords();
-    constrainCrop(cropObject.value);
-    canvas.requestRenderAll();
-  } else {
-    startCrop(ratio, { left, top, width: newW, height: newH });
-  }
-};
-
-// =========================================================
-// startCrop
-// =========================================================
-export const startCrop = (aspectRatio = null, customBox = null) => {
-  if (!canvasRef?.value) return;
-  const canvas = canvasRef.value;
-  if (isManualCropping.value) endManualSelectionMode();
-
-  aspectRatioValue = aspectRatio || null;
-  let activeObj = canvas.getObjects().find((obj) => obj.type === "image");
-  if (!activeObj) return;
-
-  cancelCrop();
-
-  const rect = getLogicRect(activeObj, canvas);
-  let width, height, left, top;
-
-  if (customBox) {
-    width = customBox.width; height = customBox.height; left = customBox.left; top = customBox.top;
-  } else {
-    const imgWidth = rect.width; const imgHeight = rect.height;
-    width = imgWidth * 1; height = imgHeight * 1;
-    if (aspectRatio) {
-      height = width / aspectRatio;
-      if (height > imgHeight) {
-        height = imgHeight; width = height * aspectRatio;
-      }
-      isRatioLocked.value = true; currentAspectRatio.value = aspectRatio;
-    } else {
-      isRatioLocked.value = false; currentAspectRatio.value = null;
-    }
-    left = rect.left + (imgWidth - width) / 2;
-    top = rect.top + (imgHeight - height) / 2;
-  }
-
-  const cropZone = new fabric.Rect({
-    left: left, top: top, width: width, height: height,
-    fill: "transparent", stroke: "#409eff", strokeWidth: 2,
-    cornerColor: "white", cornerStrokeColor: "#409eff", cornerSize: 12,
-    transparentCorners: false, lockRotation: true, hasRotatingPoint: false,
-    lockUniScaling: false,
-    lockMovementX: true,
-    lockMovementY: true,
-    customTool: 'adjust', customTab: 'crop' // ✨ 添加自定义路由属性，确保裁剪框被识别为调整工具
-  });
-  if (aspectRatio) cropZone.set("height", width / aspectRatio);
-
-  canvas.add(cropZone);
-  canvas.setActiveObject(cropZone);
-  cropObject.value = cropZone;
-  canvas.renderAll();
-  updateCurrentDims(cropZone);
-  constrainCrop(cropZone);
-
-  // 绑定拖图事件
-  canvas.on('mouse:down', onCropMouseDown);
-  canvas.on('mouse:move', onCropMouseMove);
-  canvas.on('mouse:up', onCropMouseUp);
-};
-
-// =========================================================
-// 确认裁剪 (高清重制版)
-// =========================================================
-export const confirmCrop = async () => {
-  if (!canvasRef?.value || !cropObject.value) return Promise.resolve();
-  const canvas = canvasRef.value;
-  const cropRect = cropObject.value;
-  const bgImage = canvas.getObjects().find((o) => o.type === "image");
-  if (!bgImage) { cancelCrop(); return Promise.resolve(); }
-
-  isApplyingCrop = true;
-
-  // 1. 获取裁剪区域的逻辑信息
-  const cropLogicRect = getLogicRect(cropRect, canvas);
-  const bgLogicRect = getLogicRect(bgImage, canvas);
-
-  // 2. 计算目标导出尺寸 (基于原图分辨率)
-  // 如果图片被缩放了(scale=0.5), 我们希望裁剪出来的图是基于原图大小的，所以目标尺寸要除以 scale
-  const scaleFactor = bgImage.scaleX; // 假设均匀缩放
-  const targetW = Math.round(cropLogicRect.width / scaleFactor);
-  const targetH = Math.round(cropLogicRect.height / scaleFactor);
-
-  if (targetW <= 0 || targetH <= 0) {
-    cancelCrop();
-    return Promise.resolve();
-  }
-
-  // 临时隐藏裁剪框，避免干扰
-  cropRect.visible = false;
-
-  // 3. 使用离屏渲染生成高清裁剪图
-  const croppedDataUrl = await renderHighResSnapshot(bgImage, targetW, targetH, (highResImg) => {
-    // 3.1 计算相对位置偏移 (使用中心点差值法，抗旋转干扰)
-    const cropCenter = cropRect.getCenterPoint();
-    const imgCenter = bgImage.getCenterPoint();
-
-    // 计算中心点差距（逻辑像素）
-    const diffX = imgCenter.x - cropCenter.x;
-    const diffY = imgCenter.y - cropCenter.y;
-
-    // 映射到原图尺度
-    const finalDiffX = diffX / scaleFactor;
-    const finalDiffY = diffY / scaleFactor;
-
-    // 3.2 设置高分图属性
-    highResImg.set({
-      originX: 'center', originY: 'center',
-      left: targetW / 2 + finalDiffX,
-      top: targetH / 2 + finalDiffY,
-      scaleX: 1, // 恢复到原图比例
-      scaleY: 1,
-      angle: bgImage.angle,
-      flipX: bgImage.flipX,
-      flipY: bgImage.flipY
-    });
-  });
-
-  cropRect.visible = true;
-
-  return new Promise((resolve) => {
-    // 4. 应用回主画布
-    bgImage.setSrc(croppedDataUrl, () => {
-      cancelCrop(false);
-
-      // 5. 物理重置：将新图片放回画布中心
-      bgImage.set({
-        originX: "center", originY: "center",
-        left: canvas.width / 2, top: canvas.height / 2,
-        scaleX: 1, scaleY: 1, // 裁剪后就是 1:1
-        angle: 0, flipX: false, flipY: false,
-      });
-      bgImage.setCoords();
-      canvas.centerObject(bgImage);
-
-      // 6. 视口自适应 (Zoom to fit)
-      // 让裁剪后的图片在屏幕上显示大小合适
-      const paddingFactor = 0.85;
-      const zoomToFit = Math.min(
-        (canvas.width * paddingFactor) / targetW, // 注意这里用 targetW 可能会很大
-        (canvas.height * paddingFactor) / targetH
-      );
-
-      // 因为 targetW 是原图尺寸，可能几千像素，我们这里计算的是 Zoom Level
-      // 实际上展示时，我们希望它占据屏幕大部分
-      // 重新计算：图片现在尺寸是 targetW * 1 * zoomToFit
-      // 所以 Zoom 应该是 canvasSize / targetSize
-
-      // 设置新的视口
-      canvas.setViewportTransform([1, 0, 0, 1, 0, 0]); // 先重置
-      const newZoom = zoomToFit;
-      const center = canvas.getCenter();
-      canvas.zoomToPoint({ x: center.left, y: center.top }, newZoom);
-
-      isApplyingCrop = false;
-      isCropping.value = false;
-      canvas.fire('zoom:change', { from: 'crop-confirm' });
-      canvas.requestRenderAll();
-      if (saveHistoryFn) saveHistoryFn();
-      resolve();
-    });
-  });
-};
-
-export const setCropBoxSize = (width, height) => {
-  if (!cropObject.value || !canvasRef?.value) return;
-  const obj = cropObject.value;
-  const oldRealWidth = obj.getScaledWidth();
-  const oldRealHeight = obj.getScaledHeight();
-  const centerX = obj.left + oldRealWidth / 2;
-  const centerY = obj.top + oldRealHeight / 2;
-  obj.set({ width: width, height: height, scaleX: 1, scaleY: 1 });
-  const newLeft = centerX - width / 2;
-  const newTop = centerY - height / 2;
-  obj.set({ left: newLeft, top: newTop });
-  obj.setCoords();
-  constrainCrop(obj);
-  canvasRef.value.requestRenderAll();
-};
-
-export const rotateActive = (angle) => {
-  if (cropObject.value && canvasRef?.value) {
-    const canvas = canvasRef.value;
-    const bgImage = canvas.getObjects().find((o) => o.type === "image");
-    if (bgImage) {
-      bgImage.rotate((bgImage.angle || 0) + angle);
-      canvas.centerObject(bgImage);
-      bgImage.setCoords();
-      canvas.renderAll();
-      startCrop(aspectRatioValue);
-    }
-    return true;
-  }
-  return false;
-};
-
-export const flipActive = (axis) => {
-  if (cropObject.value && canvasRef?.value) {
-    const canvas = canvasRef.value;
-    const bgImage = canvas.getObjects().find((o) => o.type === "image");
-    if (bgImage) {
-      if (axis === "X") bgImage.set("flipX", !bgImage.flipX);
-      if (axis === "Y") bgImage.set("flipY", !bgImage.flipY);
-      canvas.requestRenderAll();
-    }
-    return true;
-  }
-  return false;
-};
-
-export {
-  cropObject,
-  isManualCropping,
-  isRatioLocked,
-  currentAspectRatio,
-  isCropping,
-  currentSelectionDims
-};
 </file>
 
 <file path="src/components/Workspace.vue">
@@ -10256,6 +8877,1606 @@ onUnmounted(() => stopPreview());
 </style>
 </file>
 
+<file path="src/components/modules/adjust/index.vue">
+<template>
+  <div class="panel-adjust">
+    <div class="tool-list">
+      <AdjustCrop
+        :is-expanded="activeCollapse === 'crop'"
+        @toggle="toggle('crop')"
+      />
+      <AdjustResize
+        :is-expanded="activeCollapse === 'resize'"
+        @toggle="toggle('resize')"
+      />
+      <AdjustInpaint
+        :is-expanded="activeCollapse === 'inpaint'"
+        @toggle="toggle('inpaint')"
+      />
+      <AdjustRembg
+        :is-expanded="activeCollapse === 'rembg'"
+        @toggle="toggle('rembg')"
+      />
+
+      <AdjustRuler
+        :is-expanded="activeCollapse === 'ruler'"
+        @toggle="toggle('ruler')"
+      />
+
+      <AdjustWhite
+        :is-expanded="activeCollapse === 'white'"
+        @toggle="toggle('white')"
+      />
+      <AdjustColor
+        :is-expanded="activeCollapse === 'color'"
+        @toggle="toggle('color')"
+      />
+      <AdjustColorOverlay
+        :is-expanded="activeCollapse === 'overlay'"
+        @toggle="toggle('overlay')"
+      />
+      <AdjustFilters
+        :is-expanded="activeCollapse === 'filters'"
+        @toggle="toggle('filters')"
+      />
+      <AdjustMosaic
+        :is-expanded="activeCollapse === 'mosaic'"
+        @toggle="toggle('mosaic')"
+      />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, defineAsyncComponent, watch } from "vue";
+import { useEditorState } from "@/composables/useEditorState";
+
+// 异步组件加载
+const AdjustCrop = defineAsyncComponent(() => import("./AdjustCrop.vue"));
+const AdjustResize = defineAsyncComponent(() => import("./AdjustResize.vue"));
+const AdjustInpaint = defineAsyncComponent(() => import("./AdjustInpaint.vue"));
+const AdjustRembg = defineAsyncComponent(() => import("./AdjustRembg.vue"));
+const AdjustWhite = defineAsyncComponent(() => import("./AdjustWhite.vue"));
+const AdjustColor = defineAsyncComponent(() => import("./AdjustColor.vue"));
+const AdjustFilters = defineAsyncComponent(() => import("./AdjustFilters.vue"));
+const AdjustColorOverlay = defineAsyncComponent(() =>
+  import("./AdjustColorOverlay.vue")
+);
+const AdjustMosaic = defineAsyncComponent(() => import("./AdjustMosaic.vue"));
+const AdjustRuler = defineAsyncComponent(() => import("./AdjustRuler.vue"));
+
+const activeCollapse = ref("");
+// ✨ 获取 setActiveTab 方法
+const { state, setActiveTab } = useEditorState();
+
+// 监听路由变化，自动展开对应面板
+watch(
+  () => state.activeTab,
+  (newTab) => {
+    const validTabs = [
+      "crop",
+      "resize",
+      "inpaint",
+      "rembg",
+      "ruler",
+      "white",
+      "color",
+      "overlay",
+      "filters",
+      "mosaic",
+    ];
+
+    // 只有当 newTab 有效时才展开
+    // 如果 newTab 被置空，这里不处理，由 toggle 逻辑接管
+    if (newTab && validTabs.includes(newTab)) {
+      console.log("[AdjustPanel] Auto expanding:", newTab);
+      activeCollapse.value = newTab;
+    }
+  },
+  { immediate: true }
+);
+
+// 手动切换折叠状态
+const toggle = (id) => {
+  if (activeCollapse.value === id) {
+    // 动作：手动关闭
+    activeCollapse.value = "";
+
+    // ✨✨✨ 修复点：使用官方方法清理状态 ✨✨✨
+    // 如果当前全局状态正指着这个面板，必须把它清理掉
+    // 否则下次点击同一个物体时，状态从 'ruler' 变 'ruler'，watch 不会触发
+    if (state.activeTab === id) {
+      setActiveTab(""); // ✅ 合法修改，不会被 readonly 拦截
+    }
+  } else {
+    // 动作：手动展开
+    activeCollapse.value = id;
+    // 保持同步
+    setActiveTab(id);
+  }
+};
+</script>
+</file>
+
+<file path="src/components/modules/adjust/useCanvasCrop.js">
+// src/components/modules/adjust/useCanvasCrop.js
+import { ref, shallowRef, toRaw } from "vue";
+import { fabric } from "fabric";
+
+// 1. 引入通用规范工具
+import { getLogicRect, animateRebound, constrainObjectToRect } from '@/composables/useConstraint';
+import { renderHighResSnapshot } from '@/composables/useOffscreenHelper';
+
+// === 状态变量 ===
+const cropObject = shallowRef(null);
+const isManualCropping = ref(false);
+const isCropping = ref(false);
+const isRatioLocked = ref(false);
+const currentAspectRatio = ref(null);
+
+// 用于实时向 UI 传递当前选区/裁剪框的宽高
+const currentSelectionDims = ref({ width: 0, height: 0 });
+
+// 内部引用
+let canvasRef = null;
+let saveHistoryFn = null;
+let zoomToRectFn = null;
+
+// 内部变量
+let selectionRect = null;
+let maskRect = null;
+let selectionStartX = 0;
+let selectionStartY = 0;
+let aspectRatioValue = null;
+let savedWheelListeners = [];
+
+// 拖拽图片相关变量
+let isDraggingImage = false;
+let dragLastX = 0;
+let dragLastY = 0;
+
+// 标志位：是否正在应用裁剪
+let isApplyingCrop = false;
+
+export const registerCropModule = (canvas, saveHistory, zoomToRect) => {
+  canvasRef = canvas;
+  saveHistoryFn = saveHistory;
+  zoomToRectFn = zoomToRect;
+};
+
+// =========================================================
+// 辅助工具
+// =========================================================
+
+const updateCurrentDims = (obj) => {
+  if (!obj || !canvasRef?.value) return;
+  const rect = getLogicRect(obj, canvasRef.value);
+  currentSelectionDims.value = {
+    width: Math.round(rect.width),
+    height: Math.round(rect.height)
+  };
+};
+
+const preventZoomWheel = (opt) => {
+  if (!opt || !opt.e) return;
+  opt.e.preventDefault();
+  opt.e.stopPropagation();
+  if (opt.e.stopImmediatePropagation) opt.e.stopImmediatePropagation();
+};
+
+// =========================================================
+// 拖动图片的核心逻辑 (集成通用回弹)
+// =========================================================
+const onCropMouseDown = (opt) => {
+  if (!canvasRef?.value || !cropObject.value) return;
+  const target = opt.target;
+  // 必须点击在剪裁框上（作为容器）
+  if (target !== cropObject.value) return;
+
+  const activeObj = canvasRef.value.getActiveObject();
+  if (activeObj && activeObj.__corner) return;
+
+  // 开始拖动图片
+  isDraggingImage = true;
+  const pointer = canvasRef.value.getPointer(opt.e);
+  dragLastX = pointer.x;
+  dragLastY = pointer.y;
+  canvasRef.value.defaultCursor = 'move';
+};
+
+const onCropMouseMove = (opt) => {
+  if (!isDraggingImage || !canvasRef?.value) return;
+  const canvas = canvasRef.value;
+  const pointer = canvas.getPointer(opt.e);
+  const deltaX = pointer.x - dragLastX;
+  const deltaY = pointer.y - dragLastY;
+
+  const bgImage = canvas.getObjects().find(o => o.type === 'image');
+
+  if (bgImage) {
+    // 自由拖拽，暂不约束，依靠 mouseUp 时的回弹
+    bgImage.left += deltaX;
+    bgImage.top += deltaY;
+    bgImage.setCoords();
+  }
+
+  dragLastX = pointer.x;
+  dragLastY = pointer.y;
+  canvas.requestRenderAll();
+};
+
+const onCropMouseUp = () => {
+  if (isDraggingImage) {
+    if (canvasRef?.value && cropObject.value) {
+      const bgImage = canvasRef.value.getObjects().find(o => o.type === 'image');
+      if (bgImage) {
+        // 【核心升级】使用通用动画回弹，确保图片始终填满裁剪框
+        animateRebound(bgImage, cropObject.value, canvasRef.value);
+      }
+    }
+
+    isDraggingImage = false;
+    if (canvasRef?.value) canvasRef.value.defaultCursor = 'default';
+  }
+};
+
+// =========================================================
+// 面板开关
+// =========================================================
+export const openCropPanel = () => {
+  if (!canvasRef?.value) return;
+  if (isCropping.value) return;
+
+  isApplyingCrop = false;
+
+  const canvas = canvasRef.value;
+  canvas.fire('zoom:change', { from: 'crop-module' });
+
+  if (canvas.__eventListeners && canvas.__eventListeners['mouse:wheel']) {
+    savedWheelListeners = [...canvas.__eventListeners['mouse:wheel']];
+    canvas.off('mouse:wheel');
+  }
+  canvas.on('mouse:wheel', preventZoomWheel);
+
+  isCropping.value = true;
+};
+
+export const closeCropPanel = () => {
+  if (!canvasRef?.value) return;
+  const canvas = canvasRef.value;
+
+  if (isApplyingCrop) {
+    if (isManualCropping.value) endManualSelectionMode();
+    isCropping.value = false;
+    return;
+  }
+
+  if (isManualCropping.value) {
+    endManualSelectionMode();
+  }
+
+  cancelCrop();
+  isCropping.value = false;
+
+  canvas.discardActiveObject();
+  canvas.requestRenderAll();
+  canvas.fire('zoom:change');
+};
+
+// =========================================================
+// 约束裁剪框 (保持在图片范围内)
+// 注意：裁剪框的约束逻辑特殊（Box inside Image），与 Resize（Image inside Box）相反
+// 因此保留了部分特定的尺寸检查逻辑，但位置修正可复用逻辑
+// =========================================================
+export const constrainCrop = (activeObj) => {
+  if (!canvasRef?.value || !activeObj) return;
+  const canvas = canvasRef.value;
+
+  const bgImage = canvas.getObjects().find((o) => o.type === "image");
+  if (!bgImage) return;
+
+  const bgRect = getLogicRect(bgImage, canvas);
+  const bgWidth = bgRect.width;
+  const bgHeight = bgRect.height;
+  const bgLeft = bgRect.left;
+  const bgTop = bgRect.top;
+
+  let currentScaleX = activeObj.scaleX;
+  let currentScaleY = activeObj.scaleY;
+
+  // 1. 尺寸约束：裁剪框不能比图片大
+  let cropCurrentWidth = activeObj.width * currentScaleX;
+  let cropCurrentHeight = activeObj.height * currentScaleY;
+  let sizeChanged = false;
+
+  if (cropCurrentWidth > bgWidth + 0.5) {
+    currentScaleX = bgWidth / activeObj.width;
+    sizeChanged = true;
+  }
+  if (cropCurrentHeight > bgHeight + 0.5) {
+    currentScaleY = bgHeight / activeObj.height;
+    sizeChanged = true;
+  }
+  if (sizeChanged) {
+    activeObj.set({ scaleX: currentScaleX, scaleY: currentScaleY });
+    activeObj.setCoords();
+  }
+
+  // 2. 位置约束：裁剪框必须在图片内部
+  // 计算边界
+  const finalCropWidth = activeObj.getScaledWidth();
+  const finalCropHeight = activeObj.getScaledHeight();
+
+  // 限制左上角坐标
+  const minLeft = bgLeft;
+  const maxLeft = bgLeft + bgWidth - finalCropWidth;
+  const minTop = bgTop;
+  const maxTop = bgTop + bgHeight - finalCropHeight;
+
+  let newLeft = Math.max(minLeft, Math.min(activeObj.left, maxLeft));
+  let newTop = Math.max(minTop, Math.min(activeObj.top, maxTop));
+
+  activeObj.set({ left: newLeft, top: newTop });
+  activeObj.setCoords();
+
+  updateCurrentDims(activeObj);
+  canvas.requestRenderAll();
+};
+
+// =========================================================
+// 取消裁剪 (清理)
+// =========================================================
+export const cancelCrop = (shouldRender = true) => {
+  if (canvasRef?.value && cropObject.value) {
+    const rawObj = toRaw(cropObject.value);
+
+    // 解绑拖拽图片事件
+    canvasRef.value.off('mouse:down', onCropMouseDown);
+    canvasRef.value.off('mouse:move', onCropMouseMove);
+    canvasRef.value.off('mouse:up', onCropMouseUp);
+
+    canvasRef.value.remove(rawObj);
+    cropObject.value = null;
+    isDraggingImage = false;
+
+    if (shouldRender) {
+      canvasRef.value.renderAll();
+    }
+  }
+};
+
+// ... (手动选区逻辑保持不变) ...
+export const endManualSelectionMode = () => {
+  if (!canvasRef?.value) return;
+  const canvas = canvasRef.value;
+  canvas.defaultCursor = 'default';
+  canvas.hoverCursor = 'move';
+  canvas.selection = true;
+  canvas.getObjects().forEach(o => {
+    if (o !== maskRect && o !== selectionRect) {
+      o.selectable = true;
+      o.evented = true;
+    }
+  });
+  canvas.off('mouse:down', onSelectionDown);
+  canvas.off('mouse:move', onSelectionMove);
+  canvas.off('mouse:up', onSelectionUp);
+  if (selectionRect) { canvas.remove(selectionRect); selectionRect = null; }
+  if (maskRect) { canvas.remove(maskRect); maskRect = null; }
+  isManualCropping.value = false;
+  canvas.requestRenderAll();
+};
+
+const onSelectionDown = (opt) => {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const pointer = canvas.getPointer(opt.e);
+  selectionStartX = pointer.x;
+  selectionStartY = pointer.y;
+  selectionRect = new fabric.Rect({
+    left: selectionStartX, top: selectionStartY, width: 0, height: 0,
+    fill: 'transparent', stroke: '#fff', strokeWidth: 2, strokeDashArray: [6, 6],
+    selectable: false, evented: false
+  });
+  canvas.add(selectionRect);
+  canvas.bringToFront(selectionRect);
+};
+
+const onSelectionMove = (opt) => {
+  if (!selectionRect || !canvasRef.value) return;
+  const pointer = canvasRef.value.getPointer(opt.e);
+  let w = Math.abs(pointer.x - selectionStartX);
+  let h = Math.abs(pointer.y - selectionStartY);
+  let left = selectionStartX;
+  let top = selectionStartY;
+  if (pointer.x < selectionStartX) left = pointer.x;
+  if (pointer.y < selectionStartY) top = pointer.y;
+  selectionRect.set({ left, top, width: w, height: h });
+  currentSelectionDims.value = { width: Math.round(w), height: Math.round(h) };
+  canvasRef.value.requestRenderAll();
+};
+
+const onSelectionUp = () => {
+  if (!selectionRect) {
+    endManualSelectionMode();
+    if (cropObject.value) cancelCrop();
+    return;
+  }
+  const box = {
+    left: selectionRect.left, top: selectionRect.top,
+    width: selectionRect.width, height: selectionRect.height
+  };
+  endManualSelectionMode();
+  if (box.width < 10 || box.height < 10) return;
+  startCrop(null, box);
+  if (zoomToRectFn) zoomToRectFn(box);
+};
+
+export const startManualSelection = () => {
+  if (!canvasRef?.value) return;
+  if (isManualCropping.value) endManualSelectionMode();
+  const canvas = canvasRef.value;
+  cancelCrop();
+  canvas.getObjects().forEach(o => { o.selectable = false; o.evented = false; });
+  maskRect = new fabric.Rect({
+    left: -5000, top: -5000, width: 20000, height: 20000,
+    fill: 'rgba(0, 0, 0, 0.45)', selectable: false, evented: false, excludeFromExport: true
+  });
+  canvas.add(maskRect);
+  canvas.defaultCursor = 'crosshair';
+  canvas.hoverCursor = 'crosshair';
+  canvas.selection = false;
+  isManualCropping.value = true;
+  canvas.on('mouse:down', onSelectionDown);
+  canvas.on('mouse:move', onSelectionMove);
+  canvas.on('mouse:up', onSelectionUp);
+  canvas.requestRenderAll();
+};
+
+// ... (setCropRatio 保持不变) ...
+export const setCropRatio = (ratio) => {
+  if (!canvasRef?.value) return;
+  const canvas = canvasRef.value;
+  if (ratio === null) {
+    isRatioLocked.value = false;
+    currentAspectRatio.value = null;
+    if (cropObject.value) {
+      cropObject.value.set({ lockUniScaling: false });
+      canvas.requestRenderAll();
+    }
+    return;
+  }
+  isRatioLocked.value = true;
+  currentAspectRatio.value = ratio;
+  let baseW, baseH, left, top;
+  const activeObj = canvas.getObjects().find((obj) => obj.type === "image");
+  if (!activeObj) return;
+
+  // 使用 getLogicRect 获取准确的包围盒
+  const rect = getLogicRect(activeObj, canvas);
+  baseW = rect.width; baseH = rect.height; left = rect.left; top = rect.top;
+
+  const currentRatio = baseW / baseH;
+  let newW, newH;
+  if (currentRatio > ratio) {
+    newH = baseH; newW = newH * ratio; left += (baseW - newW) / 2;
+  } else {
+    newW = baseW; newH = newW / ratio; top += (baseH - newH) / 2;
+  }
+  if (cropObject.value) {
+    cropObject.value.set({
+      width: newW, height: newH, left: left, top: top,
+      scaleX: 1, scaleY: 1, lockUniScaling: false
+    });
+    cropObject.value.setCoords();
+    constrainCrop(cropObject.value);
+    canvas.requestRenderAll();
+  } else {
+    startCrop(ratio, { left, top, width: newW, height: newH });
+  }
+};
+
+// =========================================================
+// startCrop
+// =========================================================
+export const startCrop = (aspectRatio = null, customBox = null) => {
+  if (!canvasRef?.value) return;
+  const canvas = canvasRef.value;
+  if (isManualCropping.value) endManualSelectionMode();
+
+  aspectRatioValue = aspectRatio || null;
+  let activeObj = canvas.getObjects().find((obj) => obj.type === "image");
+  if (!activeObj) return;
+
+  cancelCrop();
+
+  const rect = getLogicRect(activeObj, canvas);
+  let width, height, left, top;
+
+  if (customBox) {
+    width = customBox.width; height = customBox.height; left = customBox.left; top = customBox.top;
+  } else {
+    const imgWidth = rect.width; const imgHeight = rect.height;
+    width = imgWidth * 1; height = imgHeight * 1;
+    if (aspectRatio) {
+      height = width / aspectRatio;
+      if (height > imgHeight) {
+        height = imgHeight; width = height * aspectRatio;
+      }
+      isRatioLocked.value = true; currentAspectRatio.value = aspectRatio;
+    } else {
+      isRatioLocked.value = false; currentAspectRatio.value = null;
+    }
+    left = rect.left + (imgWidth - width) / 2;
+    top = rect.top + (imgHeight - height) / 2;
+  }
+
+  const cropZone = new fabric.Rect({
+    left: left, top: top, width: width, height: height,
+    fill: "transparent", stroke: "#409eff", strokeWidth: 2,
+    cornerColor: "white", cornerStrokeColor: "#409eff", cornerSize: 12,
+    transparentCorners: false, lockRotation: true, hasRotatingPoint: false,
+    lockUniScaling: false,
+    lockMovementX: true,
+    lockMovementY: true,
+    customTool: 'adjust', customTab: 'crop' // ✨ 添加自定义路由属性，确保裁剪框被识别为调整工具
+  });
+  if (aspectRatio) cropZone.set("height", width / aspectRatio);
+
+  canvas.add(cropZone);
+  canvas.setActiveObject(cropZone);
+  cropObject.value = cropZone;
+  canvas.renderAll();
+  updateCurrentDims(cropZone);
+  constrainCrop(cropZone);
+
+  // 绑定拖图事件
+  canvas.on('mouse:down', onCropMouseDown);
+  canvas.on('mouse:move', onCropMouseMove);
+  canvas.on('mouse:up', onCropMouseUp);
+};
+
+// =========================================================
+// 确认裁剪 (高清重制版)
+// =========================================================
+export const confirmCrop = async () => {
+  if (!canvasRef?.value || !cropObject.value) return Promise.resolve();
+  const canvas = canvasRef.value;
+  const cropRect = cropObject.value;
+  const bgImage = canvas.getObjects().find((o) => o.type === "image");
+  if (!bgImage) { cancelCrop(); return Promise.resolve(); }
+
+  isApplyingCrop = true;
+
+  // 1. 获取裁剪区域的逻辑信息
+  const cropLogicRect = getLogicRect(cropRect, canvas);
+  const bgLogicRect = getLogicRect(bgImage, canvas);
+
+  // 2. 计算目标导出尺寸 (基于原图分辨率)
+  // 如果图片被缩放了(scale=0.5), 我们希望裁剪出来的图是基于原图大小的，所以目标尺寸要除以 scale
+  const scaleFactor = bgImage.scaleX; // 假设均匀缩放
+  const targetW = Math.round(cropLogicRect.width / scaleFactor);
+  const targetH = Math.round(cropLogicRect.height / scaleFactor);
+
+  if (targetW <= 0 || targetH <= 0) {
+    cancelCrop();
+    return Promise.resolve();
+  }
+
+  // 临时隐藏裁剪框，避免干扰
+  cropRect.visible = false;
+
+  // 3. 使用离屏渲染生成高清裁剪图
+  const croppedDataUrl = await renderHighResSnapshot(bgImage, targetW, targetH, (highResImg) => {
+    // 3.1 计算相对位置偏移 (使用中心点差值法，抗旋转干扰)
+    const cropCenter = cropRect.getCenterPoint();
+    const imgCenter = bgImage.getCenterPoint();
+
+    // 计算中心点差距（逻辑像素）
+    const diffX = imgCenter.x - cropCenter.x;
+    const diffY = imgCenter.y - cropCenter.y;
+
+    // 映射到原图尺度
+    const finalDiffX = diffX / scaleFactor;
+    const finalDiffY = diffY / scaleFactor;
+
+    // 3.2 设置高分图属性
+    highResImg.set({
+      originX: 'center', originY: 'center',
+      left: targetW / 2 + finalDiffX,
+      top: targetH / 2 + finalDiffY,
+      scaleX: 1, // 恢复到原图比例
+      scaleY: 1,
+      angle: bgImage.angle,
+      flipX: bgImage.flipX,
+      flipY: bgImage.flipY
+    });
+  });
+
+  cropRect.visible = true;
+
+  return new Promise((resolve) => {
+    // 4. 应用回主画布
+    bgImage.setSrc(croppedDataUrl, () => {
+      cancelCrop(false);
+
+      // 5. 物理重置：将新图片放回画布中心
+      bgImage.set({
+        originX: "center", originY: "center",
+        left: canvas.width / 2, top: canvas.height / 2,
+        scaleX: 1, scaleY: 1, // 裁剪后就是 1:1
+        angle: 0, flipX: false, flipY: false,
+      });
+      bgImage.setCoords();
+      canvas.centerObject(bgImage);
+
+      // 6. 视口自适应 (Zoom to fit)
+      // 让裁剪后的图片在屏幕上显示大小合适
+      const paddingFactor = 0.85;
+      const zoomToFit = Math.min(
+        (canvas.width * paddingFactor) / targetW, // 注意这里用 targetW 可能会很大
+        (canvas.height * paddingFactor) / targetH
+      );
+
+      // 因为 targetW 是原图尺寸，可能几千像素，我们这里计算的是 Zoom Level
+      // 实际上展示时，我们希望它占据屏幕大部分
+      // 重新计算：图片现在尺寸是 targetW * 1 * zoomToFit
+      // 所以 Zoom 应该是 canvasSize / targetSize
+
+      // 设置新的视口
+      canvas.setViewportTransform([1, 0, 0, 1, 0, 0]); // 先重置
+      const newZoom = zoomToFit;
+      const center = canvas.getCenter();
+      canvas.zoomToPoint({ x: center.left, y: center.top }, newZoom);
+
+      isApplyingCrop = false;
+      isCropping.value = false;
+      canvas.fire('zoom:change', { from: 'crop-confirm' });
+      canvas.requestRenderAll();
+      if (saveHistoryFn) saveHistoryFn();
+      resolve();
+    });
+  });
+};
+
+export const setCropBoxSize = (width, height) => {
+  if (!cropObject.value || !canvasRef?.value) return;
+  const obj = cropObject.value;
+  const oldRealWidth = obj.getScaledWidth();
+  const oldRealHeight = obj.getScaledHeight();
+  const centerX = obj.left + oldRealWidth / 2;
+  const centerY = obj.top + oldRealHeight / 2;
+  obj.set({ width: width, height: height, scaleX: 1, scaleY: 1 });
+  const newLeft = centerX - width / 2;
+  const newTop = centerY - height / 2;
+  obj.set({ left: newLeft, top: newTop });
+  obj.setCoords();
+  constrainCrop(obj);
+  canvasRef.value.requestRenderAll();
+};
+
+export const rotateActive = (angle) => {
+  if (cropObject.value && canvasRef?.value) {
+    const canvas = canvasRef.value;
+    const bgImage = canvas.getObjects().find((o) => o.type === "image");
+    if (bgImage) {
+      bgImage.rotate((bgImage.angle || 0) + angle);
+      canvas.centerObject(bgImage);
+      bgImage.setCoords();
+      canvas.renderAll();
+      startCrop(aspectRatioValue);
+    }
+    return true;
+  }
+  return false;
+};
+
+export const flipActive = (axis) => {
+  if (cropObject.value && canvasRef?.value) {
+    const canvas = canvasRef.value;
+    const bgImage = canvas.getObjects().find((o) => o.type === "image");
+    if (bgImage) {
+      if (axis === "X") bgImage.set("flipX", !bgImage.flipX);
+      if (axis === "Y") bgImage.set("flipY", !bgImage.flipY);
+      canvas.requestRenderAll();
+    }
+    return true;
+  }
+  return false;
+};
+
+export {
+  cropObject,
+  isManualCropping,
+  isRatioLocked,
+  currentAspectRatio,
+  isCropping,
+  currentSelectionDims
+};
+</file>
+
+<file path="src/components/modules/puzzle/index.vue">
+<template>
+  <div class="puzzle-module">
+    <div
+      v-if="sub === 1"
+      class="puzzle-main"
+    >
+      <div class="puzzle-tabs">
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'grid' }"
+          @click="activeTab = 'grid'"
+        >
+          网格
+        </div>
+        <div
+          class="tab-item"
+          :class="{ active: activeTab === 'join' }"
+          @click="activeTab = 'join'"
+        >
+          拼接
+        </div>
+      </div>
+
+      <div>
+        <div v-if="activeTab === 'grid'">
+          <button
+            class="select-btn"
+            @click="sub = 2"
+          >
+            <div class="icon-wrap">
+              <div
+                v-if="showControlPanel"
+                :style="curTemp.wrapStyle"
+                class="small-grid-template"
+              >
+                <div
+                  v-for="(gridArea, i) in curTemp.gridAreas"
+                  :key="i"
+                  class="grid-cell"
+                  :style="`grid-area: ${gridArea};`"
+                ></div>
+              </div>
+              <span
+                v-else
+                class="plus-icon"
+              >+</span>
+            </div>
+            <span>选择网格</span>
+            <span
+              v-if="showControlPanel"
+              class="cancel-btn"
+              @click.stop="cancel"
+            >取消</span>
+          </button>
+
+          <div
+            v-if="showControlPanel"
+            class="control-panel"
+          >
+            <div class="control-group">
+              <label>拼图尺寸</label>
+              <div class="size-controls">
+                <div class="input-wrapper">
+                  <input
+                    type="number"
+                    v-model.number="puzzleSettings.width"
+                    :min="min"
+                    :max="max"
+                    class="ie-input"
+                    @change="updateSize('width')"
+                  >
+                  <span class="suffix">W</span>
+                </div>
+
+                <div
+                  class="link-icon"
+                  title="锁定宽高比"
+                  @click="toggleRatioLock"
+                >
+                  <svg
+                    v-if="puzzleSettings.lockRatio"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#409eff"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  <svg
+                    v-else
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#909399"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    style="opacity: 0.6"
+                  >
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    <line
+                      x1="4"
+                      y1="4"
+                      x2="20"
+                      y2="20"
+                      stroke="#909399"
+                    />
+                  </svg>
+                </div>
+
+                <div class="input-wrapper">
+                  <input
+                    type="number"
+                    v-model.number="puzzleSettings.height"
+                    :min="min"
+                    :max="max"
+                    class="ie-input"
+                    @change="updateSize('height')"
+                  >
+                  <span class="suffix">H</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>边框</label>
+              <input
+                v-model.number="puzzleSettings.padding"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                @change="updateStyle"
+              />
+              <span class="value-display">{{ puzzleSettings.padding }} px</span>
+            </div>
+
+            <div class="control-group">
+              <label>间距</label>
+              <input
+                type="range"
+                v-model.number="puzzleSettings.spacing"
+                min="0"
+                max="100"
+                step="1"
+                @change="updateStyle"
+              />
+              <span class="value-display">{{ puzzleSettings.spacing }} px</span>
+            </div>
+
+            <div class="control-group">
+              <label>拼图背景颜色</label>
+              <input
+                type="color"
+                class="color"
+                v-model="puzzleSettings.bgColor"
+                @input="updateStyle"
+              />
+            </div>
+
+            <button
+              class="save-btn"
+              @click="save"
+            >
+              保存
+            </button>
+          </div>
+        </div>
+
+        <div v-else>
+          <button class="select-btn">
+            <div class="icon-wrap">
+              <div
+                v-if="showControlPanel"
+                :style="curTemp.wrapStyle"
+                class="small-grid-template"
+              >
+                <div
+                  v-for="(gridArea, i) in curTemp.gridAreas"
+                  :key="i"
+                  class="grid-cell"
+                  :style="`grid-area: ${gridArea};`"
+                ></div>
+              </div>
+              <span
+                v-else
+                class="plus-icon"
+              >+</span>
+            </div>
+            <span>选择拼接</span>
+            <span
+              v-if="showControlPanel"
+              class="cancel-btn"
+              @click.stop="cancel"
+            >取消</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="sub === 2"
+      class="grid-templates"
+    >
+      <div
+        class="back-header"
+        @click="backToMain"
+      >
+        <span class="back-icon">‹</span> 网格
+      </div>
+
+      <div class="image-count-selector">
+        <label>图片数量</label>
+        <select v-model="selectedImageCount">
+          <option
+            v-for="item in countOptions"
+            :key="item.value"
+            :value="item.value"
+          >{{ item.label }}</option>
+        </select>
+      </div>
+
+      <div class="grid-list">
+        <div
+          v-for="(group, count) in filteredTemplates"
+          :key="count"
+          class="grid-group"
+        >
+          <div class="grid-group-title">{{ count }}</div>
+
+          <div class="grid-templates-row">
+            <div
+              v-for="template in group"
+              :key="template.id"
+              :style="template.wrapStyle"
+              class="grid-template"
+              @click="selectTemplate(template)"
+            >
+              <div
+                v-for="(gridArea, i) in template.gridAreas"
+                :key="i"
+                class="grid-cell"
+                :style="`grid-area: ${gridArea};`"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="sub === 3"
+      class="p-20"
+    >
+      <div class="operate-buttons">
+         <button class="ie-btn full" @click="triggerReplace">替换图片</button>
+         <button 
+            v-if="currentImgCount > 1" 
+            class="ie-btn btn-danger" 
+            style="margin-left: 8px;"
+            @click="handleDelete"
+         >删除</button>
+      </div>
+
+      <div class="divider-line"></div>
+
+      <div class="control-group">
+        <div class="label-row">
+            <label>透明度</label>
+            <span class="val">{{ transparent }}%</span>
+        </div>
+        <input
+          v-model.number="transparent"
+          type="range"
+          min="0"
+          max="100"
+          step="1"
+          @input="onParamsChange"
+        />
+      </div>
+
+      <div class="control-group">
+        <div class="label-row">
+            <label>放大 (Zoom)</label>
+            <span class="val">{{ Math.round(zoomScale * 100) }}%</span>
+        </div>
+        <input
+          type="range"
+          v-model.number="zoomScale"
+          min="0.1"
+          max="3"
+          step="0.01"
+          @input="onParamsChange"
+        />
+      </div>
+    </div>
+
+    <input
+      type="file"
+      ref="fileInput"
+      accept="image/png, image/jpeg, image/jpg"
+      style="display:none"
+      @change="onFileSelected"
+    >
+
+    <Modal
+      v-model="showSaveModal"
+      title="保存"
+      @confirm="handleConfirmSave"
+      @cancel="showSaveModal = false"
+      @discard="showSaveModal = false"
+    >
+      <div class="confirm-content">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#909399" stroke-width="2" style="margin-right: 8px;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+        </svg>
+        <span>注意：使用拼图后会覆盖原图所有内容</span>
+      </div>
+      </Modal>
+  </div>
+</template>
+
+<script setup>
+  import { ref, reactive, computed, inject, onMounted, onUnmounted } from 'vue';
+  import { toast } from '@/utils/toast';
+  import Modal from '@/components/common/Modal.vue'; // 引入 Modal 组件
+  import { gridTemplates, parseTemplateToCells, countOptions } from './config.js';
+  import {
+    registerPuzzleModule,
+    initPuzzleMode,
+    exitPuzzleMode,
+    updateLayout,
+    addImageToCell,
+    deleteImageFromCell,
+    updatePuzzleImageParams,
+    getPuzzleImageCount,
+    zoomToPuzzleArea,
+    saveSnapshotBeforeLayout,
+    restoreSnapshotBeforeLayout,
+    completeExitPuzzle // 引入完成拼图的方法
+  } from './useCanvasPuzzle.js';
+
+  const canvasAPI = inject('canvasAPI');
+  const fileInput = ref(null);
+  
+  let pendingCellIndex = -1;
+  const selectedCellIndex = ref(-1);
+
+  // 图片参数状态
+  const transparent = ref(100);
+  const zoomScale = ref(1);
+  const currentImgCount = ref(1);
+
+  // 弹窗控制状态
+  const showSaveModal = ref(false);
+
+  onMounted(() => {
+    if (canvasAPI) {
+      registerPuzzleModule(canvasAPI.canvas, canvasAPI.saveHistory, {
+        onCellClick: (index) => {
+          pendingCellIndex = index;
+          if (fileInput.value) {
+            fileInput.value.value = '';
+            fileInput.value.click();
+          }
+        },
+        onImageSelect: (index, params) => {
+           selectedCellIndex.value = index;
+           pendingCellIndex = index;
+           
+           transparent.value = Math.round((params.opacity || 1) * 100);
+           zoomScale.value = params.scale || 1;
+           
+           currentImgCount.value = getPuzzleImageCount();
+           sub.value = 3;
+        },
+        onDeselect: () => {
+           sub.value = 1;
+           selectedCellIndex.value = -1;
+        }
+      },
+        canvasAPI.zoomToRect
+      );
+      initPuzzleMode();
+    }
+  });
+
+  onUnmounted(() => {
+    // 离开组件时如果不保存，也应该执行退出清理逻辑
+    exitPuzzleMode();
+  });
+
+  const onFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'image/jpeg' && file.type !== 'image/png') {
+      toast.error('仅支持 JPG/PNG 图片格式');
+      return;
+    }
+    if (pendingCellIndex >= 0) {
+      const url = URL.createObjectURL(file);
+      addImageToCell(url, pendingCellIndex);
+      if (sub.value === 3) {
+        transparent.value = 100;
+      } else {
+        pendingCellIndex = -1;
+      }
+    }
+  };
+
+  const sub = ref(1);
+  const showControlPanel = ref(false);
+  const selectedImageCount = ref('all');
+  const activeTab = ref('grid');
+
+  const filteredTemplates = computed(() => {
+    if (selectedImageCount.value === 'all') {
+      return gridTemplates;
+    } else {
+      const curCount = parseInt(selectedImageCount.value);
+      const result = {};
+      for (const count in gridTemplates) {
+        if (parseInt(count) === curCount) {
+          result[count] = gridTemplates[count];
+        }
+      }
+      return result;
+    }
+  });
+
+  const backToMain = () => {
+    sub.value = 1;
+    selectedImageCount.value = 'all';
+  };
+
+  const curTemp = ref({});
+  const selectTemplate = (template) => {
+    // Only capture snapshot if we are starting a new selection (curTemp is empty)
+    if (!curTemp.value.id) {
+      saveSnapshotBeforeLayout();
+    }
+    
+    curTemp.value = template;
+    showControlPanel.value = true;
+    sub.value = 1;
+    applyTemplate(template);
+    zoomToPuzzleArea();
+  };
+
+  const applyTemplate = (templ) => {
+    const cells = parseTemplateToCells(templ);
+    updateLayout(cells, puzzleSettings);
+  };
+
+  const cancel = () => {
+    restoreSnapshotBeforeLayout();
+    showControlPanel.value = false;
+    curTemp.value = {};
+  };
+
+  const puzzleSettings = reactive({
+    width: 1000,
+    height: 1000,
+    lockRatio: false,
+    padding: 15,
+    spacing: 15,
+    bgColor: '#ffffff'
+  });
+  const min = 400;
+  const max = 3840;
+  let ratio = 1;
+
+  const toggleRatioLock = () => {
+    puzzleSettings.lockRatio = !puzzleSettings.lockRatio;
+    if (puzzleSettings.lockRatio) {
+      ratio = puzzleSettings.width / puzzleSettings.height;
+    }
+  };
+
+  const updateSize = (dimension) => {
+    if (puzzleSettings[dimension] < min) {
+      puzzleSettings[dimension] = min;
+    } else if (puzzleSettings[dimension] > max) {
+      puzzleSettings[dimension] = max;
+    }
+
+    if (puzzleSettings.lockRatio) {
+      if (dimension === 'width') {
+        puzzleSettings.height = Math.round(puzzleSettings.width / ratio);
+      } else {
+        puzzleSettings.width = Math.round(puzzleSettings.height * ratio);
+      }
+    }
+
+    updateStyle();
+  };
+
+  const updateStyle = () => {
+    updateLayout(null, puzzleSettings);
+  };
+
+  // === 保存逻辑 ===
+  const save = () => { 
+    showSaveModal.value = true;
+  };
+
+  const handleConfirmSave = () => {
+    // 1. 调用核心逻辑：生成图片并替换画布内容
+    completeExitPuzzle('save');
+    
+    // 2. 关闭弹窗
+    showSaveModal.value = false;
+    
+    // 3. 返回
+    showControlPanel.value = false;
+  };
+
+  // === Sub 3 逻辑 ===
+
+  const deselectImage = () => {
+      sub.value = 1;
+      selectedCellIndex.value = -1;
+      if (canvasAPI && canvasAPI.canvas) {
+          canvasAPI.canvas.value.discardActiveObject();
+          canvasAPI.canvas.value.requestRenderAll();
+      }
+  };
+
+  const triggerReplace = () => {
+      if (fileInput.value) {
+          fileInput.value.value = '';
+          fileInput.value.click();
+      }
+  };
+
+  const handleDelete = () => {
+      if (selectedCellIndex.value === -1) return;
+      deleteImageFromCell(selectedCellIndex.value);
+      toast.success('图片已删除');
+      deselectImage();
+  };
+
+  const onParamsChange = () => {
+      if (selectedCellIndex.value === -1) return;
+      updatePuzzleImageParams(selectedCellIndex.value, {
+          opacity: transparent.value / 100,
+          scale: zoomScale.value
+      });
+  };
+</script>
+
+<style scoped>
+  .puzzle-module {
+    width: 100%;
+    height: 100%;
+    background-color: #fff;
+  }
+
+  .puzzle-main {
+    padding: 20px;
+  }
+
+  .puzzle-tabs {
+    display: flex;
+  }
+
+  .tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #606266;
+  }
+
+  .tab-item.active {
+    background-color: #409eff;
+    color: #fff;
+  }
+
+  .select-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 14px;
+    border-radius: 4px;
+    width: 100%;
+    cursor: pointer;
+    font-size: 14px;
+    color: #606266;
+    transition: all 0.3s;
+  }
+
+  .select-btn:hover {
+    border-color: #409eff;
+    color: #409eff;
+  }
+
+  .icon-wrap {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    background-color: #fff;
+    font-size: 24px;
+    line-height: 40px;
+    text-align: center;
+    margin-right: 16px;
+  }
+
+  .small-grid-template {
+    height: 100%;
+    display: grid;
+    overflow: hidden;
+  }
+
+  .plus-icon {
+    font-weight: bold;
+  }
+
+  .cancel-btn {
+    color: #409eff;
+    margin-left: 76px;
+    cursor: pointer;
+  }
+
+  .grid-templates {
+    padding: 20px 12px 20px;
+  }
+
+  .back-header {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+
+  .back-icon {
+    font-size: 20px;
+    margin-right: 8px;
+    color: #606266;
+  }
+
+  .image-count-selector {
+    margin-bottom: 20px;
+  }
+
+  .image-count-selector label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #606266;
+  }
+
+  .image-count-selector select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #dcdfe6;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .grid-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .grid-group {
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .grid-group-title {
+    padding: 10px 15px;
+    background-color: #f5f7fa;
+    font-size: 14px;
+    font-weight: 500;
+    color: #606266;
+  }
+
+  .grid-templates-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px 4px;
+  }
+
+  .grid-template {
+    width: 120px;
+    height: 120px;
+    display: grid;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .grid-template:hover {
+    border-color: #409eff;
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .grid-cell {
+    height: 100%;
+    background-color: #f0f0f0;
+    border: 1px solid #fff;
+  }
+
+  .control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 15px 0;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .control-group label {
+    font-size: 14px;
+    color: #606266;
+    font-weight: 500;
+  }
+
+  .color {
+    width: 100%;
+    cursor: pointer;
+    border: none;
+  }
+
+  .size-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .input-wrapper {
+    position: relative;
+    width: 38%;
+  }
+
+  .ie-input {
+    text-align: center;
+    padding-right: 20px;
+    font-weight: 500;
+    color: #333;
+  }
+
+  .suffix {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #c0c4cc;
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  .link-icon {
+    width: 24px;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .control-group input[type="range"] {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: #dcdfe6;
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .control-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #409eff;
+    cursor: pointer;
+  }
+
+  .control-group input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #409eff;
+    cursor: pointer;
+    border: none;
+  }
+
+  .value-display {
+    font-size: 14px;
+    color: #909399;
+    text-align: right;
+  }
+
+  .save-btn {
+    padding: 12px 20px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 21px;
+    background-color: #409eff;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .save-btn:hover {
+    background-color: #66b1ff;
+  }
+
+  .p-20 {
+    padding: 20px;
+  }
+
+  .operate-buttons {
+    display: flex;
+    margin-top: 10px;
+  }
+
+  .full {
+    flex: 1;
+  }
+
+  .btn-danger {
+    background-color: #fef0f0;
+    color: #f56c6c;
+    border-color: #fbc4c4;
+  }
+  .btn-danger:hover {
+    background-color: #f56c6c;
+    color: #fff;
+    border-color: #f56c6c;
+  }
+
+  .divider-line {
+    height: 1px;
+    background: #ebeef5;
+    margin: 20px 0;
+  }
+
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #606266;
+  }
+
+  .val {
+    font-family: monospace;
+  }
+
+  .confirm-content {
+    display: flex;
+    align-items: center;
+    color: #606266;
+    font-size: 14px;
+  }
+</style>
+</file>
+
 <file path="src/style.css">
 /* 1. 移除全局的 @import './reset.css'; 防止污染宿主环境 */
 /* @import './reset.css'; */
@@ -10439,6 +10660,11 @@ onUnmounted(() => stopPreview());
   }
 
   /* === 工具栏布局样式 === */
+  .panel-adjust {
+    height: 100%;
+    overflow-y: auto;
+    padding: 16px;
+  }
 
   .tool-list {
     display: flex;
@@ -10631,11 +10857,13 @@ onUnmounted(() => stopPreview());
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--ie-primary-color); /* 关键：使用主题色变量 */
+  background: var(--ie-primary-color);
+  /* 关键：使用主题色变量 */
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  margin-top: -6px; /* 调整垂直对齐 */
+  margin-top: -6px;
+  /* 调整垂直对齐 */
 }
 
 /* Firefox 浏览器 */
@@ -10644,7 +10872,8 @@ onUnmounted(() => stopPreview());
   height: 16px;
   border: 2px solid white;
   border-radius: 50%;
-  background: var(--ie-primary-color); /* 关键：使用主题色变量 */
+  background: var(--ie-primary-color);
+  /* 关键：使用主题色变量 */
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
@@ -10652,7 +10881,8 @@ onUnmounted(() => stopPreview());
 /* 修正滑块轨道颜色 (可选，视全局样式而定) */
 .ie-slider::-webkit-slider-runnable-track {
   height: 4px;
-  background: #e4e7ed; /* 轨道背景色 */
+  background: #e4e7ed;
+  /* 轨道背景色 */
   border-radius: 2px;
 }
 
@@ -10660,8 +10890,10 @@ onUnmounted(() => stopPreview());
 
 /* === 通用小号数字输入框 (修复背景色与隐藏箭头) === */
 .ie-small-input {
-  background-color: #ffffff; /* 1. 强制白色背景 */
-  color: #606266;            /* 2. 标准文字颜色 */
+  background-color: #ffffff;
+  /* 1. 强制白色背景 */
+  color: #606266;
+  /* 2. 标准文字颜色 */
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   text-align: center;
@@ -10669,7 +10901,7 @@ onUnmounted(() => stopPreview());
   transition: border-color 0.2s;
   width: 50px;
   /* Firefox 移除箭头 */
-  -moz-appearance: textfield; 
+  -moz-appearance: textfield;
 }
 
 .ie-small-input:focus {
@@ -10684,33 +10916,35 @@ onUnmounted(() => stopPreview());
 }
 
 /* === 标准化数值输入框 (配合 Slider 使用) === */
-  /* 宪法 6.2 规定：固定宽 50px，高 28px */
-  .ie-input-number {
-    width: 50px;
-    height: 28px;
-    padding: 0;
-    border: 1px solid var(--ie-border-color);
-    border-radius: 4px;
-    text-align: center;
-    font-size: 12px;
-    color: #606266;
-    background-color: #ffffff;
-    outline: none;
-    transition: border-color 0.2s;
-    appearance: textfield; /* 标准属性 */
-    -moz-appearance: textfield; /* Firefox */
-  }
+/* 宪法 6.2 规定：固定宽 50px，高 28px */
+.ie-input-number {
+  width: 50px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--ie-border-color);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 12px;
+  color: #606266;
+  background-color: #ffffff;
+  outline: none;
+  transition: border-color 0.2s;
+  appearance: textfield;
+  /* 标准属性 */
+  -moz-appearance: textfield;
+  /* Firefox */
+}
 
-  .ie-input-number:focus {
-    border-color: var(--ie-primary-color);
-  }
+.ie-input-number:focus {
+  border-color: var(--ie-primary-color);
+}
 
-  /* 移除 Webkit 浏览器的原生箭头 */
-  .ie-input-number::-webkit-outer-spin-button,
-  .ie-input-number::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
+/* 移除 Webkit 浏览器的原生箭头 */
+.ie-input-number::-webkit-outer-spin-button,
+.ie-input-number::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
 </file>
 
 <file path="src/components/layout/EditorLayout.vue">
@@ -10924,19 +11158,21 @@ defineExpose({
 </file>
 
 <file path="src/composables/useCanvas.js">
-import { ref, shallowRef, markRaw, toRaw, unref } from "vue";
+import { ref, shallowRef, markRaw, toRaw, unref, onMounted, onUnmounted } from "vue";
 import { fabric } from "fabric";
 // ✨ 引入 routeToObject 用于路由跳转
 import { useEditorState, ZOOM_PADDING } from "./useEditorState";
 
 import {
-    registerCropModule,
-    constrainCrop,
-    cropObject,
-    cancelCrop,
-    rotateActive as rotateCrop,
-    flipActive as flipCrop
+  registerCropModule,
+  constrainCrop,
+  cropObject,
+  cancelCrop,
+  rotateActive as rotateCrop,
+  flipActive as flipCrop
 } from "@/components/modules/adjust/useCanvasCrop";
+
+const ROUTING_ALLOWLIST = ['ruler'];
 
 export function useCanvas() {
   const canvas = shallowRef(null);
@@ -10959,7 +11195,11 @@ export function useCanvas() {
       history.splice(historyIndex + 1);
     }
     const json = JSON.stringify(
-        canvas.value.toJSON(["id", "selectable", "name", "isMainImage", "isPuzzleImage", "cellIndex", "isMaskObject"])
+      canvas.value.toJSON([
+        "id", "selectable", "name", "isMainImage", "isPuzzleImage",
+        "cellIndex", "isMaskObject",
+        "customTab", "customTool", "isRuler", "excludeFromExport"
+      ])
     );
     history.push(json);
     historyIndex++;
@@ -10974,16 +11214,12 @@ export function useCanvas() {
     setHistoryState(historyIndex > 0, historyIndex < history.length - 1);
   };
 
-  // === 撤销 (Undo) ===
-  const undo = () => {
+  const undo = () => { /* ...保持原样... */
     if (!canvas.value || historyIndex <= 0 || historyProcessing) return;
-
     if (cropObject.value) cancelCrop();
-
     historyProcessing = true;
     historyIndex--;
     const content = history[historyIndex];
-
     canvas.value?.loadFromJSON(content, () => {
       canvas.value?.renderAll();
       historyProcessing = false;
@@ -10991,16 +11227,12 @@ export function useCanvas() {
     });
   };
 
-  // === 重做 (Redo) ===
-  const redo = () => {
+  const redo = () => { /* ...保持原样... */
     if (!canvas.value || historyIndex >= history.length - 1 || historyProcessing) return;
-
     if (cropObject.value) cancelCrop();
-
     historyProcessing = true;
     historyIndex++;
     const content = history[historyIndex];
-
     canvas.value?.loadFromJSON(content, () => {
       canvas.value?.renderAll();
       historyProcessing = false;
@@ -11008,60 +11240,114 @@ export function useCanvas() {
     });
   };
 
-  const zoomToRect = (rect, minZoomLimit = 0.1) => {
+  const zoomToRect = (rect, minZoomLimit = 0.1) => { /* ...保持原样... */
     if (!canvas.value) return;
     const width = canvas.value.width;
     const height = canvas.value.height;
-
     let targetZoom = Math.min(width / rect.width, height / rect.height) * ZOOM_PADDING;
     targetZoom = Math.max(minZoomLimit, Math.min(targetZoom, 50));
-
     const rectCenterX = rect.left + rect.width / 2;
     const rectCenterY = rect.top + rect.height / 2;
-
     const panX = (width / 2) - (rectCenterX * targetZoom);
     const panY = (height / 2) - (rectCenterY * targetZoom);
-
     canvas.value.setViewportTransform([targetZoom, 0, 0, targetZoom, panX, panY]);
     zoom.value = targetZoom;
     canvas.value.requestRenderAll();
   };
 
-    const handleSelection = (target) => {
-      // 🔍 Debug 日志 1: 看看函数有没有被触发
-    console.log('1. handleSelection triggered. Target:', target);
-        // 1. 点击空白处 -> 进入残影模式
-        if (!target) {
-          console.log('Target is null, disabling sidebar'); // Log
-            setSidebarDisabled(true);
-            return;
-        }
-console.log('2. Target Type:', target.type);
-        // 2. 过滤特殊对象 (遮罩、不导出对象)
-        if (target.isMaskObject || target.excludeFromExport) {
-            return;
-        }
+  // === 🕵️‍♂️ 调试核心：Handle Selection ===
+  const handleSelection = (eventOrObject) => {
+    console.group('🔍 [Router Debug] handleSelection Triggered');
 
-        // 3. ✨ 过滤多选 (ActiveSelection)
-        // 根据你的要求 "不需要多选"，这里检测到多选直接返回，不做任何路由跳转
-        // 侧边栏保持上一次的状态，或者你可以选择在这里 setSidebarDisabled(true)
-        if (target.type === 'activeSelection') {
-             console.log('[Router] Multi-selection ignored.');
-             return; 
-        }
+    let target = null;
+    let source = '';
 
-        // 4. ✨ 核心：将整个 target 对象传给 State
-        // State 层会分析 target.type 或 target.customTab，决定跳到哪个 Tool + 哪个 Tab
-        const routed = routeToObject(target);
-        console.log('3. Routing result:', routed);
-        // 5. 兜底逻辑：如果选中的对象在路由表里没配置（比如背景控制点）
-        // 我们至少要保证侧边栏是“可用”的，而不是禁用的
-        if (!routed) {
-            setSidebarDisabled(false);
-        }
-    };
+    // 情况 A: 传入的是 Fabric 事件对象
+    if (eventOrObject && eventOrObject.selected) {
+      source = 'Event Object';
+      console.log('📋 Raw Selected Array:', eventOrObject.selected.map(o => ({
+        type: o.type,
+        customTab: o.customTab,
+        isRuler: o.isRuler,
+        id: o.id
+      })));
 
-  // === 初始化与事件 ===
+      // 智能雷达扫描
+      target = eventOrObject.selected.find(obj =>
+        obj.customTab && ROUTING_ALLOWLIST.includes(obj.customTab)
+      );
+
+      if (target) {
+        console.log('✅ Smart Scan found WhiteListed Target:', target.customTab);
+      } else {
+        console.log('⚠️ Smart Scan failed, fallback to index 0');
+        target = eventOrObject.selected[0];
+      }
+    }
+    // 情况 B: 传入的是直接的对象
+    else {
+      source = 'Direct Object';
+      target = eventOrObject;
+      console.log('📦 Direct Target:', target ? { type: target.type, customTab: target.customTab } : 'NULL');
+    }
+
+    // 1. 无效目标
+    if (!target) {
+      console.log('❌ Target is null -> Disabling Sidebar');
+      setSidebarDisabled(true);
+      console.groupEnd();
+      return;
+    }
+
+    // 2. 特殊对象过滤
+    if (target.isMaskObject || target.excludeFromExport) {
+      console.log('🛑 Ignored: Mask or ExcludeFromExport');
+      console.groupEnd();
+      return;
+    }
+
+    // 3. 多选过滤
+    if (target.type === 'activeSelection') {
+      console.log('🛑 Ignored: Multi-selection');
+      console.groupEnd();
+      return;
+    }
+
+    // 4. 白名单路由检查
+    console.log(`🧐 Checking Whitelist for [${target.customTab}]...`);
+    if (target.customTab && ROUTING_ALLOWLIST.includes(target.customTab)) {
+      console.log('🚀 PASS! Routing to object...');
+      const routed = routeToObject(target);
+      console.log('🎉 Route Result:', routed);
+    } else {
+      console.log(`⛔ REJECTED: customTab '${target.customTab}' is not in allowlist:`, ROUTING_ALLOWLIST);
+      setSidebarDisabled(false); // 保持开启但不跳转
+    }
+    console.groupEnd();
+  };
+
+  // === 🕵️‍♂️ 调试核心：Handle Mouse Down ===
+  const handleMouseDown = (opt) => {
+    const target = opt.target;
+    // 只记录有意义的点击
+    if (!target) return;
+
+    console.group('🖱️ [Click Debug] Mouse Down');
+    console.log('🎯 Clicked Target:', { type: target.type, customTab: target.customTab, isRuler: target.isRuler });
+
+    const activeObj = canvas.value?.getActiveObject();
+    console.log('🌟 Current Active Object:', activeObj ? { type: activeObj.type, customTab: activeObj.customTab } : 'NULL');
+
+    // 如果点击的对象 **已经是** 当前激活的对象
+    if (activeObj === target) {
+      console.log('⚡ Wakeup Triggered! (Clicking already active object)');
+      handleSelection({ selected: [target] });
+    } else {
+      console.log('💤 Normal Click (Fabric will handle selection:created)');
+    }
+    console.groupEnd();
+  };
+
   const init = (id, width, height) => {
     console.log("init canvas", id, width, height);
     const c = new fabric.Canvas(id, {
@@ -11092,53 +11378,56 @@ console.log('2. Target Type:', target.type);
       if (e.target && e.target.type !== "rect") saveHistory();
     });
 
-    // ✨ 交互消歧：按下时记录坐标
     c.on("mouse:down", (opt) => {
-        isPotentialClick = true;
-        const pointer = c.getPointer(opt.e);
-        dragStartPoint = { x: pointer.x, y: pointer.y };
+      isPotentialClick = true;
+      const pointer = c.getPointer(opt.e);
+      dragStartPoint = { x: pointer.x, y: pointer.y };
+      // [调试] 绑定点击唤醒
+      handleMouseDown(opt);
     });
 
-    // ✨ 交互消歧：移动时检测阈值
     c.on("mouse:move", (opt) => {
-        if (!isPotentialClick) return;
-        const pointer = c.getPointer(opt.e);
-        const dist = Math.sqrt(
-            Math.pow(pointer.x - dragStartPoint.x, 2) +
-            Math.pow(pointer.y - dragStartPoint.y, 2)
-        );
-        if (dist > 5) { // 阈值 5px
-            isPotentialClick = false; // 判定为拖拽
-        }
+      if (!isPotentialClick) return;
+      const pointer = c.getPointer(opt.e);
+      const dist = Math.sqrt(
+        Math.pow(pointer.x - dragStartPoint.x, 2) +
+        Math.pow(pointer.y - dragStartPoint.y, 2)
+      );
+      if (dist > 5) {
+        isPotentialClick = false;
+      }
     });
 
-    // ✨ 路由触发点 1: 点击松开 (主要交互)
-   c.on("mouse:up", (opt) => {
-        if (!isPotentialClick || c.isDrawingMode || cropObject.value) return;
-        const target = c.getActiveObject();
-        handleSelection(target);
+    c.on("mouse:up", (opt) => {
+      if (!isPotentialClick || c.isDrawingMode || cropObject.value) return;
+      // 这里的 handleSelection 是为了兜底，防止 Fabric 事件没触发
+      // 但在 mouse:down 里我们已经处理了 wakeup，所以这里主要是为了处理“点击空白取消选中”
+      const target = c.getActiveObject();
+      // 如果没有点到任何东西，target 为 null，handleSelection 会处理 disable sidebar
+      if (!target) {
+        handleSelection(null);
+      }
     });
 
-    // ✨ 路由触发点 2: 选区创建 (处理 API 调用 setActiveObject 或 框选)
-    // 确保非点击产生的选中也能触发路由
-   // 触发点 2: API 调用 (如 addText) 或 框选
+    // 路由触发点
     c.on("selection:created", (e) => {
-        if (!isPotentialClick && (e.target || (e.selected && e.selected.length > 0))) { 
-         handleSelection(e.target || e.selected[0]);
-    }
+      if (!isPotentialClick && (e.target || (e.selected && e.selected.length > 0))) {
+        console.log('📡 Event: selection:created');
+        handleSelection(e);
+      }
     });
-    
-    // ✨ 路由触发点 3: 选区更新 (例如从单选变为多选)
+
     c.on("selection:updated", (e) => {
-        handleSelection(e.target);
+      console.log('📡 Event: selection:updated');
+      handleSelection(e);
     });
 
-    // ✨ 路由触发点 4: 选区清除 (进入残影)
     c.on("selection:cleared", () => {
-        setSidebarDisabled(true);
+      console.log('📡 Event: selection:cleared');
+      setSidebarDisabled(true);
     });
 
-    // Zoom 事件
+    // Zoom 事件 ... (保持原样)
     const canvasEl = c.upperCanvasEl;
     canvasEl.addEventListener(
       "wheel",
@@ -11159,39 +11448,25 @@ console.log('2. Target Type:', target.type);
     saveHistory();
   };
 
-  // === 通用 API ===
+  // ... 辅助函数 (addImage, addText 等) ...
   const addImage = (url) => {
-    fabric.Image.fromURL(
-      url,
-      (img) => {
-        const canvasWidth = canvas.value.width;
-        const canvasHeight = canvas.value.height;
-        if (img.width > canvasWidth || img.height > canvasHeight) {
-          const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * ZOOM_PADDING;
-          img.scale(scale);
-        }
-        
-        // 设置基础属性
-        img.set({
-          isMainImage: true,
-          id: 'main-image'
-        });
-        
-        zoom.value = canvas.value.getZoom();
-        historyProcessing = true;
-        
-        canvas.value?.add(img);
-        canvas.value?.centerObject(img);
-        
-        // ✨ 关键：触发选中事件，让系统自动路由到 (Adjust -> Filter)
-        canvas.value?.setActiveObject(img); 
-        
-        historyProcessing = false;
-        saveHistory();
-        canvas.value.fire('image:updated');
-      },
-      { crossOrigin: "anonymous" }
-    );
+    fabric.Image.fromURL(url, (img) => {
+      const canvasWidth = canvas.value.width;
+      const canvasHeight = canvas.value.height;
+      if (img.width > canvasWidth || img.height > canvasHeight) {
+        const scale = Math.min(canvasWidth / img.width, canvasHeight / img.height) * ZOOM_PADDING;
+        img.scale(scale);
+      }
+      img.set({ isMainImage: true, id: 'main-image' });
+      zoom.value = canvas.value.getZoom();
+      historyProcessing = true;
+      canvas.value?.add(img);
+      canvas.value?.centerObject(img);
+      canvas.value?.setActiveObject(img);
+      historyProcessing = false;
+      saveHistory();
+      canvas.value.fire('image:updated');
+    }, { crossOrigin: "anonymous" });
   };
 
   const setZoom = (value) => {
@@ -11203,7 +11478,6 @@ console.log('2. Target Type:', target.type);
     canvas.value.zoomToPoint({ x: center.left, y: center.top }, newZoom);
     zoom.value = newZoom;
   };
-
   const zoomIn = () => setZoom(zoom.value + 0.1);
   const zoomOut = () => setZoom(zoom.value - 0.1);
   const zoomReset = () => setZoom(1);
@@ -11212,9 +11486,7 @@ console.log('2. Target Type:', target.type);
     if (!canvas.value) return;
     historyProcessing = true;
     canvas.value.clear();
-    canvas.value.setBackgroundColor("#f3f3f3", () => {
-      canvas.value.renderAll();
-    });
+    canvas.value.setBackgroundColor("#f3f3f3", () => { canvas.value.renderAll(); });
     historyProcessing = false;
     history.length = 0;
     historyIndex = -1;
@@ -11261,7 +11533,6 @@ console.log('2. Target Type:', target.type);
     if (!canvas.value) return null;
     const originalBg = canvas.value.backgroundColor;
     const objects = canvas.value.getObjects();
-
     objects.forEach((obj) => {
       if (obj.type === "path" || obj.isMaskObject) {
         obj._originalStroke = obj.stroke;
@@ -11272,86 +11543,47 @@ console.log('2. Target Type:', target.type);
         obj.set({ opacity: 0 });
       }
     });
-
     canvas.value.setBackgroundColor("#000000", null);
     canvas.value.renderAll();
-
     const dataURL = canvas.value.toDataURL({ format: "png", multiplier: 1 });
-
     objects.forEach((obj) => {
       if (obj.type === "path" || obj.isMaskObject) {
-        obj.set({
-          stroke: obj._originalStroke,
-          fill: obj._originalFill
-        });
+        obj.set({ stroke: obj._originalStroke, fill: obj._originalFill });
       } else {
         obj.set({ opacity: obj._originalOpacity ?? 1 });
       }
     });
-
     canvas.value.setBackgroundColor(originalBg, null);
     canvas.value.renderAll();
-
     return dataURL;
   };
 
   const replaceActiveImage = (newUrl) => {
     const activeObj = canvas.value?.getActiveObject();
     if (!activeObj || activeObj.type !== "image") return;
-    activeObj.setSrc(
-      newUrl,
-      () => {
-        canvas.value.renderAll();
-        saveHistory();
-        canvas.value.fire('image:updated');
-      },
-      { crossOrigin: "anonymous" }
+    activeObj.setSrc(newUrl, () => {
+      canvas.value.renderAll();
+      saveHistory();
+      canvas.value.fire('image:updated');
+    }, { crossOrigin: "anonymous" }
     );
   };
 
-const addText = (textStr = "双击编辑") => {
+  const addText = (textStr = "双击编辑") => {
     if (!canvas.value) return;
-    
     const text = new fabric.IText(textStr, {
-      left: 100,
-      top: 100,
-      fontSize: 40,
-      fill: "#333",
-      // ✨ 进阶用法演示（可选）：
-      // 如果你想让这个特定的文本创建时直接跳到 "颜色" Tab，可以解开下面这行注释：
-      // customTab: 'color' 
+      left: 100, top: 100, fontSize: 40, fill: "#333",
+      // customTab: 'text' 
     });
-    
     canvas.value.add(text);
-    
-    // ✨ 关键：这行代码会触发 fabric 的 'selection:created' 事件
-    // 进而触发 handleSelection -> routeToObject -> 自动跳转到 Text 面板的 Style Tab
     canvas.value.setActiveObject(text);
-    
-    canvas.value.requestRenderAll(); // 刷新画布
-    saveHistory(); // 记录历史
+    canvas.value.requestRenderAll();
+    saveHistory();
   };
 
   return {
-    canvas,
-    zoom,
-    init,
-    initImage,
-    addImage,
-    zoomIn,
-    zoomOut,
-    zoomReset,
-    zoomToRect,
-    setZoom,
-    undo,
-    redo,
-    saveHistory,
-    toggleDrawing,
-    exportMask,
-    replaceActiveImage,
-    addText,
-    rotateActive,
-    flipActive
+    canvas, zoom, init, initImage, addImage, zoomIn, zoomOut, zoomReset, zoomToRect, setZoom,
+    undo, redo, saveHistory, toggleDrawing, exportMask, replaceActiveImage, addText, rotateActive, flipActive
   };
 }
 </file>

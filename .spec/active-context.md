@@ -112,9 +112,20 @@
   - 左侧菜单高亮 `state.activeTool`。
   - 二级面板 (如 AdjustPanel) 监听 `state.activeTab` 并自动展开对应模块。
 
-### 2.5 通用物理锁 (Universal Physical Lock)
+### 2.4 通用物理锁 (Universal Physical Lock)
 - **File**: `src/composables/useCanvasLock.js`
 - **逻辑**: 遍历 `allObjects`，排除 `isMainImage`。通过 `WeakMap` 实现无损状态恢复。
+### 2.5 强制类型安全原则 (Type Safety)
+
+- **问题记录**：UI 输入控件（Slider/Input）绑定的响应式数据，在用户交互后会自动退化为 String 类型，导致数学计算（尤其是 + 运算）出错。
+
+- **强制规范**：
+
+    1. 在 Vue 模板中，所有数值型输入必须严格使用 v-model.number 修饰符。
+
+    2. 在 JS 逻辑处理计算前，必须对所有来自 UI 的变量进行防御性转换，例如 Number(value) 或 parseFloat(value)。
+
+    3. 禁止直接信任 UI 绑定的变量类型。
 
 ---
 
