@@ -84,6 +84,18 @@
 - **Singleton**: 放弃 Pinia，使用 `useEditorState.js` (Reactive 单例) 管理全局工具状态 (`activeTool`) 和 Loading 状态。
 - **Events**: 模块间通信主要依赖 Fabric 的事件总线（如 `canvas.fire('image:updated')`），减少了 Vue 组件间的强耦合。
 
+### 2.4 强制类型安全原则 (Type Safety)
+
+- **问题记录**：UI 输入控件（Slider/Input）绑定的响应式数据，在用户交互后会自动退化为 String 类型，导致数学计算（尤其是 + 运算）出错。
+
+- **强制规范**：
+
+    1. 在 Vue 模板中，所有数值型输入必须严格使用 v-model.number 修饰符。
+
+    2. 在 JS 逻辑处理计算前，必须对所有来自 UI 的变量进行防御性转换，例如 Number(value) 或 parseFloat(value)。
+
+    3. 禁止直接信任 UI 绑定的变量类型。
+
 ---
 
 ## 3. 待办事项 (Backlog & Roadmap)
