@@ -16,6 +16,7 @@ const ROUTING_ALLOWLIST = ['ruler'];
 
 export function useCanvas() {
   const canvas = shallowRef(null);
+
   // ✨ 获取 state 对象
   const { state, setHistoryState, setActiveTool, setSidebarDisabled, routeToObject } = useEditorState();
   const zoom = ref(1);
@@ -52,6 +53,84 @@ export function useCanvas() {
 
   const updateStoreHistory = () => {
     setHistoryState(historyIndex > 0, historyIndex < history.length - 1);
+  };
+
+  // ✨ 新增：变换快照，用于计算增量变换
+  let transformBase = null;
+
+/**
+   * 🛡️ 深度重构：全场变换同步系统 (轴心校准版)
+   */
+  const syncTransformToOthers = (main) => {
+    if (!transformBase || !canvas.value) return;
+
+    // ✨ 核心：获取主图当前的物理中心点 (这是旋转和缩放的唯一不动点)
+    const currentCenter = main.getCenterPoint();
+    
+    // 1. 计算各项变换增量
+    const angleDiff = main.angle - transformBase.angle;
+    const scaleDiffX = main.scaleX / transformBase.scaleX;
+    const scaleDiffY = main.scaleY / transformBase.scaleY;
+    // 计算中心点的位移 (处理拖拽)
+    const dX = currentCenter.x - transformBase.centerX;
+    const dY = currentCenter.y - transformBase.centerY;
+
+    const others = canvas.value.getObjects().filter(o => 
+        o !== main && !o.excludeFromExport && o.type !== 'rect'
+    );
+
+    others.forEach(obj => {
+        // --- A. 位移补偿 ---
+        // 先跟随主图中心的物理位移
+        let targetX = obj.left + dX;
+        let targetY = obj.top + dY;
+
+        // --- B. 旋转与缩放的矩阵联动 ---
+        if (angleDiff !== 0 || scaleDiffX !== 1 || scaleDiffY !== 1) {
+            // 1. 将对象位置封装为坐标点
+            const point = new fabric.Point(targetX, targetY);
+            
+            // 2. 旋转补偿：绕主图当前中心旋转 angleDiff 弧度
+            // 这是解决“飞走”问题的关键，确保标尺永远钉在图片的相对位置
+            const rotatedPoint = fabric.util.rotatePoint(
+                point, 
+                currentCenter, 
+                fabric.util.degreesToRadians(angleDiff)
+            );
+            
+            targetX = rotatedPoint.x;
+            targetY = rotatedPoint.y;
+
+            // 3. 缩放补偿 (基于矢量的相对距离缩放)
+            if (scaleDiffX !== 1 || scaleDiffY !== 1) {
+                const vector = rotatedPoint.subtract(currentCenter);
+                targetX = currentCenter.x + vector.x * scaleDiffX;
+                targetY = currentCenter.y + vector.y * scaleDiffY;
+                
+                // 同步对象自身的缩放
+                obj.set({
+                    scaleX: obj.scaleX * scaleDiffX,
+                    scaleY: obj.scaleY * scaleDiffY
+                });
+            }
+
+            // 4. 同步自转角度
+            obj.set('angle', (obj.angle || 0) + angleDiff);
+        }
+
+        // 应用最终坐标并刷新
+        obj.set({ left: targetX, top: targetY });
+        obj.setCoords();
+    });
+
+    // ✨ 更新基准快照 (必须记录中心点而不是 left/top)
+    transformBase = {
+        centerX: currentCenter.x,
+        centerY: currentCenter.y,
+        scaleX: main.scaleX,
+        scaleY: main.scaleY,
+        angle: main.angle
+    };
   };
 
   const undo = () => { /* ...保持原样... */ 
@@ -157,7 +236,6 @@ export function useCanvas() {
   // 仅需确保 handleSelection 和 handleMouseDown 已按上述逻辑更新
 
   const init = (id, width, height) => {
-    // ... 原有 init 代码 ...
     console.log("init canvas", id, width, height);
     const c = new fabric.Canvas(id, {
       width: width,
@@ -186,12 +264,34 @@ export function useCanvas() {
     c.on("object:removed", (e) => {
       if (e.target && e.target.type !== "rect") saveHistory();
     });
+    // ✨ 变换快照初始化：改用中心点记录
+    c.on('mouse:down', (opt) => {
+        if (state.isGlobalDragMode && opt.target && opt.target.isMainImage) {
+            const main = opt.target;
+            const center = main.getCenterPoint();
+            transformBase = {
+                centerX: center.x,
+                centerY: center.y,
+                scaleX: main.scaleX,
+                scaleY: main.scaleY,
+                angle: main.angle
+            };
+        }
+    });
 
-    c.on("mouse:down", (opt) => {
-      isPotentialClick = true;
-      const pointer = c.getPointer(opt.e);
-      dragStartPoint = { x: pointer.x, y: pointer.y };
-      handleMouseDown(opt);
+    // 变换监听
+    const handleSync = (e) => {
+        if (state.isGlobalDragMode && transformBase && e.target && e.target.isMainImage) {
+            syncTransformToOthers(e.target);
+        }
+    };
+    c.on('object:moving', handleSync);
+    c.on('object:scaling', handleSync);
+    c.on('object:rotating', handleSync);
+
+    // 3. 变换结束：销毁快照
+    c.on('mouse:up', () => {
+        transformBase = null;
     });
 
     c.on("mouse:move", (opt) => {

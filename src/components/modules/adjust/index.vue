@@ -74,23 +74,18 @@ watch(
   () => state.activeTab,
   (newTab) => {
     const validTabs = [
-      "crop",
-      "resize",
-      "inpaint",
-      "rembg",
-      "ruler",
-      "white",
-      "color",
-      "overlay",
-      "filters",
-      "mosaic",
+      "crop", "resize", "inpaint", "rembg", "ruler",
+      "white", "color", "overlay", "filters", "mosaic",
     ];
 
-    // 只有当 newTab 有效时才展开
-    // 如果 newTab 被置空，这里不处理，由 toggle 逻辑接管
     if (newTab && validTabs.includes(newTab)) {
       console.log("[AdjustPanel] Auto expanding:", newTab);
       activeCollapse.value = newTab;
+    } 
+    // ✨✨✨ 关键修复：当全局路由清空时，同步清空局部折叠状态 ✨✨✨
+    else if (!newTab) {
+      console.log("[AdjustPanel] Auto collapsing due to empty activeTab");
+      activeCollapse.value = "";
     }
   },
   { immediate: true }

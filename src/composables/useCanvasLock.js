@@ -57,7 +57,7 @@ export function useCanvasLock() {
   /**
    * 🛡️ 主函数：智能物理锁控制
    */
-  const setBackgroundLock = (canvasInstance, shouldLock, options = {}) => {
+const setBackgroundLock = (canvasInstance, shouldLock, options = {}) => {
     const canvas = unref(canvasInstance);
     if (!canvas) return;
 
@@ -65,14 +65,12 @@ export function useCanvasLock() {
     const objects = canvas.getObjects();
     
     if (shouldLock) {
-      // 1. 画布级状态调整
       canvas.selection = false; 
       canvas.defaultCursor = dragMode ? 'grab' : (isRulerMode ? 'crosshair' : 'default');
 
       objects.forEach(obj => {
         const isMain = obj.isMainImage || obj.id === 'main-image' || (obj.type === 'image' && objects.indexOf(obj) === 0);
         
-        // 2. 主图路由 (始终拥有最高豁免权)
         if (isMain) {
           obj.set({
             selectable: dragMode, 
@@ -83,39 +81,36 @@ export function useCanvasLock() {
           return;
         }
 
-        // 3. 策略 B 豁免逻辑：如果是标尺且开启豁免，执行“强制开启”循环
-        if (excludeRulers && obj.isRuler) {
+        // ✨ 响应提议 Q2：如果处于拖拽模式 (dragMode === true)，强制锁定所有组件
+        // 只有在非拖拽模式下的标尺模式，才允许豁免标尺
+        const shouldExempt = !dragMode && excludeRulers && obj.isRuler;
+
+        if (shouldExempt) {
           forceEnableObject(obj, isRulerMode);
           return;
         }
 
-        // 4. 标准锁定逻辑：执行“强制锁定”循环并备份
+        // 标准锁定
         lockAndStoreObject(obj);
       });
 
-      // 自动清理非拖拽模式下的主图选中
       if (!dragMode && canvas.getActiveObject()?.isMainImage) {
         canvas.discardActiveObject();
       }
-
     } else {
-      // === 🔓 全局解锁阶段 ===
+      // 解锁阶段保持不变...
       canvas.selection = true;
       canvas.defaultCursor = 'default';
-
       objects.forEach(obj => {
         const originalState = objectStates.get(obj);
         if (originalState) {
-          // 基于备份恢复
           obj.set(originalState);
           objectStates.delete(obj);
         } else {
-          // 如果没有备份（可能是新生成的对象），执行标准化解锁
           forceEnableObject(obj, false);
         }
       });
     }
-
     canvas.requestRenderAll();
   };
 

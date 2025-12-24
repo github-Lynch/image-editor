@@ -28,12 +28,12 @@ const isDrawing = ref(false);
 const rulerConfig = ref({
     value: 20,
     unit: 'cm',
-    color: '#ff0000',
+    color: '#000000',
     opacity: 100,
     fontSize: 24,
+    textColor: '#000000',
     fontFamily: 'Arial',
-    strokeWidth: 4,
-    showBg: true,
+    strokeWidth: 1,
     capStyle: 'line',    
     dashArray: [],       
     strokeLineCap: 'butt'
@@ -109,8 +109,7 @@ const createRulerObject = (start, end) => {
     updateCapRotation(endCap, false);
 
     const textObj = new fabric.Text(`${cfg.value} ${cfg.unit}`, {
-        fontSize: cfg.fontSize, fill: cfg.color, fontFamily: cfg.fontFamily,
-        backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : '',
+        fontSize: cfg.fontSize, fill: cfg.textColor, fontFamily: cfg.fontFamily,
         originX: 'center', originY: 'bottom', left: 0, top: -10
     });
     if (Math.abs(angle) > 90) textObj.set({ angle: 180, originY: 'bottom', top: 10 });
@@ -122,7 +121,7 @@ const createRulerObject = (start, end) => {
         _rulerValue: cfg.value, _rulerUnit: cfg.unit,
         _capStyle: cfg.capStyle, _dashArray: cfg.dashArray, _strokeLineCap: cfg.strokeLineCap,
         lockScalingY: true, lockUniScaling: true,
-        hoverCursor: 'move' // ✨ 确保对象自身的悬停形态
+        hoverCursor: 'move',_textColor: cfg.textColor // ✨ 确保对象自身的悬停形态
     });
 
     group.setControlsVisibility({ mtr: true, ml: true, mr: true, mt:false, mb:false, tl:false, tr:false, bl:false, br:false });
@@ -169,15 +168,14 @@ export const updateActiveRuler = () => {
         items[1].set({ fill: cfg.color, stroke: cfg.color });
         items[2].set({ fill: cfg.color, stroke: cfg.color });
         items[3].set({
-            text: `${cfg.value} ${cfg.unit}`, fill: cfg.color,
-            backgroundColor: cfg.showBg ? 'rgba(255,255,255,0.8)' : ''
+            text: `${cfg.value} ${cfg.unit}`, fill: cfg.textColor,
         });
-        group.set({ opacity: cfg.opacity / 100 });
+        group.set({ opacity: cfg.opacity / 100,dirty: true });
         group._rulerValue = cfg.value;
         group._rulerUnit = cfg.unit;
         group._dashArray = cfg.dashArray;
         group._strokeLineCap = cfg.strokeLineCap;
-
+        group._textColor = cfg.textColor;
         canvas.requestRenderAll();
         if (saveHistoryFn) saveHistoryFn();
     }
@@ -211,7 +209,7 @@ const syncConfigFromObject = (activeObj) => {
         }
         if (items[3]) {
             rulerConfig.value.fontSize = items[3].fontSize;
-            rulerConfig.value.showBg = !!items[3].backgroundColor;
+            rulerConfig.value.textColor = items[3].fill;
         }
     }
 };

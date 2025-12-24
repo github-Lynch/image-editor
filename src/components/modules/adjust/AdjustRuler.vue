@@ -250,11 +250,11 @@
           />
         </div>
         <div class="label-row" style="margin-top: 8px">
-          <span>文字背景</span>
+          <span>文字颜色</span>
           <input
-            type="checkbox"
-            v-model="rulerConfig.showBg"
-            @change="updateActiveRuler"
+            type="color"
+            v-model="rulerConfig.textColor"
+            @input="updateActiveRuler"
           />
         </div>
       </div>

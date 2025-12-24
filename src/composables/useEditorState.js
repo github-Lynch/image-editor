@@ -1,4 +1,9 @@
-import { reactive, readonly } from 'vue';
+import { reactive, readonly,watch } from 'vue';
+
+/**
+ * ✨ 配置驱动：定义与全局拖拽模式冲突的二级 Tab 黑名单
+ */
+const DRAG_INCOMPATIBLE_TABS = ['crop', 'resize', 'ruler'];
 
 /**
  * ✨ 全局路由配置表 (Single Source of Truth)
@@ -48,6 +53,17 @@ const state = reactive({
     navigationSource: 'system'
 });
 
+// ✨✨✨ 核心互斥逻辑：方式 2 (监听器模式) ✨✨✨
+watch(() => state.isGlobalDragMode, (isDragging) => {
+    if (isDragging) {
+        // 如果开启了拖拽模式，检查当前 Tab 是否在黑名单中
+        if (DRAG_INCOMPATIBLE_TABS.includes(state.activeTab)) {
+            console.log(`[Interaction] Drag Mode ON: Auto-closing incompatible tab: ${state.activeTab}`);
+            state.activeTab = ''; // 清空 Tab，触发 UI 收起与模块清理
+        }
+    }
+});
+
 export function useEditorState() {
 
     /**
@@ -71,10 +87,20 @@ export function useEditorState() {
         state.isSidebarDisabled = false; // 只要切换工具，必定激活面板
     };
 
-    // ✨ 新增：设置拖拽模式
+    /**
+     * ✨ 动作驱动：设置拖拽模式
+     * 在此处执行同步互斥，确保 UI 立即响应
+     */
     const setGlobalDragMode = (val) => {
         state.isGlobalDragMode = val;
-        console.log(`[State] Global Drag Mode: ${val ? 'ON' : 'OFF'}`);
+        console.log(`[Interaction] Global Drag Mode: ${val ? 'ON' : 'OFF'}`);
+        
+        if (val) {
+            if (DRAG_INCOMPATIBLE_TABS.includes(state.activeTab)) {
+                console.log(`[Interaction] Auto-closing incompatible tab: ${state.activeTab}`);
+                state.activeTab = ''; // 立即清空，触发侧边栏收起
+            }
+        }
     };
 
 
@@ -109,28 +135,16 @@ export function useEditorState() {
      * @returns {boolean} - 是否成功匹配并跳转
      */
     const routeToObject = (target) => {
-        if (!target) return false;
+      if (!target || state.isGlobalDragMode) return false; // ✨ 开启拖拽时，禁止自动跳转
 
-        // 1. 优先读取对象上的自定义路由配置 (如标尺)
         if (target.customTab) {
-            console.log(`[Router] Custom routing: Tool[${target.customTool || 'adjust'}] Tab[${target.customTab}]`);
-
-            // 激活对应的工具栏
             setActiveTool(target.customTool || 'adjust');
-
-            // ✨ 强制刷新机制：
-            // 解决“状态死锁”：如果当前 activeTab 已经是这个 tab (比如 'ruler')，
-            // 直接赋值 Vue 不会认为发生了变化，因此 watch 不会触发。
-            // 我们先把它置空，利用 setTimeout 在下一帧改回来，强制触发 UI 展开。
             if (state.activeTab === target.customTab) {
                 state.activeTab = '';
-                setTimeout(() => {
-                    state.activeTab = target.customTab;
-                }, 0);
+                setTimeout(() => { state.activeTab = target.customTab; }, 0);
             } else {
                 state.activeTab = target.customTab;
             }
-
             return true;
         }
 
