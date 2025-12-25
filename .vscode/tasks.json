@@ -4,7 +4,7 @@
     {
       "type": "npm",
       "script": "dev", 
-      "label": "npm: dev:port",
+      "label": "npm: dev",
       "detail": "启动开发服务器 (Vite)",
       "isBackground": true,
       "presentation": {

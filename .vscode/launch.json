@@ -5,7 +5,7 @@
       "name": "Vue.js: 调试 Chrome",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:3332", 
+      "url": "http://localhost:5173", 
       "webRoot": "${workspaceFolder}",
       "pathMapping": {
         "/_karma_webpack_": "${workspaceFolder}"
@@ -17,13 +17,13 @@
         "${workspaceFolder}/**",
         "!**/node_modules/**"
       ],
-      "preLaunchTask": "npm: dev:port"
+      "preLaunchTask": "npm: dev"
     },
     {
       "name": "Vue.js: 调试 Edge",
       "type": "msedge",
       "request": "launch",
-      "url": "http://localhost:3332",
+      "url": "http://localhost:5173",
       "webRoot": "${workspaceFolder}",
       "sourceMapPathOverrides": {
         "webpack:///src/*": "${webRoot}/src/*"
@@ -32,7 +32,7 @@
         "${workspaceFolder}/**",
         "!**/node_modules/**"
       ],
-      "preLaunchTask": "npm: dev:port"
+      "preLaunchTask": "npm: dev"
     },
     {
       "name": "JavaScript 调试终端",
