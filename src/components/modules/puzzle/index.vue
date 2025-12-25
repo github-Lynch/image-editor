@@ -86,7 +86,8 @@
 
     <div v-if="sub === 2" class="grid-templates">
       <div class="back-header" @click="backToMain">
-        <span class="back-icon">‹</span> 网格
+        <span class="back-icon">‹</span>
+        <span>{{ activeTab === 'grid' ? '网格' : '拼接' }}</span>
       </div>
 
       <div v-if="activeTab === 'grid'" class="image-count-selector">
@@ -268,7 +269,11 @@ const selectTemplate = (template) => {
     puzzleSettings.spacing = oldTab === 'grid' ? 15 : 0
   }
 
-  applyTemplate(template);
+  if (activeTab.value === 'grid') {
+    applyTemplate(template);
+  } else {
+    // TODO: 拼接模式的模板应用逻辑
+  }
   zoomToPuzzleArea();
 };
 
