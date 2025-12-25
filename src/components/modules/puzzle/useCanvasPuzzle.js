@@ -11,9 +11,7 @@ let prePuzzleVpt = null;
 let uiCallbacks = { onCellClick: null, onImageSelect: null, onDeselect: null };
 export let prePuzzleSnapshot = null;
 
-// Snapshot variables for the "Cancel" feature
-export let snapshotBeforeLayout = null;
-export let stateBackup = null;
+
 
 // 交互状态
 let isDragging = false;
@@ -55,34 +53,38 @@ export const registerPuzzleModule = (canvas, callbacks = {}, zoomToRect = null) 
   zoomToRectFn = zoomToRect;
 };
 
-// === 新增：保存选择网格前的状态 ===
-export const saveSnapshotBeforeLayout = () => {
+// --- 全新增加 ---
+/**
+ * 捕获进入模块时的绝对初始状态
+ */
+/**
+ * ✨ 核心：捕获进入模块时的“处女态”快照
+ * 增加了 prePuzzleSnapshot 的存在检查，确保连续切换模板不会覆盖初始快照
+ */
+export const recordEntryState = () => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
-  // 1. Save Canvas visual state (includes images, text, existing puzzle items)
-  snapshotBeforeLayout = JSON.stringify(canvas.toJSON(CANVAS_PROPS_WHITELIST));
-  // 2. Save Reactive State (grid config, padding, spacing)
-  stateBackup = JSON.parse(JSON.stringify(toRaw(puzzleState)));
+
+  // 🔒 锁：如果已经存过快照了，绝对不要覆盖它
+  if (prePuzzleSnapshot) {
+    console.log("[Puzzle] 快照已存在，保留初始状态，不进行覆盖");
+    return;
+  }
+
+  console.log("[Puzzle] 📸 捕获初始状态快照");
+  prePuzzleVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+  prePuzzleSnapshot = JSON.stringify(canvas.toJSON(CANVAS_PROPS_WHITELIST));
+  puzzleState.originalBg = canvas.backgroundColor;
 };
 
-// === 新增：恢复选择网格前的状态 ===
-export const restoreSnapshotBeforeLayout = () => {
-  const canvas = unref(canvasRef);
-  if (!canvas || !snapshotBeforeLayout) return;
-
-  // 1. Restore Canvas objects
-  canvas.loadFromJSON(snapshotBeforeLayout, () => {
-    // 2. Restore Reactive State
-    if (stateBackup) {
-      Object.assign(puzzleState, stateBackup);
-    }
-
-    // 3. Reset interactions
-    unbindEvents(); // Prevent double binding
-
-    canvas.requestRenderAll();
-  });
+/**
+ * 清理初始快照引用
+ */
+export const clearEntryState = () => {
+  prePuzzleSnapshot = null;
+  prePuzzleVpt = null;
 };
+
 
 export const zoomToPuzzleArea = () => {
   if (!zoomToRectFn) return;
@@ -95,14 +97,16 @@ export const zoomToPuzzleArea = () => {
   zoomToRectFn(rect);
 };
 
+
 export const initPuzzleMode = () => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
-  prePuzzleVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
 
-  prePuzzleSnapshot = JSON.stringify(canvas.toJSON(CANVAS_PROPS_WHITELIST));
-  puzzleState.originalBg = canvas.backgroundColor;
+  // 1. ✨ 核心修改：确保快照只在“最干净”的时候捕获一次
+  // 必须确保 recordEntryState 内部有 if (prePuzzleSnapshot) return; 的判断
+  recordEntryState();
 
+  // 2. 恢复数据或初始化状态
   if (puzzleState.savedHistoryData && puzzleState.savedHistoryData.length > 0) {
     restorePuzzleData();
     bindEvents();
@@ -111,23 +115,27 @@ export const initPuzzleMode = () => {
 
   puzzleState.isActive = true;
 
-  const activeImg = canvas.getObjects().find(o => o.type === 'image');
-  if (activeImg) {
-    const rect = activeImg.getBoundingRect();
-    puzzleState.width = rect.width;
-    puzzleState.height = rect.height;
-    puzzleState.startX = rect.left;
-    puzzleState.startY = rect.top;
-  } else {
-    const center = canvas.getCenter();
-    puzzleState.width = 1000;
-    puzzleState.height = 1000;
-    puzzleState.startX = center.left - 500;
-    puzzleState.startY = center.top - 500;
+  // 3. 计算拼图区域（仅在没有格子时计算一次，防止连续切换模板导致区域漂移）
+  if (puzzleState.cells.length === 0) {
+    const activeImg = canvas.getObjects().find(o => o.type === 'image');
+    if (activeImg) {
+      const rect = activeImg.getBoundingRect();
+      puzzleState.width = rect.width;
+      puzzleState.height = rect.height;
+      puzzleState.startX = rect.left;
+      puzzleState.startY = rect.top;
+    } else {
+      const center = canvas.getCenter();
+      puzzleState.width = 1000;
+      puzzleState.height = 1000;
+      puzzleState.startX = center.left - 500;
+      puzzleState.startY = center.top - 500;
+    }
   }
 
   bindEvents();
 
+  // 4. 默认布局
   const cells = [{
     w: 1,
     h: 1,
@@ -150,18 +158,19 @@ export const completeExitPuzzle = (action = 'save') => {
   const canvas = unref(canvasRef);
   if (!canvas) return;
 
+  // 1. 记录当前相机视口，用于 save 后的恢复（导出时需要重置视口）
   const savedVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
 
-  exitPuzzleMode();
-
   if (action === 'save') {
+    // === 保存逻辑 ===
     const hiddenObjs = canvas.getObjects().filter(o =>
       o.isPuzzleController ||
       o.isGhost ||
-      (o.isPlaceholder && o.isPuzzleBackground) // 只隐藏作为占位符的背景
+      (o.isPlaceholder && o.isPuzzleBackground)
     );
     hiddenObjs.forEach(o => o.visible = false);
 
+    // 重置视口到 1:1 进行精准区域导出
     canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
     canvas.renderAll();
 
@@ -182,49 +191,52 @@ export const completeExitPuzzle = (action = 'save') => {
       });
       img.scaleToWidth(puzzleState.width);
       canvas.add(img);
+      
+      // 还原导出前的相机位置
       canvas.setViewportTransform(savedVpt);
+      
+      // ✨ 关键：最后执行清理并释放初始快照
+      exitPuzzleMode(); 
       canvas.requestRenderAll();
     }, { crossOrigin: 'anonymous' });
 
   } else {
-    // === 取消/不保存逻辑 ===
+   // === 取消逻辑 ===
     if (prePuzzleSnapshot) {
-      console.log('取消拼图操作，正在利用全局白名单回滚状态...');
-
-      // ✨ 4. 异步恢复
+      console.log("[Puzzle] 🔄 正在回滚至初始状态...");
+      
       canvas.loadFromJSON(prePuzzleSnapshot, () => {
-        // ✨ 5. 核心修复：恢复进入前的相机视角（Viewport Transform）
-        // 这一步解决了你提到的“取消后位置偏移、相机放大”的问题
+        // 1. 恢复视口和缩放
         if (prePuzzleVpt) {
           canvas.setViewportTransform(prePuzzleVpt);
         }
-
-        // 恢复背景色
+        // 2. 恢复背景
         if (puzzleState.originalBg !== null) {
           canvas.setBackgroundColor(puzzleState.originalBg);
         }
 
-        exitPuzzleMode(); // 清理事件
-        canvas.fire('image:updated'); // 触发全局状态同步
+        // 3. ✨ 只有在 loadFromJSON 彻底完成后，才清理模式和释放快照
+        exitPuzzleMode(); 
+        
+        canvas.fire('image:updated');
         canvas.requestRenderAll();
-
-        console.log("已成功通过全局公约回滚至初始状态");
+        console.log("[Puzzle] ✅ 已成功回滚。");
       });
+    } else {
+      exitPuzzleMode();
     }
   }
 };
 
 export const exitPuzzleMode = () => {
-  const canvas = unref(canvasRef);
+const canvas = unref(canvasRef);
   if (!canvas) return;
-
   puzzleState.isActive = false;
-
-  if (puzzleState.originalBg !== null) {
-    canvas.setBackgroundColor(puzzleState.originalBg, () => canvas.requestRenderAll());
-  }
-
   unbindEvents();
+  // 彻底释放快照，允许下一次进入模块时重新捕获
+  prePuzzleSnapshot = null;
+  prePuzzleVpt = null;
+  console.log("[Puzzle] 🧹 模块状态已完全清理。");
 };
 
 export const restorePuzzleData = () => {

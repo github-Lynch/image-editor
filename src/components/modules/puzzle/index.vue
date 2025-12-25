@@ -175,7 +175,7 @@ import {
   updatePuzzleImageParams,
   getPuzzleImageCount,
   zoomToPuzzleArea,
-  saveSnapshotBeforeLayout,
+  recordEntryState,
   getInitialState,
   completeExitPuzzle // 引入完成拼图的方法
 } from './useCanvasPuzzle.js';
@@ -195,6 +195,12 @@ const currentImgCount = ref(1);
 
 // 弹窗控制状态
 const showSaveModal = ref(false);
+// 修改进入网格选择界面的逻辑
+const enterGridSelection = () => {
+  // ✨ 在这里捕获！这是用户还没碰任何模板的最干净的状态
+  recordEntryState(); 
+  sub.value = 2;
+};
 
 const init = () => {
   if (canvasAPI) {
@@ -271,24 +277,16 @@ const backToMain = () => {
 };
 
 const curTemp = ref({});
+// 模板选择逻辑
 const selectTemplate = (template) => {
-  // Only capture snapshot if we are starting a new selection (curTemp is empty)
-  if (!curTemp.value.id) {
-    saveSnapshotBeforeLayout();
-  }
-
+  // 不再需要在这里做 snapshot 逻辑，因为进入列表时已经做过了
   curTemp.value = template;
   showControlPanel.value = true;
-  setPuzzleMode(true); // 切换到拼图模式
-  init();
+  setPuzzleMode(true);
+  init(); // init 内部调用 initPuzzleMode
   sub.value = 1;
   applyTemplate(template);
   zoomToPuzzleArea();
-
-  // ✨ 核心修改：用户手动选择了模板，此时记录一次历史
-  if (canvasAPI && canvasAPI.saveHistory) {
-    canvasAPI.saveHistory();
-  }
 };
 
 const applyTemplate = (templ) => {
@@ -296,42 +294,16 @@ const applyTemplate = (templ) => {
   updateLayout(cells, puzzleSettings);
 };
 
+// 取消逻辑简化
 const cancel = () => {
-  const canvas = unref(canvasRef);
-  const { snapshot, vpt } = getInitialState(); // ✨ 获取进入时的最初状态
-
-  if (!canvas || !snapshot) {
-    showControlPanel.value = false;
-    sub.value = 1;
-    setPuzzleMode(false);
-    return;
-  }
-
-  // 开始异步恢复
-  canvas.loadFromJSON(snapshot, () => {
-    // 1. ✨ 核心修复：恢复相机视口和缩放
-    if (vpt) {
-      canvas.setViewportTransform(vpt);
-    }
-
-    // 2. 恢复背景色
-    if (puzzleState.originalBg !== null) {
-      canvas.setBackgroundColor(puzzleState.originalBg);
-    }
-
-    // 3. 退出模式与状态清理
-    exitPuzzleMode();
-    showControlPanel.value = false;
-    sub.value = 1;
-    setPuzzleMode(false);
-
-    // 4. 触发全局同步 (让物理锁等系统重新检测图片状态)
-    canvas.fire('image:updated');
-    canvas.requestRenderAll();
-
-    console.log("已彻底回滚至进入拼图模块前的状态");
-  });
+  // completeExitPuzzle 内部会处理 loadFromJSON 和最后的 exitPuzzleMode
+  completeExitPuzzle('cancel');
+  
+  showControlPanel.value = false;
+  sub.value = 1;
+  setPuzzleMode(false);
 };
+
 const puzzleSettings = reactive({
   width: 1000,
   height: 1000,
@@ -423,6 +395,16 @@ const onParamsChange = () => {
     scale: zoomScale.value
   });
 };
+
+onMounted(() => {
+  if (canvasAPI) {
+    // ✨ 核心修改：在挂载时记录“进入状态”
+    recordEntryState();
+    
+    // 如果需要默认初始化模式，可以保留此行
+    initPuzzleMode();
+  }
+});
 </script>
 
 <style scoped>

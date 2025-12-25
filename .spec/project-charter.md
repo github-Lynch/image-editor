@@ -12,14 +12,18 @@
 > 
 
 1.  **代码完整性公约 (Code Integrity Protocol)**:
-    - **全量交付 (Full Output)**: 除非用户明确要求“仅发送片段”，否则在修改文件时，**必须输出文件的完整代码**。
-    - **禁止精简 (No Simplification)**: 严禁使用 `// ... rest of code`、`// ... keep original` 或省略号来代替原有代码。必须完整保留未修改的 UI 结构、样式 (`<style>`)、SVG 图标及辅助函数。
-    - **无损注入 (Non-Destructive)**: 新代码必须是“注入”到现有逻辑中，严禁在重构时通过“重写”导致原有 Grid 布局、预设数据或逻辑丢失。
+    - **将修改部分的代码所在的整个函数返回给我， 比如删除了哪一块 新增了哪一块,然后位置在大概多少行 上下文的函数是哪个**。
 2.  **安全第一 (Safety First)**:
     - 当文件超过 token 限制无法一次输出时，**主动暂停**并询问用户是否分段输出，而不是擅自删减代码。
-3.  **✨ 智能交互公约 (Smart Interaction Protocol) `NEW`**:
-    - **深度反问 (Proactive Counter-Questioning)**: 针对用户的任何技术提议或功能改变，AI 不得直接盲目执行。必须从架构一致性、潜在 Bug、用户体验、性能损耗等维度进行至少 2-3 个深度的“反问”或“质疑”。
-    -   **精准索取 (Precision File Solicitation)**: 在针对提议进行分析前，AI 必须根据提议涉及的模块，列出需要用户提供的核心文件列表（如 `useCanvasXXX.js`, `XXX.vue`），以确保分析是基于最新真实代码的。
+3. **✨ 智能交互公约 (Smart Interaction Protocol) `UPDATED`**:
+    - **深度反问 (Proactive Questioning)**: 严禁做“复读机”。对用户提议必须进行“灵魂反问”，确认边界条件。
+    - **客观性与批判性评估 (Objective Criticality) `NEW`**: 
+    - **打破顺从性**: AI 严禁为了讨好用户而盲目赞同。必须假设用户的提议可能存在架构漏洞或体验死角。
+    - **强制风险披露**: 在评价提议时，必须至少列出 **3 个技术风险**（如性能瓶颈、逻辑冲突）和 **2 个交互负面影响**。
+    - **多维度评估框架**: 必须使用 SWOT（优劣势）、第一性原理（是否解决根本问题）或成本/效益分析进行客观评判。
+    - **全局关联检查**: 评估时必须对照 `useCanvas.js` 的全局状态和 SSOT 原则，检查提议是否会污染全局命名空间或破坏状态机。
+    - **替代方案义务**: 如果提议存在明显缺陷，必须提供至少一种更简洁、更符合架构规范的替代方案。
+    - **精准索取 (Precision File Solicitation)**: 在针对提议进行分析前，AI 必须根据提议涉及的模块，列出需要用户提供的核心文件列表（如 `useCanvasXXX.js`, `XXX.vue`），以确保分析是基于最新真实代码的。
 4.  **双重锁定准则 (Double-Locking)**: 针对异步加载对象，必须在 `onMounted` 与 `image:updated` (或 `nextTick`) 执行双重锁定。
 5.  **✨ 配置驱动原则 (Configuration-Driven Principle)**: 
     - **核心规范**: 凡是涉及多属性映射、状态转换、锁定/恢复逻辑的，必须采用“配置对象 (Configuration Object)”或“常量池”进行驱动。
@@ -66,6 +70,13 @@
 ### 3.2 高清离屏渲染 (Offscreen Rendering)
 
 - 所有涉及**导出图片**或**生成 AI 遮罩**的操作，必须使用 `src/composables/useOffscreenHelper.js`，严禁直接对主 Canvas 进行 `toDataURL`。
+
+### 3.3. 画布架构约束 (Canvas Constraints) [CRITICAL]
+- **SSOT (Single Source of Truth)**: 所有画布属性（缩放、背景色、物理锁）必须有且仅有一个真理来源。
+- **物理锁机制**: 所有 Canvas 对象的锁定逻辑必须通过 `useCanvasLock.js` 的配置驱动，严禁在业务组件中硬编码 `selectable = false`。
+- **高保真快照**: 所有“取消”或“撤销”操作必须基于包含 `CANVAS_PROPS_WHITELIST` 的全量 JSON 快照，严禁部分恢复。
+
+---
 
 ### 3.3 模块通信 (Event Bus)
 
@@ -120,9 +131,12 @@ src/
 
 在开发新功能前，必须在 `.spec/proposals/` 下创建文档，并回答以下“灵魂三问”：
 
-1.  **复用检查**: “我要写的这个辅助函数，`src/utils` 里有没有？UI 组件在 `common` 里有没有？架构模式在 `Section 3` 里有没有？”
+1.  **复用检查**: “我要写的这个辅助函数，`src/utils`或者 `src/composables` 里有没有？UI 组件在 `common` 里有没有？架构模式在 `Section 3` 里有没有？”
 2.  **UI 位置**: 在 `ToolPanel` 的哪个位置增加入口？
 3.  **交互逻辑**: 拖入画布后的默认行为（居中？自动缩放？）。
+4.  **架构兼容性**: “该提议是否会与 `useCanvas.js` 的历史记录系统产生冲突？”
+5.  **性能边界**: “在大图或高频操作下，该方案是否会导致掉帧？”
+6.  **逻辑冗余**: “该逻辑是否可以抽象为公用 Composable，而非写死在当前模块？”
 
 ### 6.2 实施检查清单 (The "Golden Checklist") [CRITICAL]
 
@@ -137,6 +151,9 @@ src/
 ---
 
 ## 7. 术语表 (Glossary)
+- **Counter-Questioning**: 针对模糊指令的主动反问。
+- **SSOT**: 单一事实来源，确保状态不冲突。
+- **Objective Evaluation**: 基于风险、性能和架构的非倾向性评价。
 - **Counter-Questioning Logic**: 指 AI 在接受任务前，通过反问确认交互边界与技术细节的过程，旨在减少重构成本。
 - **Main Image**: 画布底层的核心图片 (Index 0)，通常被锁定。
 - **Mask Object**: 用于遮罩的辅助对象，导出时通常不可见。
