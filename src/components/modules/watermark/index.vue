@@ -1,5 +1,5 @@
 <template>
-  <div class="tool-content">
+  <div class="p-16">
     <input
       type="file"
       ref="fileInput"
@@ -82,7 +82,7 @@
           <input
             type="range"
             v-model.number="wmState.gap"
-            class="ie-slider"
+            class="ie-slider w-full"
             min="0"
             max="200"
             @input="updateParam('gap', wmState.gap)"
@@ -106,7 +106,7 @@
           <input
             type="range"
             v-model.number="wmState.stagger"
-            class="ie-slider"
+            class="ie-slider w-full"
             min="0"
             max="100"
             @input="updateParam('stagger', wmState.stagger)"
@@ -130,7 +130,7 @@
           <input
             type="range"
             v-model.number="wmState.rotate"
-            class="ie-slider"
+            class="ie-slider w-full"
             min="0"
             max="360"
             @input="updateParam('rotate', wmState.rotate)"
@@ -155,7 +155,7 @@
           <input
             type="range"
             v-model.number="wmState.scale"
-            class="ie-slider"
+            class="ie-slider w-full"
             min="10"
             max="200"
             @input="updateParam('scale', wmState.scale)"
@@ -181,7 +181,7 @@
         <input
           type="range"
           v-model.number="wmState.opacity"
-          class="ie-slider"
+          class="ie-slider w-full"
           min="0"
           max="100"
           @input="updateParam('opacity', wmState.opacity)"
@@ -225,7 +225,7 @@
 </script>
 
 <style scoped>
-  .tool-content {
+  .p-16 {
     padding: 16px;
   }
 
@@ -368,5 +368,9 @@
     font-size: 12px;
     color: #909399;
     pointer-events: none;
+  }
+
+  .w-full {
+    width: 100%;
   }
 </style>
