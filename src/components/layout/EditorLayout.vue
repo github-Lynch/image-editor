@@ -150,6 +150,7 @@ const api = {
 
 // === 向下分发 ===
 provide('canvasAPI', api);
+provide('canvas', canvas);
 defineExpose({
   save: handleExport,
   undo,

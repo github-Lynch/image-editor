@@ -1,15 +1,9 @@
 <template>
   <div class="left-sidebar">
-    <div 
-      v-for="item in menuItems" 
-      :key="item.id" 
-      class="menu-item" 
-      :class="{ 
-        active: state.activeTool === item.id,
-        'auto-activated': state.activeTool === item.id && state.navigationSource === 'canvas'
-      }"
-      @click="handleToolClick(item.id)"
-    >
+    <div v-for="item in menuItems" :key="item.id" class="menu-item" :class="{
+      active: state.activeTool === item.id,
+      'auto-activated': state.activeTool === item.id && state.navigationSource === 'canvas'
+    }" @click="handleToolClick(item.id)">
       <svg class="menu-icon" viewBox="0 0 1024 1024" width="20" height="20">
         <path :d="item.iconPath" fill="currentColor" />
       </svg>
@@ -27,7 +21,9 @@ const { state, setActiveTool } = useEditorState();
 // 2. 点击处理：手动点击时，强制解除 Disabled 状态
 // 点击处理：标记来源为 'manual'
 const handleToolClick = (id) => {
-  setActiveTool(id, 'manual');
+  // setActiveTool(tool, tab = '', source = 'manual')
+  // 这里必须把 'manual' 作为第三参 source，避免误写入 activeTab 导致面板瞬间收起
+  setActiveTool(id, '', 'manual');
 };
 
 // 3. 定义菜单配置 (保持原样)
@@ -130,7 +126,7 @@ const menuItems = [
 }
 
 .label {
- 
+
   line-height: 1;
 }
 
@@ -146,9 +142,10 @@ const menuItems = [
 }
 
 .left-sidebar.is-disabled {
-    /* 你的残影样式 */
-    opacity: 0.5;
-    filter: grayscale(0.8);
-    pointer-events: auto; /* 关键：允许点击以重新激活 */
+  /* 你的残影样式 */
+  opacity: 0.5;
+  filter: grayscale(0.8);
+  pointer-events: auto;
+  /* 关键：允许点击以重新激活 */
 }
 </style>

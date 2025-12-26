@@ -67,22 +67,15 @@
                 <div class="bg-color-section">
                     <div class="section-label">背景颜色</div>
                     <div class="flex-row">
-    <input 
-      type="color" 
-      :value="textState.textBackgroundColor || '#ffffff'" 
-      @input="e => updateTextProp('textBackgroundColor', e.target.value)" 
-    />
-    <button 
-      class="ie-btn-reset" 
-      title="设为透明"
-      @click="updateTextProp('textBackgroundColor', '')"
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-        <path d="M3 3v5h5"/>
-      </svg>
-    </button>
-  </div>
+                        <input type="color" :value="currentBgColor" @input="onCustomColorChange" />
+                        <button class="ie-btn-reset" title="设为透明" @click="setBgColor('transparent')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                <path d="M3 3v5h5" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
             </div>

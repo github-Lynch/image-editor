@@ -182,13 +182,11 @@ export function useEditorState() {
         if (!target || state.isGlobalDragMode) return false; // ✨ 开启拖拽时，禁止自动跳转
 
         if (target.customTab) {
-            setActiveTool(target.customTool || 'adjust');
-            if (state.activeTab === target.customTab) {
-                state.activeTab = '';
-                setTimeout(() => { state.activeTab = target.customTab; }, 0);
-            } else {
-                state.activeTab = target.customTab;
-            }
+            // ✨ 对象路由：customTab 表示二级面板，tool 优先使用对象自带 customTool，否则走映射表或回退 adjust
+            const mappedTool = OBJECT_TO_TOOL_MAP[target.type]?.tool;
+            // 直接使用 setActiveTool 写入 tool+tab（包含 source='canvas'）
+            // 注意：不要在这里做“清空再重开”的抖动逻辑，否则会触发 AdjustPanel 反复 expand/collapse。
+            setActiveTool(target.customTool || mappedTool || 'adjust', target.customTab, 'canvas');
             return true;
         }
 

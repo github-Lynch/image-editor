@@ -1,54 +1,24 @@
 <template>
   <div class="panel-adjust">
     <div class="tool-list">
-      <AdjustCrop
-        :is-expanded="activeCollapse === 'crop'"
-        @toggle="toggle('crop')"
-      />
-      <AdjustResize
-        :is-expanded="activeCollapse === 'resize'"
-        @toggle="toggle('resize')"
-      />
-      <AdjustInpaint
-        :is-expanded="activeCollapse === 'inpaint'"
-        @toggle="toggle('inpaint')"
-      />
-      <AdjustRembg
-        :is-expanded="activeCollapse === 'rembg'"
-        @toggle="toggle('rembg')"
-      />
+      <AdjustCrop :is-expanded="activeCollapse === 'crop'" @toggle="toggle('crop')" />
+      <AdjustResize :is-expanded="activeCollapse === 'resize'" @toggle="toggle('resize')" />
+      <AdjustInpaint :is-expanded="activeCollapse === 'inpaint'" @toggle="toggle('inpaint')" />
+      <AdjustRembg :is-expanded="activeCollapse === 'rembg'" @toggle="toggle('rembg')" />
 
-      <AdjustRuler
-        :is-expanded="activeCollapse === 'ruler'"
-        @toggle="toggle('ruler')"
-      />
+      <AdjustRuler :is-expanded="activeCollapse === 'ruler'" @toggle="toggle('ruler')" />
 
-      <AdjustWhite
-        :is-expanded="activeCollapse === 'white'"
-        @toggle="toggle('white')"
-      />
-      <AdjustColor
-        :is-expanded="activeCollapse === 'color'"
-        @toggle="toggle('color')"
-      />
-      <AdjustColorOverlay
-        :is-expanded="activeCollapse === 'overlay'"
-        @toggle="toggle('overlay')"
-      />
-      <AdjustFilters
-        :is-expanded="activeCollapse === 'filters'"
-        @toggle="toggle('filters')"
-      />
-      <AdjustMosaic
-        :is-expanded="activeCollapse === 'mosaic'"
-        @toggle="toggle('mosaic')"
-      />
+      <AdjustWhite :is-expanded="activeCollapse === 'white'" @toggle="toggle('white')" />
+      <AdjustColor :is-expanded="activeCollapse === 'color'" @toggle="toggle('color')" />
+      <AdjustColorOverlay :is-expanded="activeCollapse === 'overlay'" @toggle="toggle('overlay')" />
+      <AdjustFilters :is-expanded="activeCollapse === 'filters'" @toggle="toggle('filters')" />
+      <AdjustMosaic :is-expanded="activeCollapse === 'mosaic'" @toggle="toggle('mosaic')" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, defineAsyncComponent, watch } from "vue";
+import { ref, defineAsyncComponent, watch, inject } from "vue";
 import { useEditorState } from "@/composables/useEditorState";
 
 // 异步组件加载
@@ -66,23 +36,48 @@ const AdjustMosaic = defineAsyncComponent(() => import("./AdjustMosaic.vue"));
 const AdjustRuler = defineAsyncComponent(() => import("./AdjustRuler.vue"));
 
 const activeCollapse = ref("");
-// ✨ 获取 setActiveTab 方法
 const { state, setActiveTab } = useEditorState();
+const canvasRef = inject("canvas");
+
+// === 标尺面板关闭收口策略 ===
+// 需求：只要“测量标尺”工具栏发生关闭（不论手动/自动/路由清空/切到其他 tab），
+// 若当前标尺对象处于选中态，则清空选中态。
+const clearRulerSelectionIfNeeded = () => {
+  const canvas = canvasRef?.value;
+  const activeObj = canvas?.getActiveObject?.();
+  if (activeObj?.isRuler) {
+    canvas.discardActiveObject();
+    canvas.requestRenderAll();
+  }
+};
 
 // 监听路由变化，自动展开对应面板
 watch(
   () => state.activeTab,
-  (newTab) => {
+  (newTab, oldTab) => {
     const validTabs = [
-      "crop", "resize", "inpaint", "rembg", "ruler",
-      "white", "color", "overlay", "filters", "mosaic",
+      "crop",
+      "resize",
+      "inpaint",
+      "rembg",
+      "ruler",
+      "white",
+      "color",
+      "overlay",
+      "filters",
+      "mosaic",
     ];
+
+    // ✅ 统一处理：ruler 面板关闭（oldTab===ruler 且 newTab!==ruler）就清选中
+    if (oldTab === "ruler" && newTab !== "ruler") {
+      clearRulerSelectionIfNeeded();
+    }
 
     if (newTab && validTabs.includes(newTab)) {
       console.log("[AdjustPanel] Auto expanding:", newTab);
       activeCollapse.value = newTab;
-    } 
-    // ✨✨✨ 关键修复：当全局路由清空时，同步清空局部折叠状态 ✨✨✨
+    }
+    // 当全局路由清空时，同步清空局部折叠状态
     else if (!newTab) {
       console.log("[AdjustPanel] Auto collapsing due to empty activeTab");
       activeCollapse.value = "";
@@ -97,16 +92,16 @@ const toggle = (id) => {
     // 动作：手动关闭
     activeCollapse.value = "";
 
-    // ✨✨✨ 修复点：使用官方方法清理状态 ✨✨✨
-    // 如果当前全局状态正指着这个面板，必须把它清理掉
-    // 否则下次点击同一个物体时，状态从 'ruler' 变 'ruler'，watch 不会触发
     if (state.activeTab === id) {
-      setActiveTab(""); // ✅ 合法修改，不会被 readonly 拦截
+      // 手动关闭 ruler 同样走统一逻辑
+      if (id === "ruler") {
+        clearRulerSelectionIfNeeded();
+      }
+      setActiveTab("");
     }
   } else {
     // 动作：手动展开
     activeCollapse.value = id;
-    // 保持同步
     setActiveTab(id);
   }
 };
