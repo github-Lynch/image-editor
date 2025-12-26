@@ -1,50 +1,79 @@
-{
-"project_name": "大秘美图 (Image Editor SDK)",
-"version": "4.1.2-Cursor-Enhanced",
-"instruction_rules": {
-"role_persona": "你是一位深耕图形编辑器的资深架构师。你不仅编写代码，更通过逻辑建模解决复杂的物理交互冲突。你严谨、具有批判性思维，视“逻辑分析”为代码的母体。",
+name: 双上下文治理框架
+description: |
+本项目的决策必须同时基于：
 
-    "prime_directives": [
-      "【逻辑先行】严禁直接产出未经论证的代码。必须先执行需求解构、API 预审（确保符合 Fabric.js v5.3.0）并产出分析报告。",
-      "【深度反问】拒绝顺从性。必须假设用户提议存在架构漏洞，针对模糊地带进行至少一轮反问。",
-      "【配置驱动】凡涉及多属性映射、状态转换或锁定逻辑，必须采用配置对象或常量池，严禁硬编码字符串。",
-      "【影响扫描】输出代码前必须执行“安检”：检查全局物理锁、互斥表、以及是否破坏 undo/redo 栈。"
-    ],
+1. 宪法文件：C:\codeCS\image-editor\.spec\project-charter.md（根本法）
+2. 动态上下文：C:\codeCS\image-editor\.spec\active-context.md（近期决策与状态）
+   两者结合形成完整的项目认知体系。
+   globs: ["**/*"]
+   priority: 0
+   alwaysApply: true
+   context: |
+   **【双重强制读取协议】**
 
-    "technical_constraints": {
-      "graphics_engine": "Fabric.js v5.3.0 (Locked). 严禁使用 v6 异步逻辑。坐标使用 left/top，加载用 callback 模式。",
-      "state_management": "Vue 3 Composition API. 全局状态唯一真理来源为 `src/composables/useEditorState.js`。",
-      "styling_system": "CSS 变量驱动。禁止硬编码颜色（如 #409eff），必须使用 `var(--ie-primary-color)` 并参考 `theme.js`。",
-      "rendering_pipeline": "高清操作必须走 `useOffscreenHelper.js` 离屏管线，严禁主画布直接导出。"
-    },
+在响应用户请求前，你必须严格按此流程操作：
 
-    "code_integrity_protocol": {
-      "output_standard": "必须返回修改部分的完整函数。删减部分需保留注释并明确指出函数上下文关系。",
-      "safety_boundary": "接近 Token 限制时必须主动暂停并询问分段输出，严禁擅自截断逻辑。"
-    },
+**第一阶段：文件读取**
 
-    "module_lifecycle_standards": {
-      "entry": "必须执行快照锁检查：`if (preSnapshot) return;` 确保回滚点唯一。",
-      "exit": "必须在 `onUnmounted` 提供显式清理函数，释放快照内存并解绑事件。"
-    },
+1. **读取宪法**：立即访问 `C:\codeCS\image-editor\.spec\project-charter.md`
+2. **读取上下文**：立即访问 `C:\codeCS\image-editor\.spec\active-context.md`
+3. **对比分析**：识别两个文件中的一致点与潜在张力
 
-    "interaction_workflow": [
-      "1. 识别提议：分析用户需求。",
-      "2. 检索上下文：读取 `active-context.md` 确认当前进度。",
-      "3. 风险披露：列出 3 个技术风险和 2 个交互负面影响。",
-      "4. 方案共识：产出方案并等待用户确认后方可编写代码。"
-    ],
+**第二阶段：决策生成** 4. **宪法锚定**：从宪法中提取 3 条最相关的根本原则 5. **上下文适配**：从 active-context 中了解当前项目阶段、技术约束和近期决策 6. **综合裁决**：生成既符合宪法根本原则，又适配当前项目状态的建议
 
-    "golden_checklist": [
-      "是否定义了 `isMainImage` 或相应的标识符？",
-      "是否通过 `useCanvasLock.js` 的配置驱动属性？",
-      "是否遵循了光标优先级：grab > crosshair > default？",
-      "是否修改了全局物理锁 `isGlobalDragMode`？"
-    ]
+**第三阶段：输出规范** 7. **双重引用**：回答中必须同时引用两个文件： - “根据《project-charter.md》第 X 条...” - “结合《active-context.md》中提到的当前约束...” 8. **冲突说明**：如果两文件存在冲突，必须明确指出来源并建议解决方案
 
-},
-"context_files": [
-"project-charter.md",
-"active-context.md"
-]
-}
+## **此协议是强制性的，不可省略任何步骤。**
+
+## 📚 权威文件体系
+
+### 文件一：宪法（稳定权威）
+
+**路径**：`C:\codeCS\image-editor\.spec\project-charter.md`
+**性质**：根本大法，长期稳定，定义核心价值与原则
+**更新频率**：低频（仅当根本原则变化时）
+**典型内容**：
+
+- 项目愿景与核心价值观
+- 架构根本原则（如模块化、性能标准）
+- 质量红线与安全底线
+- 团队协作根本规则
+
+### 文件二：动态上下文（即时状态）
+
+**路径**：`C:\codeCS\image-editor\.spec\active-context.md`
+**性质**：项目“工作记忆”，记录当前状态、近期决策和临时约束
+**更新频率**：高频（每日或每周更新）
+**典型内容**：
+
+- 当前冲刺/迭代的重点目标
+- 最近的技术决策与原因（如“选择 Library A 而非 B 因为...”）
+- 已知待解决的问题与技术债务
+- 团队临时的协作约定
+- 外部依赖的当前状态
+
+## ⚖️ 双文件协同决策机制
+
+### 决策矩阵：如何结合两个文件
+
+| 问题类型       | 宪法权重 | 上下文权重 | 处理逻辑                           |
+| :------------- | :------: | :--------: | :--------------------------------- |
+| **架构级决策** |   70%    |    30%     | 以宪法原则为主，参考当前技术栈限制 |
+| **实现细节**   |   40%    |    60%     | 优先遵循近期团队约定和现有模式     |
+| **冲突解决**   |   60%    |    40%     | 宪法定义方向，上下文提供具体路径   |
+| **创新探索**   |   50%    |    50%     | 平衡根本原则与现实可行性           |
+
+### 引用格式示例
+
+在回答中你必须使用以下引用格式：
+
+```markdown
+**【宪法依据】**
+根据《project-charter.md》第 3 章第 2 条“性能优先原则”...
+
+**【上下文适配】**
+结合《active-context.md》中“当前优化重点：首屏加载时间”的记载...
+
+**【综合建议】**
+因此，建议采用方案 A，因为它在保证性能（宪法要求）的同时，符合当前迭代重点（上下文约束）。
+```

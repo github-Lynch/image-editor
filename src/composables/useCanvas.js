@@ -479,9 +479,19 @@ export function useCanvas() {
 
   const addText = (textStr = "双击编辑") => {
     if (!canvas.value) return;
-    const text = new fabric.IText(textStr, {
-      left: 100, top: 100, fontSize: 40, fill: "#333",
-      // customTab: 'text' 
+    const text = new fabric.Textbox(textStr, {
+      left: 100, 
+      top: 100, 
+      width: 300, // ✅ 统一使用 Textbox 并设置默认宽度
+      fontSize: 40, 
+      fill: "#333",
+      customTab: 'text',
+      fontFamily: 'Arial',
+      transparentCorners: false,
+      cornerColor: '#ffffff',
+      cornerStrokeColor: '#1890ff',
+      borderColor: '#1890ff',
+      cornerSize: 10
     });
     canvas.value.add(text);
     canvas.value.setActiveObject(text);
