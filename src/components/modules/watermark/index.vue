@@ -188,6 +188,23 @@
         >
       </div>
     </div>
+
+    <div v-if="wmState.hasWatermark" class="mt-20">
+      <div class="divider"></div>
+      <button class="ie-btn ie-primary full-width" @click="handleSaveClick">
+        保存
+      </button>
+    </div>
+
+    <Modal 
+      v-model="showSaveModal"
+      title="保存?"
+      content="确定要将水印合并到底图吗？合并后水印将不可再独立编辑。"
+      confirm-text="确认"
+      @confirm="confirmSave"
+      @discard="showSaveModal = false"
+      @cancel="showSaveModal = false"
+    />
   </div>
 </template>
 
@@ -195,8 +212,10 @@
   import { ref, inject, onMounted } from 'vue';
   import {
     registerWatermarkModule, addWatermark, replaceWatermark,
-    updateWatermarkParams, toggleTilingMode, wmState
+    updateWatermarkParams, toggleTilingMode, wmState,
+    saveWatermark
   } from './useCanvasWatermark';
+  import Modal from '@/components/common/Modal.vue';
 
   const canvasAPI = inject('canvasAPI');
   const fileInput = ref(null);
@@ -222,6 +241,17 @@
 
   const handleToggleTiling = () => toggleTilingMode();
   const updateParam = (key, value) => updateWatermarkParams(key, value);
+
+  // ✨ 保存相关逻辑
+  const showSaveModal = ref(false); // 控制弹窗
+  const handleSaveClick = () => {
+    showSaveModal.value = true;
+  };
+
+  const confirmSave = async () => {
+    showSaveModal.value = false;
+    await saveWatermark();
+  };
 </script>
 
 <style scoped>
@@ -372,5 +402,9 @@
 
   .w-full {
     width: 100%;
+  }
+
+  .mt-20 {
+    margin-top: 20px;
   }
 </style>

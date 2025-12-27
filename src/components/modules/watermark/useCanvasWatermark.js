@@ -19,7 +19,10 @@ const DEFAULT_CONFIG = {
   // UI 状态
   isSelected: false,
   currentSrc: '',
-  isTiled: false
+  isTiled: false,
+
+  // ✨ 新增：是否存在水印 (用于控制保存按钮显示)
+  hasWatermark: false
 };
 
 export const wmState = reactive({ ...DEFAULT_CONFIG });
@@ -47,6 +50,15 @@ export const registerWatermarkModule = (canvas, saveHistory) => {
         }
       }
     });
+
+    // ✨ 监听对象增删，实时更新 hasWatermark 状态
+    const checkWatermark = () => {
+      wmState.hasWatermark = c.getObjects().some(o => o.isWatermark);
+    };
+    c.on('object:added', checkWatermark);
+    c.on('object:removed', checkWatermark);
+    // 初始化检查一次
+    checkWatermark();
   }
 };
 
@@ -203,8 +215,6 @@ const generateTiledWatermark = (sourceObj) => {
     canvas.add(tiledGroup);
     canvas.setActiveObject(tiledGroup);
     canvas.requestRenderAll();
-    saveHistoryFn && saveHistoryFn();
-
   }, { crossOrigin: 'anonymous' });
 };
 
@@ -246,7 +256,6 @@ const restoreSingleWatermark = (groupObj) => {
     canvas.add(img);
     canvas.setActiveObject(img);
     canvas.requestRenderAll();
-    saveHistoryFn && saveHistoryFn();
   }, { crossOrigin: 'anonymous' });
 };
 
@@ -273,7 +282,6 @@ export const addWatermark = (url) => {
 
     canvas.add(img);
     canvas.setActiveObject(img);
-    saveHistoryFn && saveHistoryFn();
     canvas.requestRenderAll();
   }, { crossOrigin: 'anonymous' });
 };
@@ -294,7 +302,6 @@ export const replaceWatermark = (url) => {
       if (activeObj._wmConfig) activeObj._wmConfig.src = url;
       wmState.currentSrc = url;
       canvas.requestRenderAll();
-      saveHistoryFn && saveHistoryFn();
     }, { crossOrigin: 'anonymous' });
   }
 };
@@ -397,4 +404,107 @@ const resetUI = () => {
   wmState.isSelected = false;
   wmState.currentSrc = '';
   isInternalUpdate = false;
+};
+
+// === ✨ 新增：清空水印 (用于“不保存”退出) ===
+export const clearWatermarks = () => {
+    const canvas = unref(canvasRef);
+    if (!canvas) return;
+
+    const watermarks = canvas.getObjects().filter(o => o.isWatermark);
+    if (watermarks.length > 0) {
+        canvas.remove(...watermarks);
+        canvas.requestRenderAll();
+        // 更新状态
+        wmState.hasWatermark = false;
+        wmState.isSelected = false;
+        wmState.currentSrc = '';
+    }
+};
+
+// === ✨ 核心新增：合并保存水印 ===
+export const saveWatermark = () => {
+  return new Promise((resolve) => {
+    const canvas = unref(canvasRef);
+    if (!canvas) return resolve();
+
+    // 1. 寻找底图
+    const mainImage = canvas.getObjects().find(o => o.isMainImage) ||
+      canvas.getObjects().find(o => o.type === 'image' && !o.isWatermark);
+
+    if (!mainImage) return resolve(); // 没有底图无法合并
+
+    // 2. 准备场景：隐藏不需要合并的对象 (保留 MainImage 和 Watermark)
+    const otherObjects = canvas.getObjects().filter(o =>
+      o !== mainImage && !o.isWatermark && o.visible
+    );
+    otherObjects.forEach(o => o.visible = false);
+
+    // 3. 锁定视口：为了准确裁切，先归一化视口
+    const prevVpt = [...canvas.viewportTransform];
+    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
+    canvas.renderAll(); // 强制重绘一帧以应用显隐
+
+    // 4. 计算导出区域 (基于底图的物理位置)
+    // 获取底图在 canvas 坐标系下的包围盒
+    const mainRect = mainImage.getBoundingRect();
+
+    // 计算高清倍率: 我们希望结果接近原图尺寸，而不是屏幕显示尺寸
+    // 假设原图宽度 3000，屏幕显示 500，multiplier 应为 6
+    // mainImage.width 是原图尺寸，mainRect.width 是屏幕显示尺寸
+    // 注意：如果底图被旋转了，getBoundingRect 会变大，这里简单处理：
+    // 优先保证导出清晰度，使用 width / getScaledWidth 估算
+    // 为了稳妥，我们设定一个较高的 multiplier
+    const multiplier = Math.max(2, mainImage.width / mainImage.getScaledWidth());
+
+    // 5. 导出合成图
+    const dataURL = canvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: multiplier,
+      left: mainRect.left,
+      top: mainRect.top,
+      width: mainRect.width,
+      height: mainRect.height
+    });
+
+    // 6. 恢复现场 (先恢复对象可见性，避免视觉闪烁过久)
+    otherObjects.forEach(o => o.visible = true);
+    canvas.setViewportTransform(prevVpt);
+
+    // 7. 加载合成图并替换
+    fabric.Image.fromURL(dataURL, (newImg) => {
+      // 设置新图属性以匹配原位置
+      newImg.set({
+        left: mainImage.left, // 使用原图的逻辑坐标
+        top: mainImage.top,
+        originX: mainImage.originX,
+        originY: mainImage.originY,
+        // 由于我们是按 bounding rect 导出的，如果原图有旋转，
+        // 导出的图其实是正放的矩形(包含旋转后的内容)。
+        // 所以新图应该是 angle: 0
+        angle: 0,
+        scaleX: mainRect.width / newImg.width, // 视觉尺寸匹配
+        scaleY: mainRect.height / newImg.height,
+        isMainImage: true,
+        id: 'main-image'
+      });
+
+      // 移除旧底图和所有水印
+      const watermarks = canvas.getObjects().filter(o => o.isWatermark);
+      canvas.remove(mainImage, ...watermarks);
+
+      // 添加新底图并置底 (但在其他保留对象之下)
+      // 简单的做法是 sendToBack，或者插入到 index 0
+      canvas.insertAt(newImg, 0, true);
+
+      // 8. 状态清理
+      wmState.isSelected = false;
+      wmState.hasWatermark = false; // 强制更新状态
+
+      canvas.requestRenderAll();
+      saveHistoryFn && saveHistoryFn();
+      resolve();
+    });
+  });
 };
