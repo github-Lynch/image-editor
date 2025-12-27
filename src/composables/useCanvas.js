@@ -163,7 +163,10 @@ export function useCanvas() {
     const width = canvas.value.width;
     const height = canvas.value.height;
     let targetZoom = Math.min(width / rect.width, height / rect.height) * ZOOM_PADDING;
+    // 裁剪场景需要“精确 100%”时，允许调用方传入 minZoomLimit 控制；
+    // 同时对浮点误差做一次归一化，避免出现 0.99/1.01 这种 UI 百分比跳动。
     targetZoom = Math.max(minZoomLimit, Math.min(targetZoom, 50));
+    targetZoom = Number(targetZoom.toFixed(6));
     const rectCenterX = rect.left + rect.width / 2;
     const rectCenterY = rect.top + rect.height / 2;
     const panX = (width / 2) - (rectCenterX * targetZoom);
@@ -346,7 +349,11 @@ export function useCanvas() {
         e.stopPropagation();
         const delta = e.deltaY;
         let newZoom = c.getZoom();
-        newZoom *= 0.999 ** delta;
+        // 修复：避免 deltaY 为 -1 时出现 0.999 倍缩放，导致从 100% 变成 99% 的“轻微跳变”
+        // 通过对 wheel 的 delta 做整数化/阈值过滤，消除触控板/高精度滚轮产生的微小 delta
+        const normalizedDelta = Math.trunc(delta);
+        if (normalizedDelta === 0) return;
+        newZoom *= 0.999 ** normalizedDelta;
         if (newZoom > 50) newZoom = 50;
         if (newZoom < 0.1) newZoom = 0.1;
         c.zoomToPoint({ x: e.offsetX, y: e.offsetY }, newZoom);

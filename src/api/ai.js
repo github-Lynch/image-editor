@@ -2,7 +2,6 @@
 
 // 默认地址 (作为兜底，防止调用时传空)
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11111';
-const DEFAULT_BASE_URL = 'http://localhost:3000/ai';
 const API_BASE_URL = 'http://10.93.83.151:8080'; // 张
 
 export const aiApi = {
@@ -17,7 +16,7 @@ export const aiApi = {
    * @returns {Promise<string>} - 返回可用于 img/src 的 URL（优先返回 blobURL；若后端直接返回 dataURL，则原样返回）
    */
   async removeBackground(imagePath, baseUrl = DEFAULT_BASE_URL) {
-    
+
     // 拼接完整的 URL，移除末尾可能多余的斜杠
     const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
 
@@ -29,7 +28,7 @@ export const aiApi = {
       },
       // body: JSON.stringify({ image_path: imagePath })
       body: JSON.stringify({ "image_path": "C:/codeCS/image-editor/src/assets/image/02.jpg" })
-      
+
     });
 
     if (!response.ok) {
@@ -65,32 +64,6 @@ export const aiApi = {
     return result;
   },
 
-  /**
-   * 图像修复 (Inpaint)
-   * @param {Blob} imageBlob
-   * @param {Blob} maskBlob
-   * @param {string} [baseUrl]
-   * @returns {Promise<string>} - Blob URL
-   */
-  async inpaint(imageBlob, maskBlob, baseUrl = DEFAULT_BASE_URL) {
-    const formData = new FormData();
-    formData.append('image', imageBlob);
-    formData.append('mask', maskBlob);
-
-    const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
-
-    const response = await fetch(`${cleanBaseUrl}/inpaint`, {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`请求失败: ${response.status} ${response.statusText}`);
-    }
-
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  },
 
   /**
    * 图像修复 (Inpaint) - Mock
@@ -111,39 +84,7 @@ export const aiApi = {
       }, 2000);
     });
   },
-  
-  /**
-   * 图片翻译
-   * @param {File} file - 图片文件
-   * @param {object<sourceLanguage: string, targetLanguage: string>} languageParams - 语言参数
-   * @returns {Promise<string>} 处理后的图片 URL
-   */
-  async imageTranslate(file, languageParams = {}) {
-    const apiUrl = `${API_BASE_URL}/xinzhan-ai/alimt/image/translate`;
-    const formData = new FormData();
-    formData.append('image', file);
-    for (const key in languageParams) {
-      formData.append(key, languageParams[key]);
-    }
 
-    try {
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData,
-        // fetch 自动处理 multipart/form-data 的 Content-Type，无需手动设置
-      });
-
-      if (!response.ok) {
-        throw new Error(`请求失败: ${response.status} ${response.statusText}`);
-      }
-
-      const blob = await response.blob();
-      return URL.createObjectURL(blob);
-    } catch (error) {
-      console.error('AI API Error:', error);
-      throw error;
-    }
-  },
 
   /**
     * AI 智能消除接口
@@ -163,7 +104,7 @@ export const aiApi = {
       }, 2000);
     });
   },
-  
+
   /**
    * 图片翻译
    * @param {File} file - 图片文件

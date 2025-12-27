@@ -288,6 +288,7 @@
                     }
                   "
                   @confirm="closePicker('rulerLine')"
+                  @close="closePicker('rulerLine')"
                 />
               </div>
             </transition>
@@ -389,6 +390,7 @@
                     }
                   "
                   @confirm="closePicker('rulerText')"
+                  @close="closePicker('rulerText')"
                 />
               </div>
             </transition>

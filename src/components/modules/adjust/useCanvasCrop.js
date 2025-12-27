@@ -394,7 +394,7 @@ export const setCropRatio = (ratio) => {
     });
     cropObject.value.setCoords();
     constrainCrop(cropObject.value);
-    zoomToCropArea(cropObject.value);
+    focusCropArea(cropObject.value);
     canvas.requestRenderAll();
   } else {
     startCrop(ratio, { left, top, width: newW, height: newH });
@@ -408,7 +408,6 @@ export const setCropRatio = (ratio) => {
 const zoomToCropArea = (obj) => {
   if (!obj || !canvasRef?.value || !zoomToRectFn) return;
 
-  // 获取裁剪框的逻辑几何信息
   const rect = {
     left: obj.left,
     top: obj.top,
@@ -416,9 +415,53 @@ const zoomToCropArea = (obj) => {
     height: obj.getScaledHeight()
   };
 
-  // 调用全局注册的视口调整函数
-  // 该函数应包含计算 Z_target 并居中的逻辑 [宪法 0.7]
   zoomToRectFn(rect);
+};
+
+/**
+ * ✅ 只平移不缩放：把当前视口中心移动到裁剪框中心。
+ * 目的：在选择固定裁剪模板/比例时，不要因为“适配计算”导致 zoom 从 100% 变成 99%。
+ * 兜底：如果裁剪框在当前视口下明显放不下，再调用 zoomToCropArea 做适配。
+ */
+const focusCropArea = (obj) => {
+  const canvas = canvasRef?.value;
+  if (!obj || !canvas) return;
+
+  const zoom = canvas.getZoom();
+  const vt = canvas.viewportTransform;
+  if (!vt) return;
+
+  const canvasW = canvas.getWidth();
+  const canvasH = canvas.getHeight();
+
+  const rectLeft = obj.left;
+  const rectTop = obj.top;
+  const rectW = obj.getScaledWidth();
+  const rectH = obj.getScaledHeight();
+  const rectCenterX = rectLeft + rectW / 2;
+  const rectCenterY = rectTop + rectH / 2;
+
+  // 当前视口中心对应的世界坐标
+  const viewCenterX = (canvasW / 2 - vt[4]) / zoom;
+  const viewCenterY = (canvasH / 2 - vt[5]) / zoom;
+
+  const dx = rectCenterX - viewCenterX;
+  const dy = rectCenterY - viewCenterY;
+
+  // 只更新平移，不改缩放
+  vt[4] -= dx * zoom;
+  vt[5] -= dy * zoom;
+  canvas.setViewportTransform(vt);
+
+  // 兜底：如果裁剪框太大，当前 zoom 下放不下，则执行适配缩放
+  const margin = 24; // px
+  const visibleW = (canvasW - margin * 2) / zoom;
+  const visibleH = (canvasH - margin * 2) / zoom;
+  if (rectW > visibleW || rectH > visibleH) {
+    zoomToCropArea(obj);
+  }
+
+  canvas.requestRenderAll();
 };
 
 // =========================================================
@@ -474,8 +517,12 @@ export const startCrop = (aspectRatio = null, customBox = null) => {
   updateCurrentDims(cropZone);
   constrainCrop(cropZone);
 
-  // ✨✨✨ 核心变更：裁剪框确定后，立即调整相机视距 [宪法 0.0] ✨✨✨
-  zoomToCropArea(cropZone);
+  // ✅ 裁剪框确定后，优先“只平移不缩放”到裁剪框中心，避免 zoom 从 100% 变成 99%
+  // 只有当裁剪框明显超出当前视口时，才触发 zoomToRect 做适配。
+  focusCropArea(cropZone);
+
+  // 如需强制适配（会改变 zoom），再启用：
+  // zoomToCropArea(cropZone);
 
   canvas.on('mouse:down', onCropMouseDown);
   canvas.on('mouse:move', onCropMouseMove);
@@ -538,22 +585,29 @@ export const confirmCrop = async () => {
   bgImage.setSrc(croppedDataUrl, () => {
     cancelCrop(false);
 
-    // ✨✨✨ 物理重置与视口重置强制同步 [宪法 0.0] ✨✨✨
-    // 确保图片放置在画布中心，且视口完全回归 1:1
+    // ✨✨✨ 视觉平滑过渡 [宪法 0.0] ✨✨✨
+    // 逻辑：裁剪后，新的、更小的图片应该在视觉上“填满”原先裁剪框所在的位置。
+    const newWidth = bgImage.width;
+    const newHeight = bgImage.height;
+
+    // 1. 将新图片放置在原裁剪框的左上角
     bgImage.set({
-      originX: "center",
-      originY: "center",
-      left: canvas.width / 2,
-      top: canvas.height / 2,
-      scaleX: 1,
-      scaleY: 1,
+      left: cropRect.left,
+      top: cropRect.top,
       angle: 0,
       flipX: false,
       flipY: false,
     });
-
     bgImage.setCoords();
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]); // 强制归一化
+
+    // 2. 计算新的缩放值，以维持裁剪框的视觉尺寸不变
+    const currentZoom = canvas.getZoom();
+    const visualCropWidth = cropRect.getScaledWidth() * currentZoom;
+    const newZoom = visualCropWidth / newWidth;
+
+    // 3. 将视口缩放到新图片的中心点
+    const newCenter = bgImage.getCenterPoint();
+    canvas.zoomToPoint(new fabric.Point(newCenter.x, newCenter.y), newZoom);
 
     isApplyingCrop = false;
     isCropping.value = false;
@@ -609,7 +663,6 @@ export const flipActive = (axis) => {
   }
   return false;
 };
-
 export {
   cropObject,
   isManualCropping,

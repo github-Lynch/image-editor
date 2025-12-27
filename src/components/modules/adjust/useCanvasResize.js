@@ -191,8 +191,8 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
   canvas.bringToFront(rect);
 
   if (!isStretch) {
-    // 【核心升级】初始约束：确保图片不留白（使用通用硬约束）
-    constrainObjectToRect(bgImage, rect, canvas);
+    // 进入尺寸模块时不要主动“推一下”图片位置：只显示预览框，保持现场不动。
+    // 约束留到用户开始拖拽/或应用时再处理。
 
     // 绑定拖拽事件
     canvas.on('mouse:down', onPreviewMouseDown);

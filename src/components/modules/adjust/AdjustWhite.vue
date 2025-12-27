@@ -65,16 +65,20 @@
                 </div>
 
                 <div class="bg-color-section">
-                    <div class="section-label">背景颜色</div>
                     <div class="flex-row">
-                        <input type="color" :value="currentBgColor" @input="onCustomColorChange" />
-                        <button class="ie-btn-reset" title="设为透明" @click="setBgColor('transparent')">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                                <path d="M3 3v5h5" />
-                            </svg>
-                        </button>
+                        <span>背景颜色</span>
+                        <div class="color-picker-container">
+                            <div class="ie-color-trigger" :class="{ checkerboard: currentBgColor === 'transparent' }"
+                                :style="{ backgroundColor: currentBgColor === 'transparent' ? 'transparent' : currentBgColor }"
+                                @click.stop="togglePicker('whiteBg')"></div>
+                            <transition name="fade">
+                                <div v-if="activePicker === 'whiteBg'" class="absolute-popover">
+                                    <IeColorPicker :modelValue="currentBgColor" :allowTransparent="true"
+                                        @update:modelValue="(val) => setBgColor(val)" @confirm="closePicker('whiteBg')"
+                                        @close="closePicker('whiteBg')" />
+                                </div>
+                            </transition>
+                        </div>
                     </div>
                 </div>
 
@@ -91,6 +95,7 @@
 
 <script setup>
 import { ref, inject, watch, onMounted, onUnmounted, nextTick, computed } from 'vue';
+import IeColorPicker from '@/components/common/IeColorPicker.vue';
 // 引入修改后的 useCanvasWhite
 import { registerWhiteModule, getCurrentSize, applyWhitePadding, startPreview, updatePreview, stopPreview, zoomToPreview } from './useCanvasWhite';
 
@@ -111,8 +116,14 @@ const isInternalUpdate = ref(false);
 
 // 背景颜色状态
 const currentBgColor = ref('#ffffff'); // 默认白色
-const customColorVal = ref('#ff0000');
-const isCustomColor = computed(() => !['transparent', '#ffffff', '#808080', '#000000'].includes(currentBgColor.value));
+// === 颜色选择器（统一使用 IeColorPicker，行为与标尺一致）===
+const activePicker = ref(null);
+const togglePicker = (type) => {
+    activePicker.value = activePicker.value === type ? null : type;
+};
+const closePicker = (type) => {
+    if (activePicker.value === type) activePicker.value = null;
+};
 
 
 // 预设数据
@@ -194,13 +205,9 @@ const setBgColor = (color) => {
     updatePreviewBox();
 };
 
-const onCustomColorChange = (e) => {
-    currentBgColor.value = e.target.value;
-    updatePreviewBox();
-};
 
 // 监听输入
-watch([width, height], ([newW, newH]) => {
+watch([width, height], () => {
     if (isInternalUpdate.value) return;
     // 如果开启了锁定比例 (输入W自动算H)
     if (isAdaptive.value) {
@@ -401,6 +408,31 @@ onUnmounted(() => stopPreview());
 .section-label {
     color: #606266;
     margin-bottom: 8px;
+}
+
+/* 与标尺保持一致的颜色触发器样式 */
+.color-picker-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.ie-color-trigger {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    border: 1px solid #dcdfe6;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    background-color: #fff;
+}
+
+.absolute-popover {
+    position: absolute;
+    top: 32px;
+    right: 0;
+    z-index: 1000;
 }
 
 .color-row {

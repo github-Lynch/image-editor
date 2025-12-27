@@ -2,8 +2,8 @@ name: 双上下文治理框架
 description: |
 本项目的决策必须同时基于：
 
-1. 宪法文件：C:\codeCS\image-editor\.spec\project-charter.md（根本法）
-2. 动态上下文：C:\codeCS\image-editor\.spec\active-context.md（近期决策与状态）
+1. 宪法文件：.spec/project-charter.md（根本法）
+2. 动态上下文：.spec/active-context.md（近期决策与状态）
    两者结合形成完整的项目认知体系。
    globs: ["**/*"]
    priority: 0
@@ -15,8 +15,8 @@ description: |
 
 **第一阶段：文件读取**
 
-1. **读取宪法**：立即访问 `C:\codeCS\image-editor\.spec\project-charter.md`
-2. **读取上下文**：立即访问 `C:\codeCS\image-editor\.spec\active-context.md`
+1. **读取宪法**：立即访问 `.spec/project-charter.md`
+2. **读取上下文**：立即访问 `.spec/active-context.md`
 3. **对比分析**：识别两个文件中的一致点与潜在张力
 
 **第二阶段：决策生成** 4. **宪法锚定**：从宪法中提取 3 条最相关的根本原则 5. **上下文适配**：从 active-context 中了解当前项目阶段、技术约束和近期决策 6. **综合裁决**：生成既符合宪法根本原则，又适配当前项目状态的建议
@@ -29,7 +29,7 @@ description: |
 
 ### 文件一：宪法（稳定权威）
 
-**路径**：`C:\codeCS\image-editor\.spec\project-charter.md`
+**路径**：`.spec/project-charter.md`
 **性质**：根本大法，长期稳定，定义核心价值与原则
 **更新频率**：低频（仅当根本原则变化时）
 **典型内容**：
@@ -41,7 +41,7 @@ description: |
 
 ### 文件二：动态上下文（即时状态）
 
-**路径**：`C:\codeCS\image-editor\.spec\active-context.md`
+**路径**：`.spec/active-context.md`
 **性质**：项目“工作记忆”，记录当前状态、近期决策和临时约束
 **更新频率**：高频（每日或每周更新）
 **典型内容**：

@@ -1,35 +1,15 @@
 <template>
   <div class="tool-group">
-    <div
-      class="tool-item"
-      :class="{ 'is-expanded': isExpanded }"
-      @click="$emit('toggle')"
-    >
+    <div class="tool-item" :class="{ 'is-expanded': isExpanded }" @click="emit('toggle')">
       <div class="left">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <path
-            d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3-4-3-4-1 2.4-3 4-3 3.5-3 5.5a7 7 0 0 0 7 7Z"
-          />
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3-4-3-4-1 2.4-3 4-3 3.5-3 5.5a7 7 0 0 0 7 7Z" />
         </svg>
         <span>颜色叠加</span>
       </div>
       <div class="right-icon">
-        <svg
-          class="arrow"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
+        <svg class="arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
           <path d="m9 18 6-6-6-6" />
         </svg>
       </div>
@@ -38,57 +18,24 @@
     <div v-if="isExpanded" class="tool-content">
       <div class="section-label">选择颜色</div>
       <div class="color-presets">
-        <!-- 自定义颜色：使用公用 IeColorPicker -->
-        <div
-          class="preset-item color-picker-wrapper"
-          :class="{ active: isCustomActive }"
-        >
-          <div
-            class="rainbow-gradient"
-            @click.stop="togglePicker('overlayColor')"
-          ></div>
+        <!-- 自定义颜色：结构与 AdjustWhite 对齐 -->
+        <div class="color-picker-container">
+          <div class="preset-item color-picker-trigger" :class="{ active: isCustomActive }"
+            @click.stop="togglePicker('overlayColor')">
+            <div class="rainbow-gradient"></div>
+          </div>
           <transition name="fade">
-            <div
-              v-if="activePicker === 'overlayColor'"
-              class="absolute-popover"
-            >
-              <IeColorPicker
-                :modelValue="customColor"
-                :allowTransparent="true"
-                @update:modelValue="
-                  (val) => {
-                    customColor.value = val;
-                    selectedColor.value = val;
-                    updateOverlay();
-                  }
-                "
-                @confirm="closePicker('overlayColor')"
-                @clear="
-                  () => {
-                    selectedColor.value = null;
-                    updateOverlay();
-                    closePicker('overlayColor');
-                  }
-                "
-              />
+            <div v-if="activePicker === 'overlayColor'" class="absolute-popover">
+              <IeColorPicker :modelValue="customColor" :allowTransparent="true" @update:modelValue="onCustomColorPicked"
+                @confirm="closePicker('overlayColor')" @close="closePicker('overlayColor')" @clear="handleClearColor" />
             </div>
           </transition>
         </div>
 
-        <div
-          v-for="color in presets"
-          :key="color"
-          class="preset-item"
-          :style="{ background: color }"
-          :class="{ active: selectedColor === color }"
-          @click="selectColor(color)"
-        ></div>
+        <div v-for="color in presets" :key="color" class="preset-item" :style="{ background: color }"
+          :class="{ active: selectedColor === color }" @click="selectColor(color)"></div>
 
-        <div
-          class="preset-item clear-item"
-          :class="{ active: selectedColor === null }"
-          @click="selectColor(null)"
-        >
+        <div class="preset-item clear-item" :class="{ active: selectedColor === null }" @click="selectColor(null)">
           <div class="slash-line"></div>
         </div>
       </div>
@@ -96,22 +43,10 @@
       <div class="intensity-section">
         <div class="label-row">
           <span>叠加强度</span>
-          <input
-            type="number"
-            v-model.number="intensity"
-            class="ie-input-number"
-            @input="updateOverlay"
-          />
+          <input type="number" v-model.number="intensity" class="ie-input-number" @input="updateOverlay" />
         </div>
-        <input
-          type="range"
-          v-model.number="intensity"
-          min="0"
-          max="100"
-          class="ie-slider"
-          v-ie-slider-progress
-          @input="updateOverlay"
-        />
+        <input type="range" v-model.number="intensity" min="0" max="100" class="ie-slider" v-ie-slider-progress
+          @input="updateOverlay" />
       </div>
 
       <div class="action-buttons">
@@ -169,6 +104,18 @@ const updateOverlay = () => {
   applyColorOverlay(selectedColor.value, intensity.value);
 };
 
+const onCustomColorPicked = (val) => {
+  customColor.value = val;
+  selectedColor.value = val;
+  updateOverlay();
+};
+
+const handleClearColor = () => {
+  selectedColor.value = null;
+  updateOverlay();
+  closePicker('overlayColor');
+};
+
 const handleConfirm = () => {
   commitColorOverlay();
   emit("toggle");
@@ -216,8 +163,8 @@ onMounted(() => {
 }
 
 .preset-item {
-  width: 36px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border-radius: 4px;
   border: 1px solid #ddd;
   cursor: pointer;
@@ -233,20 +180,22 @@ onMounted(() => {
 .rainbow-gradient {
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    to right,
-    red,
-    yellow,
-    lime,
-    cyan,
-    blue,
-    magenta,
-    red
-  );
+  background: linear-gradient(to right,
+      red,
+      yellow,
+      lime,
+      cyan,
+      blue,
+      magenta,
+      red);
 }
 
-.color-picker-wrapper {
+.color-picker-container {
   position: relative;
+}
+
+.color-picker-trigger {
+  padding: 0;
 }
 
 .clear-item {
@@ -286,10 +235,9 @@ onMounted(() => {
   flex: 1;
 }
 
-/* 复用文本模块的弹层定位样式 */
 .absolute-popover {
   position: absolute;
-  top: 24px;
+  top: 32px;
   left: 0;
   z-index: 1000;
 }
