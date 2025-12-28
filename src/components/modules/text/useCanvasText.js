@@ -9,7 +9,7 @@ const textState = ref({
     isActive: false,
     fontFamily: 'Arial',
     fontSize: 40,
-    fill: '#333333',
+    fill: '#ffffff',
     textAlign: 'left',
     fontWeight: 'normal',
     fontStyle: 'normal',
@@ -20,9 +20,9 @@ const textState = ref({
     lineHeight: 1.16,
     angle: 0,
     textBackgroundColor: '',
-    stroke: '#000000',
+    stroke: '#ffffff',
     strokeWidth: 0,
-    shadowColor: '#000000',
+    shadowColor: '#ffffff',
     shadowBlur: 0,
     shadowOffsetX: 0,
     shadowOffsetY: 0
@@ -73,7 +73,10 @@ export function useCanvasText() {
                 baseFontSize: obj.fontSize || 40,
                 baseWidth: obj.width || 0,
                 baseScaleX: obj.scaleX || 1,
-                baseScaleY: obj.scaleY || 1
+                baseScaleY: obj.scaleY || 1,
+                // --- 新增：缓存初始中心点 --- 
+                baseLeft: obj.left,
+                baseTop: obj.top
             };
         }
 
@@ -99,6 +102,14 @@ export function useCanvasText() {
 
         // 3) 归一缩放
         obj.set({ scaleX: 1, scaleY: 1 });
+
+        // --- 新增：强制校正中心点，抵消 originX/Y: 'center' 带来的位移 ---
+        if (scalingCache) {
+            obj.set({
+                left: scalingCache.baseLeft,
+                top: scalingCache.baseTop
+            });
+        }
 
         obj.setCoords();
         c.requestRenderAll();
@@ -146,10 +157,29 @@ export function useCanvasText() {
         const c = unref(canvasRef);
         if (!c) return;
 
+        // --- 新增：计算默认位置 --- 
+        let centerX, centerY;
+        const mainImage = c.getObjects().find(obj => obj.isMainImage);
+
+        if (mainImage) {
+            // 方案A：主图中心
+            centerX = mainImage.left + (mainImage.width * mainImage.scaleX) / 2;
+            centerY = mainImage.top + (mainImage.height * mainImage.scaleY) / 2;
+        } else {
+            // 方案B：画布视口中心 (Fallback)
+            const center = c.getCenter();
+            centerX = center.left;
+            centerY = center.top;
+        }
+
         // ✅ 使用 textState 作为“默认样式”来源
         const textObj = new fabric.Textbox(textStr, {
-            left: 100,
-            top: 100,
+            // left: 100, // 已删除
+            // top: 100, // 已删除
+            left: centerX, // 新增
+            top: centerY, // 新增
+            originX: 'center', // 新增
+            originY: 'center', // 新增
             width: 300,
 
             fontFamily: textState.value.fontFamily,
@@ -210,7 +240,7 @@ export function useCanvasText() {
         if (['shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY'].includes(key)) {
             const currentShadow = activeObj.shadow
                 ? { ...activeObj.shadow }
-                : { color: '#000000', blur: 0, offsetX: 0, offsetY: 0 };
+                : { color: '#ffffff', blur: 0, offsetX: 0, offsetY: 0 };
             const shadowMap = {
                 shadowColor: 'color',
                 shadowBlur: 'blur',

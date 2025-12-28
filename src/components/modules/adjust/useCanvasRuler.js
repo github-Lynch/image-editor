@@ -84,11 +84,45 @@ export const registerRulerModule = (canvas, saveHistory) => {
 
     const c = unref(canvas);
     if (c) {
+        // 先清理旧事件，避免重复绑定
         c.off('selection:created', onSelectionChanged);
         c.off('selection:updated', onSelectionChanged);
+        c.off('object:scaling', onRulerScaling);
+        c.off('object:modified', onRulerModified);
+
+        // 重新绑定
         c.on('selection:created', onSelectionChanged);
         c.on('selection:updated', onSelectionChanged);
+        c.on('object:scaling', onRulerScaling);
+        c.on('object:modified', onRulerModified);
     }
+};
+
+// --- 新增：标尺防变形修复 ---
+/**
+ * 阶段一：实时防变形 (拖动时)
+ * 原理：应用一个反向的 scaleX 给内部的 text 对象，抵消 Group 拉伸带来的变形
+ */
+const onRulerScaling = (e) => {
+    const group = e.target;
+    if (!group || !group.isRuler) return;
+
+    const textObj = group.getObjects()[3];
+    if (textObj && group.scaleX) {
+        textObj.set('scaleX', 1 / group.scaleX);
+    }
+};
+
+/**
+ * 阶段二：固化变换 (松手后)
+ * 原理：调用 recreate 函数，用一个无缩放的新对象替换被拉伸的旧对象
+ */
+const onRulerModified = (e) => {
+    const group = e.target;
+    if (!group || !group.isRuler) return;
+
+    // 使用现有函数重建标尺，将变换“烘焙”进去，并将 scaleX 恢复为 1
+    recreateActiveRuler(group);
 };
 
 const createCap = (type, color, strokeWidth) => {
