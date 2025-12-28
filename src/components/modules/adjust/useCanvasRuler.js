@@ -57,14 +57,14 @@ const getRulerDisplayText = (cfg) => {
     if (cfg.isManualText) return cfg.customText;
 
     const primaryText = `${cfg.value}${cfg.unit}`;
-    
+
     // 逻辑：如果开启双单位且主单位不是英寸，执行转换 [宪法 0.0]
     if (cfg.showSecondaryUnit && cfg.unit !== 'inch') {
         const factor = TO_INCH_FACTORS[cfg.unit] || 1;
         const inchVal = (cfg.value * factor).toFixed(2);
         return `${primaryText} / ${inchVal}inch`;
     }
-    
+
     return primaryText;
 };
 
@@ -156,7 +156,7 @@ const createCap = (type, color, strokeWidth) => {
 const createRulerObject = (start, end) => {
     const canvas = unref(canvasRef);
     const cfg = rulerConfig.value;
-    
+
     const dx = end.x - start.x;
     const dy = end.y - start.y;
     const length = Math.sqrt(dx * dx + dy * dy);
@@ -175,7 +175,7 @@ const createRulerObject = (start, end) => {
     const endCap = createCap(cfg.capStyle, cfg.color, cfg.strokeWidth);
     startCap.set({ left: -halfLen, top: 0 });
     endCap.set({ left: halfLen, top: 0 });
-    
+
     const updateCapRotation = (cap, isStart) => {
         if (cfg.capStyle.includes('arrow')) {
             let rot = 90;
@@ -194,7 +194,7 @@ const createRulerObject = (start, end) => {
         fontSize: cfg.fontSize, fill: cfg.textColor, fontFamily: cfg.fontFamily,
         originX: 'center', originY: 'bottom', left: 0, top: -10
     });
-    
+
     if (Math.abs(angle) > 90) textObj.set({ angle: 180, originY: 'bottom', top: 10 });
 
     const group = new fabric.Group([line, startCap, endCap, textObj], {
@@ -208,7 +208,7 @@ const createRulerObject = (start, end) => {
         _capStyle: cfg.capStyle, _dashArray: cfg.dashArray, _strokeLineCap: cfg.strokeLineCap,
         _showSecondaryUnit: cfg.showSecondaryUnit, // ✨ 修复点：持久化双单位状态
         lockScalingY: true, lockUniScaling: true,
-        hoverCursor: 'move', _textColor: cfg.textColor 
+        hoverCursor: 'move', _textColor: cfg.textColor
     });
 
     const lineObj = group.getObjects()[0];
@@ -228,9 +228,9 @@ const createRulerObject = (start, end) => {
         group.setCoords();
     }
 
-    group.setControlsVisibility({ mtr: true, ml: true, mr: true, mt:false, mb:false, tl:false, tr:false, bl:false, br:false });
+    group.setControlsVisibility({ mtr: true, ml: true, mr: true, mt: false, mb: false, tl: false, tr: false, bl: false, br: false });
     canvas.add(group);
-    
+
     if (saveHistoryFn) saveHistoryFn();
     canvas.setActiveObject(group);
     canvas.requestRenderAll();
@@ -252,7 +252,7 @@ const recreateActiveRuler = (oldGroup) => {
     // 2. ✨ 核心修复：使用 v5 标准 API 计算世界坐标 [宪法 2.0]
     // 获取子对象相对于画布的完整变换矩阵
     const matrix = line.calcTransformMatrix();
-    
+
     // 获取 Line 的局部端点坐标 (x1, y1) 和 (x2, y2)
     const p1 = { x: line.x1, y: line.y1 };
     const p2 = { x: line.x2, y: line.y2 };
@@ -280,7 +280,7 @@ const recreateActiveRuler = (oldGroup) => {
     // 5. 状态恢复与历史记录 [宪法 6.2]
     canvas.setActiveObject(newRuler);
     if (saveHistoryFn) saveHistoryFn();
-    
+
     canvas.requestRenderAll();
     console.log('[Module:Ruler] Object recreated using v5 matrix transformation.');
 };
@@ -297,41 +297,41 @@ export const updateActiveRuler = () => {
     if (!group || !group.isRuler) return;
 
     const cfg = rulerConfig.value;
-    const items = group.getObjects(); 
+    const items = group.getObjects();
 
     // ✨ 1. 增强型重建判定 [宪法 0.4]
     // 逻辑：文字内容的重大改变(单变双单位)会破坏包围盒平衡，必须通过重绘激活补偿算法
-    const needsRebuild = (group._capStyle !== cfg.capStyle) || 
-                        (items[3].fontSize !== cfg.fontSize) ||
-                        (items[3].fontFamily !== cfg.fontFamily) ||
-                        (group._showSecondaryUnit !== cfg.showSecondaryUnit); // 新增：双单位切换触发重建
+    const needsRebuild = (group._capStyle !== cfg.capStyle) ||
+        (items[3].fontSize !== cfg.fontSize) ||
+        (items[3].fontFamily !== cfg.fontFamily) ||
+        (group._showSecondaryUnit !== cfg.showSecondaryUnit); // 新增：双单位切换触发重建
 
     if (needsRebuild) {
         recreateActiveRuler(group);
     } else {
         // 2. 更新线条与端点
         items[0].set({
-            stroke: cfg.color, 
+            stroke: cfg.color,
             strokeWidth: cfg.strokeWidth,
-            strokeDashArray: cfg.dashArray, 
+            strokeDashArray: cfg.dashArray,
             strokeLineCap: cfg.strokeLineCap || 'butt'
         });
-        
+
         // 同步端点颜色
         items[1].set({ fill: cfg.color, stroke: cfg.color });
         items[2].set({ fill: cfg.color, stroke: cfg.color });
 
         // ✨ 3. 应用双单位合成文字 [宪法 0.0]
         const displayText = getRulerDisplayText(cfg);
-        
+
         items[3].set({
-            text: displayText, 
+            text: displayText,
             fill: cfg.textColor,
         });
 
         // 4. 更新组属性与序列化标识 [SSOT]
         group.set({ opacity: cfg.opacity / 100, dirty: true });
-        
+
         group._rulerValue = cfg.value;
         group._rulerUnit = cfg.unit;
         group._isManualText = cfg.isManualText;
@@ -343,7 +343,7 @@ export const updateActiveRuler = () => {
         group._showSecondaryUnit = cfg.showSecondaryUnit; // ✨ 持久化记录双单位状态
 
         canvas.requestRenderAll();
-        
+
         // 5. 历史记录保存 [宪法 6.2]
         if (saveHistoryFn) saveHistoryFn();
     }
@@ -374,7 +374,7 @@ const syncConfigFromObject = (activeObj) => {
         rulerConfig.value.fontFamily = activeObj._fontFamily || 'Arial';
         rulerConfig.value.showSecondaryUnit = activeObj._showSecondaryUnit ?? false; // ✨ 修复点：回填双单位开关
         rulerConfig.value.opacity = (activeObj.opacity || 1) * 100;
-        
+
         if (items[0]) {
             rulerConfig.value.color = items[0].stroke;
             rulerConfig.value.strokeWidth = items[0].strokeWidth;
