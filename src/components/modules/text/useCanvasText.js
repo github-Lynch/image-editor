@@ -25,7 +25,12 @@ const textState = ref({
     shadowColor: '#ffffff',
     shadowBlur: 0,
     shadowOffsetX: 0,
-    shadowOffsetY: 0
+    shadowOffsetY: 0,
+
+    // === 文字特效（配置驱动）===
+    // textEffectId: 当前选中的特效 ID（仅用于 UI 回显 + 新增文本默认样式）
+    // 注意：真实生效的 Fabric 属性仍由 fill/stroke/shadow 等承载
+    textEffectId: 'none'
 });
 
 // 模块内部引用
@@ -34,6 +39,225 @@ let saveHistoryFn = null;
 
 // 缩放过程缓存（避免频繁改写历史；并在 modified 时一次性落地）
 let scalingCache = null;
+
+// === 配置池：文字特效 (Configuration-Driven) ===
+// 说明：
+// 1) 这里的每个 effect 都是“属性集合”，用于一键应用到 Fabric 文本对象。
+// 2) UI 预览使用同一份配置源，确保 SSOT。
+// 3) effect.props 里只放“特效相关属性”，不会覆盖字体/字号/对齐等基础排版（符合你选择的 2:A）。
+const TEXT_EFFECTS = {
+    none: {
+        id: 'none',
+        label: '无',
+        props: {
+            // 清除描边与阴影
+            strokeWidth: 0,
+            stroke: '',
+            shadow: undefined
+        }
+    },
+    outlineBlue: {
+        id: 'outlineBlue',
+        label: '蓝色描边',
+        props: {
+            fill: '#ffffff',
+            stroke: '#22b8ff',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    outlineGreen: {
+        id: 'outlineGreen',
+        label: '绿色描边',
+        props: {
+            fill: '#ffffff',
+            stroke: '#2f9e44',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    neonCyan: {
+        id: 'neonCyan',
+        label: '青色霓虹',
+        props: {
+            fill: '#00e5ff',
+            stroke: '#000000',
+            strokeWidth: 2,
+            shadow: new fabric.Shadow({
+                color: 'rgba(0, 229, 255, 0.75)',
+                blur: 12,
+                offsetX: 0,
+                offsetY: 0
+            })
+        }
+    },
+    neonPink: {
+        id: 'neonPink',
+        label: '粉色霓虹',
+        props: {
+            fill: '#ff4d8d',
+            stroke: '#7c3aed',
+            strokeWidth: 2,
+            shadow: new fabric.Shadow({
+                color: 'rgba(255, 77, 141, 0.65)',
+                blur: 12,
+                offsetX: 0,
+                offsetY: 0
+            })
+        }
+    },
+    blackYellow: {
+        id: 'blackYellow',
+        label: '黄底黑边',
+        props: {
+            fill: '#ffd43b',
+            stroke: '#000000',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    greenShadow: {
+        id: 'greenShadow',
+        label: '绿色阴影',
+        props: {
+            fill: '#2f9e44',
+            stroke: '#000000',
+            strokeWidth: 2,
+            shadow: new fabric.Shadow({
+                color: 'rgba(0, 0, 0, 0.45)',
+                blur: 6,
+                offsetX: 4,
+                offsetY: 4
+            })
+        }
+    },
+
+    // === 新增模板：模仿参考图的“彩色描边”系列 ===
+    outlinePink: {
+        id: 'outlinePink',
+        label: '粉色描边',
+        props: {
+            fill: '#ffffff',
+            stroke: '#ff5c8a',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    outlinePurple: {
+        id: 'outlinePurple',
+        label: '紫色描边',
+        props: {
+            fill: '#ffffff',
+            stroke: '#5f3dc4',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    outlineOrange: {
+        id: 'outlineOrange',
+        label: '橙色描边',
+        props: {
+            fill: '#ffffff',
+            stroke: '#ff7a18',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    outlineBlueFill: {
+        id: 'outlineBlueFill',
+        label: '蓝字蓝边',
+        props: {
+            fill: '#4c6ef5',
+            stroke: '#ffffff',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    outlineGreenFill: {
+        id: 'outlineGreenFill',
+        label: '绿字黑边',
+        props: {
+            fill: '#37b24d',
+            stroke: '#000000',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+    outlineCyanFill: {
+        id: 'outlineCyanFill',
+        label: '青字黑边',
+        props: {
+            fill: '#22b8cf',
+            stroke: '#000000',
+            strokeWidth: 2,
+            shadow: undefined
+        }
+    },
+
+    // === 新增模板：更强烈的“黑边亮色字”系列 ===
+    blackOutlineCyan: {
+        id: 'blackOutlineCyan',
+        label: '青字黑边',
+        props: {
+            fill: '#00f5ff',
+            stroke: '#000000',
+            strokeWidth: 3,
+            shadow: undefined
+        }
+    },
+    blackOutlinePink: {
+        id: 'blackOutlinePink',
+        label: '粉字黑边',
+        props: {
+            fill: '#ff4d8d',
+            stroke: '#000000',
+            strokeWidth: 3,
+            shadow: undefined
+        }
+    },
+    blackOutlineLime: {
+        id: 'blackOutlineLime',
+        label: '荧光绿黑边',
+        props: {
+            fill: '#a9e34b',
+            stroke: '#000000',
+            strokeWidth: 3,
+            shadow: undefined
+        }
+    },
+
+    // === 新增模板：轻微投影（更接近图中“干净但有层次”） ===
+    outlineBlueSoftShadow: {
+        id: 'outlineBlueSoftShadow',
+        label: '蓝边轻阴影',
+        props: {
+            fill: '#ffffff',
+            stroke: '#22b8ff',
+            strokeWidth: 2,
+            shadow: new fabric.Shadow({
+                color: 'rgba(0, 0, 0, 0.25)',
+                blur: 4,
+                offsetX: 2,
+                offsetY: 2
+            })
+        }
+    },
+    outlineOrangeSoftShadow: {
+        id: 'outlineOrangeSoftShadow',
+        label: '橙边轻阴影',
+        props: {
+            fill: '#ffffff',
+            stroke: '#ff7a18',
+            strokeWidth: 2,
+            shadow: new fabric.Shadow({
+                color: 'rgba(0, 0, 0, 0.25)',
+                blur: 4,
+                offsetX: 2,
+                offsetY: 2
+            })
+        }
+    }
+};
 
 // 配置池：文本“防变形缩放”参数（避免硬编码散落）
 const TEXT_SCALE_GUARD = {
@@ -186,7 +410,9 @@ export function useCanvasText() {
             fontSize: textState.value.fontSize,
             fill: textState.value.fill,
             textAlign: textState.value.textAlign,
-            fontWeight: textState.value.fontWeight,
+            // 新增文本默认不加粗（需求：新增文本默认不加粗）
+            // 注意：面板里仍可手动切换加粗；这里只影响“新增时的默认值”
+            fontWeight: 'normal',
             fontStyle: textState.value.fontStyle,
             underline: textState.value.underline,
             linethrough: textState.value.linethrough,
@@ -213,10 +439,17 @@ export function useCanvasText() {
             cornerColor: '#ffffff',
             cornerStrokeColor: '#1890ff',
             borderColor: '#1890ff',
-            cornerSize: 10
+            cornerSize: 10,
+
+            // 记录当前特效（用于选中回显）
+            textEffectId: textState.value.textEffectId
         });
 
         c.add(textObj).setActiveObject(textObj).requestRenderAll();
+        
+        // 新增后：如果当前选择的特效带阴影，但 shadowBlur/offset 为 0 时不会创建 shadow
+        // 这里无需额外处理，因为 applyTextEffect 已把默认值折算到 textState 中。
+
         if (saveHistoryFn) saveHistoryFn();
     };
 
@@ -283,6 +516,18 @@ export function useCanvasText() {
                 textState.value.shadowOffsetX = selected.shadow.offsetX;
                 textState.value.shadowOffsetY = selected.shadow.offsetY;
             }
+
+            // 同步特效ID（用于 UI 回显）
+            // 优先读取对象上记录的 textEffectId；若不存在，则尝试用当前属性匹配预设
+            if (selected.textEffectId) {
+                textState.value.textEffectId = selected.textEffectId;
+            } else {
+                const matchedEffect = Object.values(TEXT_EFFECTS).find(effect => {
+                    if (!effect || effect.id === 'none') return false;
+                    return isEffectMatched(selected, effect);
+                });
+                textState.value.textEffectId = matchedEffect ? matchedEffect.id : 'none';
+            }
         } else {
             textState.value.isActive = false;
         }
@@ -302,8 +547,125 @@ export function useCanvasText() {
         }
     };
 
+    // === 工具函数：判断对象当前属性是否匹配指定特效 ===
+    const isEffectMatched = (textObj, effect) => {
+        if (!effect || !effect.props) return false;
+        const props = effect.props;
+        
+        // 检查描边
+        if (props.strokeWidth !== undefined && textObj.strokeWidth !== props.strokeWidth) return false;
+        if (props.stroke && textObj.stroke !== props.stroke) return false;
+        
+        // 检查填充色
+        if (props.fill && textObj.fill !== props.fill) return false;
+        
+        // 检查阴影
+        if (props.shadow) {
+            if (!textObj.shadow) return false;
+            const shadow = props.shadow;
+            if (shadow.color !== textObj.shadow.color) return false;
+            if (shadow.blur !== textObj.shadow.blur) return false;
+            if (shadow.offsetX !== textObj.shadow.offsetX) return false;
+            if (shadow.offsetY !== textObj.shadow.offsetY) return false;
+        } else if (textObj.shadow) {
+            // 特效无阴影但对象有阴影
+            return false;
+        }
+        
+        return true;
+    };
+
+    // === 核心：应用文字特效 ===
+    const applyTextEffect = (effectId) => {
+        const c = unref(canvasRef);
+        const activeObj = c?.getActiveObject();
+
+        const effect = TEXT_EFFECTS[effectId];
+        if (!effect) return;
+
+        // 1) 永远先更新“默认样式缓存”（未选中文本也能选择特效）
+        textState.value.textEffectId = effectId;
+
+        const props = effect.props || {};
+
+        // 用于新增文本：把特效折算进 textState 的“默认属性”中
+        // 注意：shadow 必须按 Fabric 的真实对象逻辑处理，否则 UI 预览会和画布不一致
+        if (props.fill !== undefined) textState.value.fill = props.fill;
+        if (props.stroke !== undefined) textState.value.stroke = props.stroke;
+        if (props.strokeWidth !== undefined) textState.value.strokeWidth = props.strokeWidth;
+
+        if (props.shadow) {
+            // 这里 props.shadow 是 fabric.Shadow 实例
+            textState.value.shadowColor = props.shadow.color;
+            textState.value.shadowBlur = props.shadow.blur;
+            textState.value.shadowOffsetX = props.shadow.offsetX;
+            textState.value.shadowOffsetY = props.shadow.offsetY;
+        } else {
+            // 选择了“无特效/无阴影”等：清空 shadow 相关默认值
+            textState.value.shadowBlur = 0;
+            textState.value.shadowOffsetX = 0;
+            textState.value.shadowOffsetY = 0;
+            textState.value.shadowColor = '#ffffff';
+        }
+
+        // 2) 若当前有选中文本对象，则同步应用到对象本身
+        if (!activeObj || !activeObj.type.includes('text')) {
+            return;
+        }
+
+        // Fabric 中 shadow 需要重新 new fabric.Shadow，避免引用被复用导致渲染不一致
+        const finalProps = { ...props };
+        if (props.shadow) {
+            finalProps.shadow = new fabric.Shadow({
+                color: props.shadow.color,
+                blur: props.shadow.blur,
+                offsetX: props.shadow.offsetX,
+                offsetY: props.shadow.offsetY
+            });
+        }
+
+        activeObj.set({
+            ...finalProps,
+            textEffectId: effectId
+        });
+
+        c.requestRenderAll();
+        if (saveHistoryFn) saveHistoryFn();
+    };
+    
+    // === 重置文字特效 ===
+    const resetTextEffect = () => {
+        // 仅重置“特效相关属性”，不影响字体字号等
+        applyTextEffect('none');
+    };
+    
+    // === 获取特效预览样式 ===
+    const getTextEffectPreviewStyle = (effectId) => {
+        const effect = TEXT_EFFECTS[effectId];
+        if (!effect) return {};
+        
+        const style = {
+            color: effect.props.fill || '#ffffff',
+            WebkitTextStroke: effect.props.strokeWidth ? `${effect.props.strokeWidth}px ${effect.props.stroke || 'transparent'}` : 'none',
+            textShadow: effect.props.shadow 
+                ? `${effect.props.shadow.offsetX || 0}px ${effect.props.shadow.offsetY || 0}px ${effect.props.shadow.blur || 0}px ${effect.props.shadow.color}` 
+                : 'none'
+        };
+        
+        return style;
+    };
+
     return {
-        textState, initTextModule, destroyTextModule,
-        addText, updateTextProp, toggleStyle
+        textState, 
+        textEffects: TEXT_EFFECTS,
+        initTextModule, 
+        destroyTextModule,
+        addText, 
+        updateTextProp, 
+        toggleStyle,
+        applyTextEffect,
+        resetTextEffect,
+        getTextEffectPreviewStyle,
+        isEffectMatched
     };
 }

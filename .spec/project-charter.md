@@ -1,7 +1,7 @@
 # Project Charter: Image Editor SDK (大秘美图)
 
 > **Version**: 4.1.2 (Logic-First & Engineering Philosophy-Driven Edition)
-> **Last Updated**: 2025-12-25
+> **Last Updated**: 2025-12-29
 > **Context**: High-performance Web Image Processing SDK
 > **Enforcement**: 此文档为项目的“宪法”与最高准则。AI 助手在接受指令后，必须首先基于本章程进行逻辑建模与分析，严禁直接产出未经论证的实现代码。
 
@@ -11,73 +11,86 @@
 > **适用范围**: 所有需求分析、交互设计、架构调整及代码实现。
 
 ### 0.0 逻辑先行与工程哲学公约 (Logic-First & Engineering Philosophy)
+
 - **核心禁令**: 严禁在未经过深度逻辑分析、边界确认和影响扫描的情况下，直接根据用户提议生成实现代码。
 - **法定程序**:
-    1. **需求解构**: 将提议拆解为底层物理逻辑（Canvas变动）与交互逻辑（UI状态）。
-    2. **API 预审 (NEW)**: 显式核对计划使用的核心 API 是否符合 Fabric.js v5.3.0 同步标准，严禁混入 v6 异步逻辑。
-    3. **深度反问**: 针对提议中的逻辑模糊地带进行至少一轮反问，确认交互边界。
-    4. **精确索取**: 针对提议中的逻辑模糊地带，需要具体的文件去进行分析的可以直接索要。
-    5. **方案共识**: 在代码实施前，必须先获得用户对“分析报告”和“技术路径”的明确认可。
+  1. **需求解构**: 将提议拆解为底层物理逻辑（Canvas 变动）与交互逻辑（UI 状态）。
+  2. **API 预审 (NEW)**: 显式核对计划使用的核心 API 是否符合 Fabric.js v5.3.0 同步标准，严禁混入 v6 异步逻辑。
+  3. **深度反问**: 针对提议中的逻辑模糊地带进行至少一轮反问，确认交互边界。
+  4. **精确索取**: 针对提议中的逻辑模糊地带，需要具体的文件去进行分析的可以直接索要。
+  5. **方案共识**: 在代码实施前，必须先获得用户对“分析报告”和“技术路径”的明确认可。
 - **哲学基石**: **分析是代码的母体，代码只是逻辑的具象化。** 只有经过深度分析后的提议才能转化为代码。
 
 ### 0.1 代码完整性公约 (Code Integrity Protocol)
+
 - **拒绝片段**: 必须返回修改部分所在的完整函数。
 - **变更标注**: 对于删减的代码以注释的形式给到用户，并明确指出新增功能及函数在大约多少行、上下文的函数关系。
 
 ### 0.2 安全与容量 (Safety First)
+
 - **主动断点**: 当文件或代码量接近 Token 限制无法一次输出时，必须主动暂停并询问是否分段输出，严禁擅自删减逻辑。
 
 ### 0.3 智能交互公约 (Smart Interaction Protocol)
+
 - **深度反问 (Proactive Questioning)**: 严禁做“复读机”。对用户提议必须进行“灵魂反问”，确认边界条件。
 - **客观性与批判性评估**:
-    - **打破顺从性**: AI 严禁盲目赞同用户。必须假设用户的提议可能存在架构漏洞或体验死角。
-    - **强制风险披露**: 在评价提议时，必须至少列出 3 个潜在技术风险和 2 个交互负面影响。
+  - **打破顺从性**: AI 严禁盲目赞同用户。必须假设用户的提议可能存在架构漏洞或体验死角。
+  - **强制风险披露**: 在评价提议时，必须至少列出 3 个潜在技术风险和 2 个交互负面影响。
 
 ### 0.4 影响扫描协议 (Impact Scan Requirement)
+
 在输出代码前的强制“安检”流程：
+
 - **状态依赖**: 是否修改或依赖了全局物理锁（如 `isGlobalDragMode`）？
 - **互斥检查**: 当前操作与哪些既有模块（如 `Crop`, `Ruler`, `Puzzle`）在交互上是否互斥？
 - **历史一致性**: 新状态是否会破坏 `undo/redo` 栈或导致快照（Snapshot）被意外覆盖？
 
 ### 0.5 模块生命周期标准 (Module Lifecycle Standards)
+
 - **Entry (进入)**: 必须捕获初始“处女态”快照。执行快照锁检查：`if (preSnapshot) return;` 确保回滚点唯一。
 - **Action (执行)**: 业务逻辑必须与全局 UI 状态隔离，严禁污染非白名单内的 Fabric 属性。
 - **Exit (退出)**: 必须提供显式清理函数（Cleanup），负责恢复视口、解绑事件并彻底释放快照内存（`snapshot = null`）。
 
 ### 0.6 全局物理锁与互斥表 (Global Mutex Table)
+
 - **SSOT (单源真理)**: 所有影响侧边栏可用性或交互模式的变量，必须统一存储于 `useEditorState.js`。
 - **强互斥规则**:
-    - 当 `GlobalDragMode` 开启时，禁止进入 `Crop / Resize / Ruler / Puzzle` 等调节面板。
-    - 当 `PuzzleMode` 开启时，拦截全局 `object:added/removed` 自动保存，改为模块内手动控制历史逻辑。
-  
-### 0.7. ✨ 配置驱动原则 (Configuration-Driven Principle)**: 
+  - 当 `GlobalDragMode` 开启时，禁止进入 `Crop / Resize / Ruler / Puzzle` 等调节面板。
+  - 当 `PuzzleMode` 开启时，拦截全局 `object:added/removed` 自动保存，改为模块内手动控制历史逻辑。
+
+### 0.7. ✨ 配置驱动原则 (Configuration-Driven Principle)\*\*:
+
     - **核心规范**: 凡是涉及多属性映射、状态转换、锁定/恢复逻辑的，必须采用“配置对象 (Configuration Object)”或“常量池”进行驱动。
     - **严禁硬编码**: 严禁在循环、条件判断中直接书写属性名字符串。
     - **对称性保证**: 锁定与解锁、开启与关闭的逻辑必须共享同一份配置源，确保操作的原子性与完整性。
 
 ---
-  
-  
+
 ## 1. 核心架构原则 (Architectural Principles)
 
 ### 1.1 渲染引擎 (Rendering Engine)
+
 - 基于 Fabric.js 5.x 进行二次封装。
 - 遵循 Object-Oriented Rendering (OOR) 原则，所有画布元素皆对象。
 
 ### 1.2 状态管理 (State Management)
+
 - 使用 Vue 3 Composition API (`ref`, `reactive`) 作为响应式核心。
 - **SSOT**: `useEditorState.js` 是编辑器全局状态的唯一真理来源。
 
 ### 1.3 插件化架构 (Plugin Architecture)
+
 - 功能模块化：Crop, Draw, Filter, Puzzle 等功能必须封装为独立的 Composable (`useCanvasCrop`, `useCanvasDraw` 等)。
 - 模块间通信通过全局 State 或 Event Bus (Fabric Events) 进行，禁止直接耦合。
 
 ### 1.4 性能优化 (Performance)
+
 - 大图处理需使用离屏 Canvas 或缩放策略。
 - 历史记录栈需设置最大深度，避免内存溢出。
 - 拖拽与缩放操作需使用 `requestAnimationFrame` 节流。
 
 ### 1.5 UI/UX 规范
+
 - 组件库基于 Element Plus。
 - 遵循扁平化设计，操作面板应根据选中的对象类型自动路由 (`routeToObject`)。
 
@@ -90,12 +103,13 @@
 - **Graphics Engine**: **Fabric.js v5.3.0** (Locked)
   - **核心准则**: 采用同步渲染与矩阵变换，禁止 Promise 特性。
 
-| 功能维度 | v6 (严禁使用 ❌) | v5.3.0 (必须使用 ✅) |
-| :--- | :--- | :--- |
-| **坐标读取** | `obj.x`, `obj.y` | `obj.left`, `obj.top` |
-| **几何点获取** | `line.get2DPoints()` | `line.calcTransformMatrix()` + `x1, y1` |
-| **图像加载** | `fabric.Image.fromURL(...).then()` | `fabric.Image.fromURL(url, callback)` |
-| **坐标变换** | `canvas.getScenePoint(e)` | `canvas.getPointer(e)` |
+| 功能维度       | v6 (严禁使用 ❌)                   | v5.3.0 (必须使用 ✅)                    |
+| :------------- | :--------------------------------- | :-------------------------------------- |
+| **坐标读取**   | `obj.x`, `obj.y`                   | `obj.left`, `obj.top`                   |
+| **几何点获取** | `line.get2DPoints()`               | `line.calcTransformMatrix()` + `x1, y1` |
+| **图像加载**   | `fabric.Image.fromURL(...).then()` | `fabric.Image.fromURL(url, callback)`   |
+| **坐标变换**   | `canvas.getScenePoint(e)`          | `canvas.getPointer(e)`                  |
+
 ---
 
 ## 3. 核心架构模式 (Core Architecture Patterns) `Critical`
@@ -116,6 +130,7 @@
 - 所有涉及**导出图片**或**生成 AI 遮罩**的操作，必须使用 `src/composables/useOffscreenHelper.js`，严禁直接对主 Canvas 进行 `toDataURL`。
 
 ### 3.3. 画布架构约束 (Canvas Constraints) [CRITICAL]
+
 - **SSOT (Single Source of Truth)**: 所有画布属性（缩放、背景色、物理锁）必须有且仅有一个真理来源。
 - **物理锁机制**: 所有 Canvas 对象的锁定逻辑必须通过 `useCanvasLock.js` 的配置驱动，严禁在业务组件中硬编码 `selectable = false`。
 - **高保真快照**: 所有“取消”或“撤销”操作必须基于包含 `CANVAS_PROPS_WHITELIST` 的全量 JSON 快照，严禁部分恢复。
@@ -172,12 +187,14 @@ src/
 ## 6. 质量保障与自检 (Quality Assurance)
 
 ### 6.1 逻辑自检维度 (Logic Verification)
+
 1. **SSOT 违规**: “该状态是否被重复定义或在多个地方修改？”
 2. **坐标漂移**: “在连续操作下，坐标计算是否依然基于最初的物理锚点而非上一次中间状态？”
 3. **架构冲突**: “该提议是否会与 `useCanvas.js` 的历史记录系统产生冲突？”
 4. **颜色合规**: 检查代码中是否还残留 `#hex` 硬编码颜色，应使用 CSS 变量。
 
 ### 6.2 实施检查清单 (The "Golden Checklist") [CRITICAL]
+
 - [ ] **逻辑先行**: 是否先提供了深度分析报告并获得了用户确认？
 - [ ] **上下文同步**: 每次生成代码前，先读取 `active-context.md` 确认当前上下文。
 - [ ] **影响扫描**: 每次生成代码前，是否已列出 [影响扫描报告]？
@@ -190,7 +207,47 @@ src/
 
 ---
 
-## 7. 术语表 (Glossary)
+## 7. 交互边界与锁定策略 V4.1.2.1 (Interaction Boundaries & Locking Strategy)
+
+> **发布日期**: 2025-12-29  
+> **适用范围**: 本解释是对 `project-charter.md` 中 0.6 (全局物理锁与互斥表) 与 3.3 (画布架构约束) 的进一步细化与澄清。
+
+### 7.1 交互模式自动纠偏协议 (Interaction Mode Auto-Correction Protocol)
+
+- **背景**: 明确 `isGlobalDragMode` (全局手形/拖拽模式) 与其它功能模块（如 Text, Filter, Crop）之间的交互优先级。
+- **裁定 (Rule)**:
+  - **软互斥原则**: 当系统处于 `isGlobalDragMode = true` 状态时，用户发起进入任何一个**非 `adjust` 类**的功能模块，系统**不得拦截**该操作。
+  - **自动状态降级**: 系统必须**自动且静默地**将 `isGlobalDragMode` 置为 `false`。
+  - **用户告知义务**: 状态自动降级后，建议（非强制）通过 `toast` 等非阻塞式 UI 反馈，告知用户“已退出拖拽模式”，以避免用户产生“为何无法拖拽”的困惑。
+- **宪法依据**: 此举遵循了“以模块内交互为优先，保障核心功能可用性”的设计哲学，是对 Charter 0.6 强互斥规则的柔性落地。
+
+### 7.2 主图锁定状态标准定义 (Main Image Lock State Definition)
+
+- **背景**: 统一各模块内对“主图 (Main Image)”的锁定行为，解决“可拖动”与“不可选中”之间的模糊地带。
+- **裁定 (Rule)**:
+  - **标准锁态**: 在绝大多数功能模块中（除 `adjust` 等明确需要操作主图的模块外），主图的默认锁定策略应为：**“可被选中，但绝对锁定其物理变换”**。
+  - **配置驱动实现**: 此标准锁态必须通过 `useCanvasLock.js` 的 `LOCK_CONFIG` 进行配置驱动实现。具体配置应为：
+    - `selectable: true` (允许选中以提供视觉反馈)
+    - `lockMovementX: true`
+    - `lockMovementY: true`
+    - `lockScalingX: true`
+    - `lockScalingY: true`
+    - `lockRotation: true`
+  - **禁止硬编码**: 严禁在任何业务组件 (`.vue`) 中直接对主图对象执行 `mainImage.set('selectable', false)` 等操作，以维护 SSOT 原则。
+- **宪法依据**: 此举确保了交互反馈（用户知道自己点的是主图）与画布稳定性（主图位置不被误改）的平衡，并强化了 Charter 0.7 (配置驱动) 与 3.3 (物理锁机制) 的权威性。
+
+### 7.3 光标优先级稳定条款 (Cursor Priority Stability Clause)
+
+- **背景**: 确认是否需要为特定模块（如 Text 模块）引入新的光标（如 I-beam）优先级。
+- **裁定 (Rule)**:
+  - **维持现状**: 现有已在 `active-context.md` 中确立的光标优先级体系 (`grab` > `crosshair` > `default`) 保持不变。
+  - **无新增义务**: 暂不为 Text 模块或其他模块引入制度化的、高于现有体系的光标优先级规则。模块内部可自行管理光标，但不应与全局 `grab` / `crosshair` 模式冲突。
+- **宪法依据**: 保持全局交互模型的一致性与可预测性，避免因引入过多特例而增加用户心智负担。
+
+---
+
+## 8. 术语表 (Glossary)
+
 - **Logic-First**: 逻辑先行。分析是代码的母体，拒绝盲目编码。
 - **Snapshot Lock**: 物理级回滚点保护机制，防止初始态被中间操作污染。
 - **Impact Scan**: 动工前的全模块冲突审查。

@@ -406,7 +406,7 @@
 .ie-slider {
   /* 轨道“已滑过”部分：通过线性渐变实现（由 JS 写入 --ie-slider-percent） */
   --ie-slider-percent: 0%;
-
+  width: 100%;
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
@@ -431,7 +431,7 @@
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  margin-top: -6px;
+  margin-top: -7px;
   /* 调整垂直对齐 */
 }
 
