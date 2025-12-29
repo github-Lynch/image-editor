@@ -1,12 +1,33 @@
 # Active Context & Development State
 
-> **Version**: 3.1 (Main Image Lock Fix)
-> **Last Updated**: 2025-12-25
-> **Current Focus**: 模块内主图锁定机制完善、时机问题修复
+> **Version**: 4.2 (AI Features & Stretch-Transform)
+> **Last Updated**: 2025-12-29
+> **Current Focus**: AI 功能 (Inpaint/Rembg) 集成与 Resize 拉伸联动
 
 ## 1. 当前开发状态 (Current Status)
 
 ### ✅ 已完成模块 (Completed Modules)
+
+#### 1.5 2025-12-29 开发日志 (Dev Log) **NEW**
+
+- **智能消除 (Inpaint) 功能重构**
+  - [x] **API 对接**: 改造 `inpaintFetch.js`，修复了因请求格式错误导致的后端 `UnicodeDecodeError` (500)，改用 JSON + base64 模式。
+  - [x] **逻辑层实现**: 完整实现 `useCanvasInpaint.js`，包含离屏遮罩生成、画笔/框选双模式、自动调用 API 及结果回填。
+  - [x] **UI 集成**: 更新 `AdjustInpaint.vue`，使其成为功能面板并接入新逻辑。
+  - [x] **稳定性修复**: 修复了二次消除时因 `blob:` URL 失效导致的图片加载失败问题，改用 `data:` URL 方案确保可连续操作。
+
+- **一键抠图 (Rembg) 功能改造**
+  - [x] **API 适配**: 更新 `AdjustRembg.vue`，使其从操作画布选中对象（或自动选中主图）导出 `File` 对象，以适配新的 `removeBgFetch` 接口。
+
+- **尺寸调整 (Resize) 拉伸联动**
+  - [x] **功能实现**: 在 `useCanvasResize.js` 中增加了“失真/拉伸”模式下，文本、标尺等其它画布对象跟随主图进行非等比缩放的功能。
+  - [x] **状态还原**: 修复了从“拉伸”切换回“保真”模式时，被联动对象未能还原的问题，确保了模式切换的逻辑完整性。
+
+- **工程与规范**
+  - [x] **CSS 对齐**: 修复了左侧边栏工具项因图标宽度不一导致的文字未对齐问题。
+  - [x] **宪法更新**: 在 `.spec/project-charter.md` 中新增 `0.3.1 直接落盘优先策略`，明确了 AI 的交互与代码修改准则。
+
+---
 
 #### 1.1 核心编辑 (Core Editing)
 
@@ -137,7 +158,7 @@
   - `src/components/Workspace.vue`: `syncLockState` 函数中的模块锁定逻辑
   - `src/components/modules/text/index.vue`: `onMounted` 中触发 `image:updated` 事件
   - `src/composables/useCanvasLock.js`: 主图锁定状态的设置
-- **参考行为**: 调整模块（`activeTool === 'adjust'`）在没有子模块时，主图不能被移动，除非用户手动启用手型。所有模块应该遵循相同的行为。
+- **参考行为**: 调整模块（`activeTool === 'adjust'`）在没有子模块时，主图不能被移动，除非用户手动启用手型。
 - **教训**:
   - 时机问题很关键：使用 `nextTick` 确保状态更新完成后再执行锁定逻辑
   - 选中状态会影响拖动：即使 `lockMovementX/Y` 为 `true`，选中状态下的主图仍可能被拖动

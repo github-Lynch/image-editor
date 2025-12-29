@@ -257,6 +257,18 @@
     gap: 12px;
   }
 
+  /* 统一工具项左侧图标占位宽度，确保文字完全对齐 */
+  .tool-item .left > svg {
+    width: 18px;
+    min-width: 18px;
+    flex: 0 0 18px;
+  }
+
+  /* 兼容部分组件仍在 svg 上写了 margin-right 的旧实现，避免双重间距导致看起来不齐 */
+  .tool-item .left > svg[style*="margin-right"] {
+    margin-right: 0 !important;
+  }
+
   .tool-item .right-icon {
     display: flex;
     align-items: center;

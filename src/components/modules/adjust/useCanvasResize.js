@@ -6,6 +6,50 @@ import { fabric } from "fabric";
 import { constrainObjectToRect, animateRebound } from '@/composables/useConstraint';
 import { renderHighResSnapshot } from '@/composables/useOffscreenHelper';
 
+// === 新增：同步其它对象（文本、标尺等）在拉伸模式下的变换 ===
+const transformOtherObjects = (canvas, scaleXFact, scaleYFact, centerX, centerY, bgImage, previewRef) => {
+  if (!canvas) return;
+  const objects = canvas.getObjects();
+  objects.forEach(obj => {
+    if (
+      obj === bgImage ||
+      obj === previewRef ||
+      obj.excludeFromExport ||
+      obj.isMaskObject
+    ) {
+      return; // 跳过主图、预览框、遮罩、临时对象
+    }
+
+    // 1. 计算中心点相对位移
+    const cpt = obj.getCenterPoint();
+    const dx = cpt.x - centerX;
+    const dy = cpt.y - centerY;
+
+    const newCenterX = centerX + dx * scaleXFact;
+    const newCenterY = centerY + dy * scaleYFact;
+
+    // 首次备份原始变换，便于后续还原
+    if (!obj._resizeBackup) {
+      obj._resizeBackup = {
+        scaleX: obj.scaleX,
+        scaleY: obj.scaleY,
+        left: obj.left,
+        top: obj.top,
+        originX: obj.originX,
+        originY: obj.originY
+      };
+    }
+
+    // 2. 缩放对象本身
+    obj.scaleX = (obj.scaleX || 1) * scaleXFact;
+    obj.scaleY = (obj.scaleY || 1) * scaleYFact;
+
+    // 3. 更新位置
+    obj.set({ left: newCenterX, top: newCenterY, originX: 'center', originY: 'center' });
+    obj.setCoords();
+  });
+};
+
 let canvasRef = null;
 let saveHistoryFn = null;
 
@@ -89,6 +133,24 @@ const onPreviewMouseUp = () => {
 
 // --- 辅助函数 ---
 
+const restoreOtherObjectsState = (canvas) => {
+  if (!canvas) return;
+  canvas.getObjects().forEach(obj => {
+    if (obj._resizeBackup) {
+      obj.set({
+        scaleX: obj._resizeBackup.scaleX,
+        scaleY: obj._resizeBackup.scaleY,
+        left: obj._resizeBackup.left,
+        top: obj._resizeBackup.top,
+        originX: obj._resizeBackup.originX,
+        originY: obj._resizeBackup.originY
+      });
+      obj.setCoords();
+      // Do not delete the backup here, it's needed if the user toggles back to stretch mode.
+    }
+  });
+};
+
 const restoreImageState = (bgImage) => {
   if (originalTransform && bgImage) {
     bgImage.set({
@@ -146,6 +208,8 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
 
   if (!isStretch) {
     restoreImageState(bgImage);
+    // ✅ Also restore all other objects immediately when leaving stretch mode.
+    restoreOtherObjectsState(canvas);
   } else {
     // 拉伸模式下禁用图片交互
     bgImage.selectable = false;
@@ -200,14 +264,23 @@ export const startPreview = (targetW, targetH, isStretch = false) => {
     canvas.on('mouse:up', onPreviewMouseUp);
   } else {
     // 拉伸模式：直接让图片填满预览框（视觉预览）
+    const newScaleX = previewW / originalTransform.width;
+    const newScaleY = previewH / originalTransform.height;
+
     bgImage.set({
-      scaleX: previewW / originalTransform.width,
-      scaleY: previewH / originalTransform.height,
+      scaleX: newScaleX,
+      scaleY: newScaleY,
       left: targetCenter.x,
       top: targetCenter.y,
       originX: 'center',
       originY: 'center'
     });
+
+    // ✨ 新增：联动其它对象
+    const scaleXFact = newScaleX / originalTransform.scaleX;
+    const scaleYFact = newScaleY / originalTransform.scaleY;
+    transformOtherObjects(canvas, scaleXFact, scaleYFact, targetCenter.x, targetCenter.y, bgImage, rect);
+
     // 解绑事件
     canvas.off('mouse:down', onPreviewMouseDown);
     canvas.off('mouse:move', onPreviewMouseMove);
@@ -240,6 +313,22 @@ export const stopPreview = () => {
       bgImage.selectable = originalSelectable;
       bgImage.evented = originalEvented;
     }
+
+    // ✨ 还原所有被联动对象到 _resizeBackup
+    canvas.getObjects().forEach(obj => {
+      if (obj._resizeBackup) {
+        obj.set({
+          scaleX: obj._resizeBackup.scaleX,
+          scaleY: obj._resizeBackup.scaleY,
+          left: obj._resizeBackup.left,
+          top: obj._resizeBackup.top,
+          originX: obj._resizeBackup.originX,
+          originY: obj._resizeBackup.originY
+        });
+        obj.setCoords();
+        delete obj._resizeBackup;
+      }
+    });
 
     canvas.discardActiveObject();
     originalTransform = null;
@@ -324,6 +413,23 @@ export const applyResize = async (width, height, isStretch = false) => {
       left: canvas.width / 2,
       top: canvas.height / 2,
     });
+
+    // ✨ 新增：拉伸模式下，联动其它对象（文本、标尺等）
+    // 注意：这里以预览框中心为轴心，对其它对象应用相同的非等比缩放。
+    if (isStretch) {
+      const centerX = rectCenterLogic.x;
+      const centerY = rectCenterLogic.y;
+
+      // 预览阶段主图最终 scale（相对原始宽高）
+      const finalScaleX = (rect.width * rect.scaleX) / originalTransform?.width;
+      const finalScaleY = (rect.height * rect.scaleY) / originalTransform?.height;
+
+      // 相对原始主图缩放因子
+      const scaleXFact = originalTransform?.scaleX ? (finalScaleX / originalTransform.scaleX) : 1;
+      const scaleYFact = originalTransform?.scaleY ? (finalScaleY / originalTransform.scaleY) : 1;
+
+      transformOtherObjects(canvas, scaleXFact, scaleYFact, centerX, centerY, bgImage, rect);
+    }
 
     bgImage.setCoords();
     canvas.centerObject(bgImage);

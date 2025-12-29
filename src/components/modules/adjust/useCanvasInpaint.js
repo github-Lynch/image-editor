@@ -1,324 +1,455 @@
-import { ref, unref, watch } from 'vue';
-import { fabric } from 'fabric';
-import { aiApi } from '@/api/ai';
-import { toast } from '@/utils/toast';
-import { useEditorState } from '@/composables/useEditorState';
+import { ref, unref, watch } from 'vue'
+import { fabric } from 'fabric'
+import { toast } from '@/utils/toast'
+import { useEditorState } from '@/composables/useEditorState'
+import { inpaintFetch } from '@/api/inpaintFetch'
 
 // === 模块级单例状态 ===
-let canvasRef = null;
-let saveHistoryFn = null;
-let initialSnapshot = null; 
-let autoInpaintTimer = null;
-let isDragging = false;
-let startPoint = null;
-let activeRect = null;
+let canvasRef = null
+let saveHistoryFn = null
+let initialSnapshot = null
+let autoInpaintTimer = null
+let isDragging = false
+let startPoint = null
+let activeRect = null
+let isExecuting = false
 
 // 响应式状态
-export const brushSize = ref(30);
-export const drawMode = ref('brush'); 
+export const brushSize = ref(30)
+export const drawMode = ref('brush')
 
 // 注册模块
 export const registerInpaintModule = (canvas, saveHistory) => {
-    canvasRef = canvas;
-    saveHistoryFn = saveHistory;
-};
+  canvasRef = canvas
+  saveHistoryFn = saveHistory
+}
 
-// === 🔒 画布锁定系统 ===
-const setObjectsLocked = (locked) => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
+// === 工具函数 ===
+const getCanvas = () => unref(canvasRef)
 
-    const objects = canvas.getObjects();
-    objects.forEach(obj => {
-        if (obj.isMaskObject || obj.type === 'path') return; // 跳过遮罩层
+const getMainImage = () => {
+  const canvas = getCanvas()
+  if (!canvas) return null
+  return canvas.getObjects().find(o => o && o.id === 'main-image')
+}
 
-        if (locked) {
-            obj._prevSelectable = obj.selectable;
-            obj._prevEvented = obj.evented;
-            obj.selectable = false;
-            obj.evented = false; // 让事件穿透底图
-            obj.lockMovementX = true;
-            obj.lockMovementY = true;
-        } else {
-            obj.selectable = obj._prevSelectable ?? true;
-            obj.evented = obj._prevEvented ?? true;
-            obj.lockMovementX = false;
-            obj.lockMovementY = false;
+// 将 dataURL 转成 Blob
+const dataURLToBlob = async (dataUrl) => {
+  const res = await fetch(dataUrl)
+  return await res.blob()
+}
+
+// 导出主图为 PNG Blob（仅主图像素，不带其它对象）
+const exportMainImageBlob = async () => {
+  const main = getMainImage()
+  if (!main) throw new Error('未找到主图 (id=main-image)')
+
+  // 使用临时 StaticCanvas，按主图原始像素尺寸导出
+  const src = main.getSrc()
+  return await new Promise((resolve, reject) => {
+    fabric.Image.fromURL(src, (img, isError) => {
+      if (isError || !img) return reject(new Error(`Failed to load image: ${src}`))
+
+      const w = img.width
+      const h = img.height
+      const temp = new fabric.StaticCanvas(null, {
+        width: w,
+        height: h,
+        backgroundColor: 'transparent'
+      })
+
+      // 同步滤镜（如果主图有滤镜）
+      if (main.filters && main.filters.length > 0) {
+        img.filters = [...main.filters]
+        try {
+          img.applyFilters()
+        } catch (_) {
+          // noop
         }
-    });
+      }
+
+      // 直接原始像素铺满
+      img.set({
+        left: 0,
+        top: 0,
+        originX: 'left',
+        originY: 'top',
+        scaleX: 1,
+        scaleY: 1,
+        angle: 0,
+        flipX: false,
+        flipY: false
+      })
+
+      temp.add(img)
+      temp.renderAll()
+
+      temp.getElement().toBlob((blob) => {
+        try { temp.dispose() } catch (_) { /* noop */ }
+        if (!blob) return reject(new Error('export main image toBlob failed'))
+        resolve(blob)
+      }, 'image/png')
+    }, { crossOrigin: 'anonymous' })
+  })
+}
+
+// === 🔒 画布锁定系统（最小侵入） ===
+const setObjectsLocked = (locked) => {
+  const canvas = getCanvas()
+  if (!canvas) return
+
+  const objects = canvas.getObjects()
+  objects.forEach(obj => {
+    if (obj.isMaskObject || obj.type === 'path') return
 
     if (locked) {
-        canvas.discardActiveObject();
-        canvas.selection = false;
+      obj._prevSelectable = obj.selectable
+      obj._prevEvented = obj.evented
+      obj.selectable = false
+      obj.evented = false
+      obj.lockMovementX = true
+      obj.lockMovementY = true
+      obj.lockRotation = true
+      obj.lockScalingX = true
+      obj.lockScalingY = true
     } else {
-        canvas.selection = true;
+      obj.selectable = obj._prevSelectable ?? true
+      obj.evented = obj._prevEvented ?? true
+      obj.lockMovementX = false
+      obj.lockMovementY = false
+      obj.lockRotation = false
+      obj.lockScalingX = false
+      obj.lockScalingY = false
     }
-    canvas.requestRenderAll();
-};
+  })
 
-// === 🛠 核心修复：离屏生成遮罩 (解决闪屏问题) ===
+  if (locked) {
+    canvas.discardActiveObject()
+    canvas.selection = false
+  } else {
+    canvas.selection = true
+  }
+  canvas.requestRenderAll()
+}
+
+// === 离屏生成遮罩（黑底白遮罩） ===
 const getInpaintMaskOffscreen = async () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return null;
+  const canvas = getCanvas()
+  if (!canvas) return null
 
-    // 1. 筛选出屏幕上的红线或红框
-    const maskObjects = canvas.getObjects().filter(o => o.isMaskObject || o.type === 'path');
-    if (maskObjects.length === 0) return null;
+  const main = getMainImage()
+  if (!main) return null
 
-    // 2. 创建一个临时的、不可见的画布 (StaticCanvas)
-    // 大小与主画布一致，背景设为黑色
-    const tempCanvas = new fabric.StaticCanvas(null, {
-        width: canvas.width,
-        height: canvas.height,
-        backgroundColor: 'black' 
-    });
+  const maskObjects = canvas.getObjects().filter(o => o.isMaskObject || o.type === 'path')
+  if (maskObjects.length === 0) return null
 
-    // 3. 克隆遮罩对象并“洗白”
-    const clonePromises = maskObjects.map(obj => {
-        return new Promise(resolve => {
-            obj.clone((cloned) => {
-                // 强制设为纯白，不透明
-                cloned.set({
-                    left: obj.left,
-                    top: obj.top,
-                    fill: 'white', 
-                    stroke: 'white',
-                    opacity: 1,
-                    visible: true,
-                    evented: false
-                });
+  // 主图原始像素尺寸
+  const src = main.getSrc()
+  const { imgW, imgH } = await new Promise((resolve, reject) => {
+    fabric.Image.fromURL(src, (img, isError) => {
+      if (isError || !img) return reject(new Error('Failed to load main image for mask sizing'))
+      resolve({ imgW: img.width, imgH: img.height })
+    }, { crossOrigin: 'anonymous' })
+  })
 
-                // 针对画笔(Path)和框选(Rect)做微调，确保是实心白
-                if (cloned.type === 'path') {
-                    cloned.set({ fill: null, stroke: 'white' });
-                } else if (cloned.type === 'rect') {
-                    cloned.set({ fill: 'white', stroke: 'transparent' });
-                }
+  // 主图画布包围盒（用于坐标映射）
+  const rect = main.getBoundingRect(true, true)
+  const scaleX = imgW / rect.width
+  const scaleY = imgH / rect.height
 
-                resolve(cloned);
-            });
-        });
-    });
+  const tempCanvas = new fabric.StaticCanvas(null, {
+    width: imgW,
+    height: imgH,
+    backgroundColor: 'black'
+  })
 
-    // 4. 将克隆体添加到临时画布
-    const clones = await Promise.all(clonePromises);
-    clones.forEach(c => tempCanvas.add(c));
-    
-    // 5. 渲染并导出 (这一步发生在内存中，用户看不见)
-    tempCanvas.renderAll();
-    const dataUrl = tempCanvas.toDataURL({ 
-        format: 'png',
-        multiplier: 1 
-    });
-    
-    // 6. 销毁临时画布释放内存
-    tempCanvas.dispose();
-    
-    return dataUrl;
-};
+  const clones = await Promise.all(maskObjects.map(obj => {
+    return new Promise(resolve => {
+      obj.clone((cloned) => {
+        const left = (obj.left - rect.left) * scaleX
+        const top = (obj.top - rect.top) * scaleY
+
+        const objScaleX = (obj.scaleX || 1) * scaleX
+        const objScaleY = (obj.scaleY || 1) * scaleY
+
+        cloned.set({
+          left,
+          top,
+          originX: obj.originX || 'left',
+          originY: obj.originY || 'top',
+          scaleX: objScaleX,
+          scaleY: objScaleY,
+          angle: obj.angle || 0,
+          opacity: 1,
+          visible: true,
+          evented: false,
+          selectable: false
+        })
+
+        // 白 = 消除区域
+        if (cloned.type === 'path') {
+          cloned.set({
+            fill: null,
+            stroke: 'white',
+            strokeWidth: (obj.strokeWidth || brushSize.value) * scaleX
+          })
+        } else if (cloned.type === 'rect') {
+          cloned.set({ fill: 'white', stroke: 'transparent' })
+        } else {
+          cloned.set({ fill: 'white', stroke: 'white' })
+        }
+
+        resolve(cloned)
+      })
+    })
+  }))
+
+  clones.forEach(c => tempCanvas.add(c))
+  tempCanvas.renderAll()
+
+  const dataUrl = tempCanvas.toDataURL({ format: 'png', multiplier: 1, enableRetinaScaling: false })
+  tempCanvas.dispose()
+
+  return dataUrl
+}
 
 // === 进入/退出模块 ===
 export const enterInpaintMode = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
+  const canvas = getCanvas()
+  if (!canvas) return
 
-    initialSnapshot = JSON.stringify(canvas.toJSON(['id', 'selectable', 'name']));
-    setObjectsLocked(true); // 锁定底图
-    drawMode.value = 'brush';
-    enableBrush();
-};
+  if (initialSnapshot) return
+
+  initialSnapshot = JSON.stringify(canvas.toJSON(['id', 'selectable', 'name', 'customTab', 'isMainImage', 'evented']))
+
+  setObjectsLocked(true)
+  drawMode.value = 'brush'
+  enableBrush()
+}
 
 export const exitInpaintMode = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
+  const canvas = getCanvas()
+  if (!canvas) return
 
-    if (autoInpaintTimer) clearTimeout(autoInpaintTimer);
-    unbindEvents();
-    
-    canvas.isDrawingMode = false;
-    setObjectsLocked(false); // 解锁底图
-    clearMaskObjects();
-    canvas.defaultCursor = 'default';
-};
+  if (autoInpaintTimer) clearTimeout(autoInpaintTimer)
+  autoInpaintTimer = null
+
+  unbindEvents()
+  canvas.isDrawingMode = false
+  setObjectsLocked(false)
+  clearMaskObjects()
+  canvas.defaultCursor = 'default'
+
+  initialSnapshot = null
+}
 
 // === 模式切换 ===
 const enableBrush = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
+  const canvas = getCanvas()
+  if (!canvas) return
 
-    unbindEvents();
-    canvas.isDrawingMode = true;
-    
-    const brush = new fabric.PencilBrush(canvas);
-    brush.color = 'rgba(255, 0, 0, 0.5)';
-    brush.width = brushSize.value;
-    canvas.freeDrawingBrush = brush;
-    
-    canvas.on('path:created', onPathCreated);
-};
+  unbindEvents()
+  canvas.isDrawingMode = true
+
+  const brush = new fabric.PencilBrush(canvas)
+  brush.color = 'rgba(255, 0, 0, 0.5)'
+  brush.width = brushSize.value
+  canvas.freeDrawingBrush = brush
+
+  canvas.defaultCursor = 'crosshair'
+  canvas.on('path:created', onPathCreated)
+}
 
 const enableRect = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
+  const canvas = getCanvas()
+  if (!canvas) return
 
-    canvas.isDrawingMode = false;
-    unbindEvents();
-    setObjectsLocked(true); 
-    canvas.defaultCursor = 'crosshair';
+  canvas.isDrawingMode = false
+  unbindEvents()
+  setObjectsLocked(true)
+  canvas.defaultCursor = 'crosshair'
 
-    canvas.on('mouse:down', onRectDown);
-    canvas.on('mouse:move', onRectMove);
-    canvas.on('mouse:up', onRectUp);
-};
+  canvas.on('mouse:down', onRectDown)
+  canvas.on('mouse:move', onRectMove)
+  canvas.on('mouse:up', onRectUp)
+}
 
 // === 事件处理 ===
 const onPathCreated = (opt) => {
-    const path = opt.path;
-    if (path) {
-        path.excludeFromHistory = true; 
-        path.isMaskObject = true;
-    }
-    // 1秒防抖
-    if (autoInpaintTimer) clearTimeout(autoInpaintTimer);
-    autoInpaintTimer = setTimeout(() => executeInpaint(), 1000);
-};
+  const path = opt.path
+  if (path) {
+    path.excludeFromHistory = true
+    path.isMaskObject = true
+  }
+
+  if (autoInpaintTimer) clearTimeout(autoInpaintTimer)
+  autoInpaintTimer = setTimeout(() => executeInpaint(), 1000)
+}
 
 const onRectDown = (opt) => {
-    const canvas = unref(canvasRef);
-    if (opt.target && !opt.target.isMaskObject) return;
+  const canvas = getCanvas()
+  if (!canvas) return
 
-    const pointer = canvas.getPointer(opt.e);
-    isDragging = true;
-    startPoint = { x: pointer.x, y: pointer.y };
+  if (opt.target && !opt.target.isMaskObject) return
 
-    activeRect = new fabric.Rect({
-        left: startPoint.x, top: startPoint.y,
-        width: 0, height: 0,
-        fill: 'rgba(255, 0, 0, 0.5)',
-        stroke: 'transparent',
-        selectable: false, evented: false,
-        isMaskObject: true,
-        excludeFromHistory: true
-    });
-    canvas.add(activeRect);
-};
+  const pointer = canvas.getPointer(opt.e)
+  isDragging = true
+  startPoint = { x: pointer.x, y: pointer.y }
+
+  activeRect = new fabric.Rect({
+    left: startPoint.x,
+    top: startPoint.y,
+    width: 0,
+    height: 0,
+    fill: 'rgba(255, 0, 0, 0.5)',
+    stroke: 'transparent',
+    selectable: false,
+    evented: false,
+    isMaskObject: true,
+    excludeFromHistory: true
+  })
+
+  canvas.add(activeRect)
+}
 
 const onRectMove = (opt) => {
-    if (!isDragging || !activeRect) return;
-    const canvas = unref(canvasRef);
-    const pointer = canvas.getPointer(opt.e);
-    
-    let w = Math.abs(pointer.x - startPoint.x);
-    let h = Math.abs(pointer.y - startPoint.y);
-    
-    if (pointer.x < startPoint.x) activeRect.set({ left: pointer.x });
-    if (pointer.y < startPoint.y) activeRect.set({ top: pointer.y });
+  if (!isDragging || !activeRect) return
+  const canvas = getCanvas()
+  const pointer = canvas.getPointer(opt.e)
 
-    activeRect.set({ width: w, height: h });
-    canvas.requestRenderAll();
-};
+  const w = Math.abs(pointer.x - startPoint.x)
+  const h = Math.abs(pointer.y - startPoint.y)
+
+  if (pointer.x < startPoint.x) activeRect.set({ left: pointer.x })
+  if (pointer.y < startPoint.y) activeRect.set({ top: pointer.y })
+
+  activeRect.set({ width: w, height: h })
+  canvas.requestRenderAll()
+}
 
 const onRectUp = () => {
-    isDragging = false;
-    if (activeRect && (activeRect.width < 5 || activeRect.height < 5)) {
-        unref(canvasRef).remove(activeRect);
-    } else {
-        executeInpaint(); // 松手即触发
-    }
-    activeRect = null;
-};
+  const canvas = getCanvas()
+  isDragging = false
+
+  if (activeRect && (activeRect.width < 5 || activeRect.height < 5)) {
+    canvas.remove(activeRect)
+  } else {
+    executeInpaint()
+  }
+
+  activeRect = null
+}
 
 const unbindEvents = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-    canvas.off('path:created', onPathCreated);
-    canvas.off('mouse:down', onRectDown);
-    canvas.off('mouse:move', onRectMove);
-    canvas.off('mouse:up', onRectUp);
-};
+  const canvas = getCanvas()
+  if (!canvas) return
+  canvas.off('path:created', onPathCreated)
+  canvas.off('mouse:down', onRectDown)
+  canvas.off('mouse:move', onRectMove)
+  canvas.off('mouse:up', onRectUp)
+}
 
-// === 🚀 核心执行逻辑 ===
+// === 核心执行逻辑 ===
 const executeInpaint = async () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
+  const canvas = getCanvas()
+  if (!canvas) return
+  if (isExecuting) return
 
-    // 1. 检查是否有遮罩内容
-    const hasContent = canvas.getObjects().some(o => o.isMaskObject || o.type === 'path');
-    if (!hasContent) return;
+  const hasContent = canvas.getObjects().some(o => o.isMaskObject || o.type === 'path')
+  if (!hasContent) return
 
-    const { setLoading } = useEditorState(); // 获取全局 Loading 控制
+  const main = getMainImage()
+  if (!main) {
+    toast.error('未找到主图 (id=main-image)')
+    return
+  }
 
-    try {
-        setLoading(true, 'AI 正在消除...'); // 开启 Loading，遮住画布
-        
-        // 2. 寻找底图
-        const activeObj = canvas.getObjects().find(o => o.type === 'image' && !o.isMaskObject);
-        if (!activeObj) throw new Error('未找到底图');
+  const { setLoading } = useEditorState()
 
-        // 3. 【新逻辑】使用离屏渲染获取 Mask，不再导致主画布闪黑
-        const maskBase64 = await getInpaintMaskOffscreen();
-        if (!maskBase64) return;
+  isExecuting = true
+  try {
+    setLoading(true, '正在消除...')
 
-        // 4. 调用 AI 接口
-        // aiApi.inpaint 现在是“真实接口版本”（入参为 imageBlob + maskBlob）
-        // 这里传入的是 (imageUrl, maskBase64) 形态，属于演示/Mock 逻辑，需调用 inpaintMock
-        const resultUrl = await aiApi.inpaintMock(activeObj.getSrc(), maskBase64);
-        
-        if (resultUrl) {
-            // 5. 成功后替换图片
-            activeObj.setSrc(resultUrl, () => {
-                clearMaskObjects(); // 清除红线
-                setObjectsLocked(true); // 重新锁定新图片
-                
-                if (saveHistoryFn) saveHistoryFn();
-                toast.success('消除完成');
-                canvas.requestRenderAll();
-                
-                // 图片加载完再关闭 Loading，体验更平滑
-                setLoading(false);
-            }, { crossOrigin: 'anonymous' });
-        } else {
-            setLoading(false);
-        }
-    } catch (error) {
-        console.error('Inpaint error:', error);
-        toast.error('消除失败，请重试');
-        clearMaskObjects();
-        setLoading(false);
+    const imageBlob = await exportMainImageBlob()
+
+    const maskBase64 = await getInpaintMaskOffscreen()
+    if (!maskBase64) {
+      setLoading(false)
+      isExecuting = false
+      return
     }
-};
+    const maskBlob = await dataURLToBlob(maskBase64)
+
+    const res = await inpaintFetch({
+      imageBlob,
+      maskBlob,
+      prompt: 'remove the object',
+      sdSeed: -1
+    })
+
+    // ⚠️ 关键修复：不要把 blob: URL 回填为主图 src（容易在二次消除时失效）
+    // 直接使用 dataUrl 回填，可稳定支持“第二次/多次 inpaint”。
+    await new Promise((resolve, reject) => {
+      main.setSrc(res.dataUrl, () => {
+        try {
+          clearMaskObjects()
+          setObjectsLocked(true)
+
+          if (saveHistoryFn) saveHistoryFn()
+          toast.success('消除完成')
+          canvas.requestRenderAll()
+          canvas.fire('image:updated')
+
+          resolve()
+        } catch (e) {
+          reject(e)
+        }
+      }, { crossOrigin: 'anonymous' })
+    })
+
+    setLoading(false)
+  } catch (error) {
+    console.error('[Inpaint] error:', error)
+    toast.error(`消除失败：${error?.message || '请重试'}`)
+    clearMaskObjects()
+    setLoading(false)
+  } finally {
+    isExecuting = false
+  }
+}
 
 const clearMaskObjects = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas) return;
-    const masks = canvas.getObjects().filter(o => o.isMaskObject || o.type === 'path');
-    canvas.remove(...masks);
-    canvas.requestRenderAll();
-};
+  const canvas = getCanvas()
+  if (!canvas) return
+  const masks = canvas.getObjects().filter(o => o.isMaskObject || o.type === 'path')
+  canvas.remove(...masks)
+  canvas.requestRenderAll()
+}
 
 // === 恢复原图 ===
 export const handleRestoreOriginal = () => {
-    const canvas = unref(canvasRef);
-    if (!canvas || !initialSnapshot) return;
+  const canvas = getCanvas()
+  if (!canvas || !initialSnapshot) return
 
-    canvas.loadFromJSON(initialSnapshot, () => {
-        setObjectsLocked(true);
-        if (drawMode.value === 'brush') enableBrush();
-        else enableRect();
-        
-        if (saveHistoryFn) saveHistoryFn();
-        toast.success('已恢复至初始状态');
-    });
-};
+  canvas.loadFromJSON(initialSnapshot, () => {
+    setObjectsLocked(true)
+    if (drawMode.value === 'brush') enableBrush()
+    else enableRect()
+
+    if (saveHistoryFn) saveHistoryFn()
+    canvas.fire('image:updated')
+    toast.success('已恢复至初始状态')
+  })
+}
 
 watch(drawMode, (newMode) => {
-    if (newMode === 'brush') enableBrush();
-    else enableRect();
-});
+  if (newMode === 'brush') enableBrush()
+  else enableRect()
+})
 
 watch(brushSize, (val) => {
-    const canvas = unref(canvasRef);
-    if (canvas && canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.width = val;
-    }
-});
+  const canvas = getCanvas()
+  if (canvas && canvas.freeDrawingBrush) {
+    canvas.freeDrawingBrush.width = val
+  }
+})

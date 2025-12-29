@@ -99,6 +99,18 @@ const menuItems = [
   gap: 6px;
   transition: all 0.2s;
   flex-shrink: 0;
+  padding: 0 8px; /* Add some padding */
+}
+
+.menu-item .left {
+  display: flex;
+  align-items: center;
+}
+
+.menu-item .left .menu-icon {
+  width: 24px; /* Fixed width for icon container */
+  text-align: center; /* Center icon inside container */
+  margin-right: 8px; /* Space between icon and text */
 }
 
 .menu-item:hover {
