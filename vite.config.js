@@ -43,5 +43,15 @@ export default defineConfig({
       }
     },
     cssCodeSplit: false
+  },
+  server: {
+    proxy: {
+      '/prod-api': {
+        // target: 'http://10.93.83.151:8080', // 张
+        target: 'http://10.93.83.147:8080', // 俞
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/prod-api/, '')
+      }
+    }
   }
 })

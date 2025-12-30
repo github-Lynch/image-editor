@@ -2,7 +2,7 @@
 
 // 默认地址 (作为兜底，防止调用时传空)
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11111';
-const API_BASE_URL = 'http://localhost/prod-api';
+const PROXY_PREFIX = '/prod-api';
 
 const Authorization = ''
 
@@ -114,7 +114,7 @@ export const aiApi = {
    * @returns {Promise<string>} 处理后的图片 URL
    */
   async imageTranslate(file, languageParams = {}) {
-    const apiUrl = `${API_BASE_URL}/xinzhan-ai/alimt/translatePictureFile`;
+    const apiUrl = `${PROXY_PREFIX}/xinzhan-ai/alimt/translatePictureFile`;
     const formData = new FormData();
     formData.append('imageFiles', file);
     for (const key in languageParams) {
