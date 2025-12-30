@@ -600,14 +600,11 @@ export const confirmCrop = async () => {
     });
     bgImage.setCoords();
 
-    // 2. 计算新的缩放值，以维持裁剪框的视觉尺寸不变
-    const currentZoom = canvas.getZoom();
-    const visualCropWidth = cropRect.getScaledWidth() * currentZoom;
-    const newZoom = visualCropWidth / newWidth;
-
-    // 3. 将视口缩放到新图片的中心点
-    const newCenter = bgImage.getCenterPoint();
-    canvas.zoomToPoint(new fabric.Point(newCenter.x, newCenter.y), newZoom);
+    // 2. 保持当前相机视口（缩放倍率/平移）不变
+    // 说明：之前这里会根据裁剪框重新计算 newZoom 并 zoomToPoint，导致“裁剪应用后视口倍率变化”。
+    // 现在改为：裁剪只改变图片内容与位置，不改变用户当前视口。
+    const prevVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+    canvas.setViewportTransform(prevVpt);
 
     isApplyingCrop = false;
     isCropping.value = false;
@@ -639,10 +636,17 @@ export const rotateActive = (angle) => {
     const canvas = canvasRef.value;
     const bgImage = canvas.getObjects().find((o) => o.type === "image");
     if (bgImage) {
+      // 保持当前相机视口（缩放倍率/平移）不变
+      const prevVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
+
       bgImage.rotate((bgImage.angle || 0) + angle);
-      canvas.centerObject(bgImage);
+      // ⚠️ 不再 centerObject，否则会改变用户当前视口体验
       bgImage.setCoords();
-      canvas.renderAll();
+
+      canvas.setViewportTransform(prevVpt);
+      canvas.requestRenderAll();
+
+      // 旋转后重新进入裁剪态（保持原逻辑）
       startCrop(aspectRatioValue);
     }
     return true;

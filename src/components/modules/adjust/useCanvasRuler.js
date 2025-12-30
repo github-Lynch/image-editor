@@ -274,7 +274,12 @@ const recreateActiveRuler = (oldGroup) => {
         _isManualText: cfg.isManualText,
         _customText: cfg.customText,
         _rulerValue: cfg.value,
-        _rulerUnit: cfg.unit
+        _rulerUnit: cfg.unit,
+        _capStyle: cfg.capStyle,
+        _dashArray: cfg.dashArray,
+        _strokeLineCap: cfg.strokeLineCap,
+        _fontFamily: cfg.fontFamily,
+        _textColor: cfg.textColor
     });
 
     // 5. 状态恢复与历史记录 [宪法 6.2]
@@ -282,7 +287,6 @@ const recreateActiveRuler = (oldGroup) => {
     if (saveHistoryFn) saveHistoryFn();
 
     canvas.requestRenderAll();
-    console.log('[Module:Ruler] Object recreated using v5 matrix transformation.');
 };
 
 /**
@@ -304,9 +308,11 @@ export const updateActiveRuler = () => {
     const needsRebuild = (group._capStyle !== cfg.capStyle) ||
         (items[3].fontSize !== cfg.fontSize) ||
         (items[3].fontFamily !== cfg.fontFamily) ||
-        (group._showSecondaryUnit !== cfg.showSecondaryUnit); // 新增：双单位切换触发重建
+        (group._showSecondaryUnit !== cfg.showSecondaryUnit) ||
+        (group._isManualText !== cfg.isManualText); // 新增：手动/自动切换也可能改变文本布局，触发重建
 
     if (needsRebuild) {
+        // 重建后需要把最新 cfg 写回新对象（createRulerObject 会基于 cfg 生成，但这里再显式固化一次，避免遗漏）
         recreateActiveRuler(group);
     } else {
         // 2. 更新线条与端点

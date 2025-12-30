@@ -9,8 +9,7 @@
 import { toast } from '@/utils/toast'
 
 // 后端基地址：优先读取环境变量，回退到本地默认地址
-const BASE_URL = import.meta.env.VITE_API_BASE_URL
-
+const BASE_URL = import.meta.env.VITE_BACKEND
 /**
  * 将 Blob 转换为 base64 dataURL
  * @param {Blob} blob

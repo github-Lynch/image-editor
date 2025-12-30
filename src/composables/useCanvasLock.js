@@ -130,22 +130,7 @@ export function useCanvasLock() {
             hoverCursor: allowMainImageDrag ? (dragMode ? 'grab' : 'move') : 'default',
           });
           applyControlVisibility(obj, showMainImageControls);
-          
-          // ✨ 调试信息：验证主图锁定状态（仅在文本模块时输出）
-          if (debugName === 'default' || (debugName && debugName.includes('text'))) {
-            console.log('[useCanvasLock] 主图锁定状态:', {
-              debugName,
-              isMainImage: obj.isMainImage,
-              id: obj.id,
-              allowMainImageDrag,
-              lockMovementX: obj.lockMovementX,
-              lockMovementY: obj.lockMovementY,
-              selectable: obj.selectable,
-              evented: obj.evented,
-              actualLockX: obj.lockMovementX,
-              actualLockY: obj.lockMovementY
-            });
-          }
+        
           return;
         }
 
@@ -200,19 +185,6 @@ export function useCanvasLock() {
           applyControlVisibility(active, showMainImageControls);
           active.setCoords();
           
-          // ✨ 调试信息：验证主图锁定状态（仅在文本模块时输出）
-          if (debugName === 'default' || (debugName && debugName.includes('text'))) {
-            console.log('[useCanvasLock] 活动主图锁定状态:', {
-              debugName,
-              isMainImage: active.isMainImage,
-              id: active.id,
-              allowMainImageDrag,
-              lockMovementX: active.lockMovementX,
-              lockMovementY: active.lockMovementY,
-              selectable: active.selectable,
-              evented: active.evented
-            });
-          }
         }
       }
 

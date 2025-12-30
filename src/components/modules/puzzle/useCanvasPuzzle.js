@@ -63,7 +63,6 @@ export const recordEntryState = () => {
   // 锁：如果已经存过快照了，绝对不要覆盖它
   if (prePuzzleSnapshot) return;
 
-  console.log("[Puzzle] 📸 捕获初始状态快照");
   prePuzzleVpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
   prePuzzleSnapshot = JSON.stringify(canvas.toJSON(CANVAS_PROPS_WHITELIST));
   puzzleState.originalBg = canvas.backgroundColor;
@@ -106,7 +105,6 @@ const prepareInit = () => {
   // 提取主图
   const activeImg = canvas.getObjects().find(o => o.type === 'image' && !o.isPuzzleItem);
   if (activeImg) {
-    console.log("[Puzzle] 📸 正在提取唯一主图入池...");
     puzzleState.imagePool[0] = {
       id: `img_main_${Date.now()}`,
       src: activeImg.getSrc(),
@@ -362,7 +360,6 @@ export const addImageToCell = (url, cellIndex) => {
       // 核心修正：不再追加，而是替换指定位置的数据
       if (cellIndex >= 0 && cellIndex < puzzleState.imagePool.length) {
         puzzleState.imagePool[cellIndex] = newImgData;
-        console.log(`[Puzzle/Join] 已替换索引 ${cellIndex} 的图片，触发重排`);
       } else {
         // 兜底：如果索引异常，则追加
         puzzleState.imagePool.push(newImgData);
@@ -384,7 +381,6 @@ export const addImageToCell = (url, cellIndex) => {
       height: img.height,
       metadata: { filters: [], opacity: 1, scale: 1 }
     };
-    console.log(`[Puzzle] 图片已压入池索引: ${cellIndex}`);
     refreshPuzzleObjects(false);
 
     setTimeout(() => {
@@ -833,7 +829,6 @@ const animateSwap = (idxA, idxB) => {
 
   // ✨✨✨ 拼接模式下的特殊交换逻辑 ✨✨✨
   if (puzzleState.mode === 'join') {
-    console.log(`[Puzzle/Join] 交换图片顺序: ${idxA} <-> ${idxB}`);
     // 1. 物理交换数据
     const temp = puzzleState.imagePool[idxA];
     puzzleState.imagePool[idxA] = puzzleState.imagePool[idxB];
@@ -887,7 +882,6 @@ const animateSwap = (idxA, idxB) => {
   createSyncAnimation(imgB, cellA);
 
   Promise.all(animations).then(() => {
-    console.log(`[Puzzle] 执行数据池索引交换: ${idxA} <-> ${idxB}`);
     const temp = puzzleState.imagePool[idxA];
     puzzleState.imagePool[idxA] = puzzleState.imagePool[idxB];
     puzzleState.imagePool[idxB] = temp;
@@ -966,14 +960,12 @@ export const completeExitPuzzle = (action = 'save') => {
 
   } else {
     if (prePuzzleSnapshot) {
-      console.log("[Puzzle] 🔄 正在回滚至初始状态...");
       canvas.loadFromJSON(prePuzzleSnapshot, () => {
         if (prePuzzleVpt) canvas.setViewportTransform(prePuzzleVpt);
         if (puzzleState.originalBg !== null) canvas.setBackgroundColor(puzzleState.originalBg);
         exitPuzzleMode();
         canvas.fire('image:updated');
         canvas.requestRenderAll();
-        console.log("[Puzzle] ✅ 已成功回滚。");
       });
     } else {
       exitPuzzleMode();
@@ -990,5 +982,4 @@ export const exitPuzzleMode = () => {
   unbindEvents();
   prePuzzleSnapshot = null;
   prePuzzleVpt = null;
-  console.log("[Puzzle] 🧹 模块状态已完全清理。");
 };

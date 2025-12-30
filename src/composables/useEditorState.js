@@ -77,7 +77,6 @@ const state = reactive({
 watch(() => state.isGlobalDragMode, (isDragging) => {
     if (!isDragging) return;
     if (state.activeTab) {
-        console.log(`[Interaction] Drag Mode ON: Auto-closing active tab: ${state.activeTab}`);
         state.activeTab = '';
     }
 });
@@ -86,7 +85,6 @@ watch(() => state.isGlobalDragMode, (isDragging) => {
 watch(() => state.activeTab, (tab) => {
     if (!tab) return;
     if (state.isGlobalDragMode) {
-        console.log(`[Interaction] Active Tab ON: Auto-disabling Drag Mode. Tab: ${tab}`);
         state.isGlobalDragMode = false;
     }
 });
@@ -111,7 +109,6 @@ export function useEditorState() {
 
         // ✨ 互斥闭环：进入任何二级面板时，自动关闭拖拽模式（用户手动优先级最高）
         if (tab && state.isGlobalDragMode) {
-            console.log(`[Interaction] Enter Tab -> Auto-disabling Drag Mode. Tab: ${tab}`);
             state.isGlobalDragMode = false;
         }
 
@@ -126,12 +123,10 @@ export function useEditorState() {
      */
     const setGlobalDragMode = (val) => {
         state.isGlobalDragMode = val;
-        console.log(`[Interaction] Global Drag Mode: ${val ? 'ON' : 'OFF'}`);
 
         // ✨ 对称互斥：开启拖拽时必须退出二级面板
         // 注意：这里做“立即”收敛；watch 里仍保留兜底，防止外部直接改 state 造成不一致
         if (val && state.activeTab) {
-            console.log(`[Interaction] Drag Mode ON: Auto-closing active tab immediately: ${state.activeTab}`);
             state.activeTab = '';
         }
     };
@@ -143,7 +138,6 @@ export function useEditorState() {
 
         // ✨ 互斥闭环：进入任何二级面板时，自动关闭拖拽模式
         if (tab && state.isGlobalDragMode) {
-            console.log(`[Interaction] Enter Tab -> Auto-disabling Drag Mode. Tab: ${tab}`);
             state.isGlobalDragMode = false;
         }
     };

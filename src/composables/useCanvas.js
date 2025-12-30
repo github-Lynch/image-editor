@@ -202,7 +202,6 @@ export function useCanvas() {
       const isRulerEmergency = target.isRuler || target.customTab === 'ruler';
 
       if (!isRulerEmergency && target.customTab !== state.activeTab) {
-        console.log(`[Router] Blocked by Exclusive Mode. Current: ${state.activeTab}`);
         return;
       }
     }
@@ -237,7 +236,6 @@ export function useCanvas() {
   // 仅需确保 handleSelection 和 handleMouseDown 已按上述逻辑更新
 
   const init = (id, width, height) => {
-    console.log("init canvas", id, width, height);
     const c = new fabric.Canvas(id, {
       width: width,
       height: height,
@@ -475,7 +473,7 @@ export function useCanvas() {
     return dataURL;
   };
 
-  const replaceActiveImage = (newUrl) => {
+  const replaceActiveImage = (newUrl, options = {}) => {
     const activeObj = canvas.value?.getActiveObject();
     if (!activeObj || activeObj.type !== "image") return;
 
@@ -487,6 +485,12 @@ export function useCanvas() {
     activeObj.setSrc(
       newUrl,
       () => {
+        // 可选：替换后居中（用于高清修复等“尺寸可能变化”的场景）
+        if (options?.center) {
+          canvas.value.centerObject(activeObj);
+          activeObj.setCoords();
+        }
+
         canvas.value.renderAll();
         saveHistory();
         canvas.value.fire('image:updated');

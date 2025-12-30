@@ -77,9 +77,6 @@ export const aiApi = {
   async inpaintMock(imageUrl, maskBase64) {
     // 模拟网络延迟
     return new Promise((resolve) => {
-      console.log('Calling AI Inpaint API (Mock)...');
-      console.log('Image:', imageUrl.substring(0, 50) + '...');
-      console.log('Mask Length:', maskBase64.length);
 
       setTimeout(() => {
         resolve(imageUrl);
@@ -97,9 +94,6 @@ export const aiApi = {
   async inpaint(imageUrl, maskBase64) {
     // 模拟网络延迟
     return new Promise((resolve) => {
-      console.log('Calling AI Inpaint API (Mock)...');
-      console.log('Image:', imageUrl.substring(0, 50) + '...');
-      console.log('Mask Length:', maskBase64.length);
 
       setTimeout(() => {
         resolve(imageUrl);

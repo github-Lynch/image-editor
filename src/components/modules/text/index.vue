@@ -137,33 +137,149 @@
           />
 
           <div class="style-grid">
+            <!-- 加粗 -->
             <button
               class="style-item"
               :class="{ active: textState.fontWeight === 'bold' }"
+              title="加粗"
               @click="toggleStyle('bold')"
             >
-              B
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6zM6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"
+                />
+              </svg>
             </button>
+
+            <!-- 斜体 -->
             <button
               class="style-item"
               :class="{ active: textState.fontStyle === 'italic' }"
+              title="斜体"
               @click="toggleStyle('italic')"
             >
-              I
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="19" y1="4" x2="10" y2="4" />
+                <line x1="13" y1="20" x2="5" y2="20" />
+                <line x1="15" y1="4" x2="9" y2="20" />
+              </svg>
             </button>
+
+            <!-- 下划线 -->
             <button
               class="style-item"
               :class="{ active: textState.underline }"
+              title="下划线"
               @click="toggleStyle('underline')"
             >
-              U
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
+                <line x1="4" y1="21" x2="20" y2="21" />
+              </svg>
             </button>
+
+            <!-- 删除线 -->
             <button
               class="style-item"
               :class="{ active: textState.linethrough }"
+              title="删除线"
               @click="toggleStyle('linethrough')"
             >
-              S
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M16 4H9.5a3.5 3.5 0 1 0 0 7h5a3.5 3.5 0 1 1 0 7H6" />
+                <path d="M4 12h16" />
+              </svg>
+            </button>
+
+            <!-- 左对齐 -->
+            <button
+              class="style-item"
+              :class="{ active: textState.textAlign === 'left' }"
+              title="左对齐"
+              @click="updateTextProp('textAlign', 'left')"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="15" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+
+            <!-- 居中对齐 -->
+            <button
+              class="style-item"
+              :class="{ active: textState.textAlign === 'center' }"
+              title="居中对齐"
+              @click="updateTextProp('textAlign', 'center')"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="6" y1="12" x2="18" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+
+            <!-- 右对齐 -->
+            <button
+              class="style-item"
+              :class="{ active: textState.textAlign === 'right' }"
+              title="右对齐"
+              @click="updateTextProp('textAlign', 'right')"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="9" y1="12" x2="21" y2="12" />
+                <line x1="7" y1="18" x2="21" y2="18" />
+              </svg>
             </button>
           </div>
         </div>
@@ -544,19 +660,22 @@ onUnmounted(() => {
 
 .style-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
   margin-top: 12px;
 }
 
 .style-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 32px;
   border: 1px solid #dcdfe6;
   border-radius: 4px;
   background: #fff;
   cursor: pointer;
   transition: all 0.2s;
-  font-weight: bold;
+  padding: 0;
 }
 
 .style-item.active {

@@ -1,18 +1,52 @@
 <template>
   <div class="panel-adjust">
     <div class="tool-list">
-      <AdjustCrop :is-expanded="activeCollapse === 'crop'" @toggle="toggle('crop')" />
-      <AdjustResize :is-expanded="activeCollapse === 'resize'" @toggle="toggle('resize')" />
-      <AdjustInpaint :is-expanded="activeCollapse === 'inpaint'" @toggle="toggle('inpaint')" />
-      <AdjustRembg :is-expanded="activeCollapse === 'rembg'" @toggle="toggle('rembg')" />
+      <AdjustCrop
+        :is-expanded="activeCollapse === 'crop'"
+        @toggle="toggle('crop')"
+      />
+      <AdjustResize
+        :is-expanded="activeCollapse === 'resize'"
+        @toggle="toggle('resize')"
+      />
+      <AdjustInpaint
+        :is-expanded="activeCollapse === 'inpaint'"
+        @toggle="toggle('inpaint')"
+      />
+      <AdjustRembg
+        :is-expanded="activeCollapse === 'rembg'"
+        @toggle="toggle('rembg')"
+      />
 
-      <AdjustRuler :is-expanded="activeCollapse === 'ruler'" @toggle="toggle('ruler')" />
+      <AdjustRuler
+        :is-expanded="activeCollapse === 'ruler'"
+        @toggle="toggle('ruler')"
+      />
 
-      <AdjustWhite :is-expanded="activeCollapse === 'white'" @toggle="toggle('white')" />
-      <AdjustColor :is-expanded="activeCollapse === 'color'" @toggle="toggle('color')" />
-      <AdjustColorOverlay :is-expanded="activeCollapse === 'overlay'" @toggle="toggle('overlay')" />
-      <AdjustFilters :is-expanded="activeCollapse === 'filters'" @toggle="toggle('filters')" />
-      <AdjustMosaic :is-expanded="activeCollapse === 'mosaic'" @toggle="toggle('mosaic')" />
+      <AdjustWhite
+        :is-expanded="activeCollapse === 'white'"
+        @toggle="toggle('white')"
+      />
+      <AdjustColor
+        :is-expanded="activeCollapse === 'color'"
+        @toggle="toggle('color')"
+      />
+      <AdjustColorOverlay
+        :is-expanded="activeCollapse === 'overlay'"
+        @toggle="toggle('overlay')"
+      />
+      <AdjustFilters
+        :is-expanded="activeCollapse === 'filters'"
+        @toggle="toggle('filters')"
+      />
+      <AdjustMosaic
+        :is-expanded="activeCollapse === 'mosaic'"
+        @toggle="toggle('mosaic')"
+      />
+      <AdjustHDRemaster
+        :is-expanded="activeCollapse === 'hdremaster'"
+        @toggle="toggle('hdremaster')"
+      />
     </div>
   </div>
 </template>
@@ -26,6 +60,9 @@ const AdjustCrop = defineAsyncComponent(() => import("./AdjustCrop.vue"));
 const AdjustResize = defineAsyncComponent(() => import("./AdjustResize.vue"));
 const AdjustInpaint = defineAsyncComponent(() => import("./AdjustInpaint.vue"));
 const AdjustRembg = defineAsyncComponent(() => import("./AdjustRembg.vue"));
+const AdjustHDRemaster = defineAsyncComponent(() =>
+  import("./AdjustHDRemaster.vue")
+);
 const AdjustWhite = defineAsyncComponent(() => import("./AdjustWhite.vue"));
 const AdjustColor = defineAsyncComponent(() => import("./AdjustColor.vue"));
 const AdjustFilters = defineAsyncComponent(() => import("./AdjustFilters.vue"));
@@ -60,6 +97,7 @@ watch(
       "resize",
       "inpaint",
       "rembg",
+      "hdremaster",
       "ruler",
       "white",
       "color",
@@ -74,12 +112,10 @@ watch(
     }
 
     if (newTab && validTabs.includes(newTab)) {
-      console.log("[AdjustPanel] Auto expanding:", newTab);
       activeCollapse.value = newTab;
     }
     // 当全局路由清空时，同步清空局部折叠状态
     else if (!newTab) {
-      console.log("[AdjustPanel] Auto collapsing due to empty activeTab");
       activeCollapse.value = "";
     }
   },

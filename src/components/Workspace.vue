@@ -336,17 +336,6 @@ const syncLockState = () => {
     finalPolicy.allowMainImageSelect = false;
   }
 
-  // debug: 可在控制台观察当前锁策略命中
-  if (isInModule && !isResizeMode) {
-    console.log("[LockPolicy] 模块锁定模式:", {
-      activeTool: state.activeTool,
-      activeTab: state.activeTab,
-      isGlobalDragMode: state.isGlobalDragMode,
-      allowMainImageDrag: finalPolicy.allowMainImageDrag,
-      dragMode: finalPolicy.dragMode,
-    });
-  }
-
   // ✨ 确保 debugName 被传递，以便 useCanvasLock 输出调试信息
   if (!finalPolicy.debugName) {
     finalPolicy.debugName = basePolicy.debugName || "unknown";

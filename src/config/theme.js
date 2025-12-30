@@ -38,7 +38,7 @@ export const applyTheme = (targetElement) => {
     root.style.setProperty('--ie-bg-color', colors.bg);
     root.style.setProperty('--ie-text-color', colors.text);
     root.style.setProperty('--ie-border-color', colors.border);
+    // 禁用态背景色（用于按钮 disabled 等场景）
+    root.style.setProperty('--ie-disabled-bg', '#c0c4cc');
     root.style.setProperty('--ie-font-family', fontFamily);
-    console.log(targetElement);
-    console.log(`🎨 Theme applied to ${targetElement ? 'SDK Container' : 'Global Root'}`);
 };
