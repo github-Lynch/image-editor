@@ -451,7 +451,8 @@
   const toggleCollect = (item) => {
     item.isCollect = !item.isCollect; // 前端效果
 
-    const params = { id: item.id };
+    const isLatest = activeTab.value === 'latest';
+    const params = { id: item.id, isLatest };
     if (item.isCollect) {
       // 收藏
       addCollectApi(params);
