@@ -108,16 +108,36 @@ const handleReset = () => {
   }
 };
 
-// 保存图片
+// 保存图片（导出范围：主图外接框，不包含画布空白）
 const handleExport = () => {
-  // 1. 取消选中状态
-  canvas.value?.discardActiveObject();
-  canvas.value?.renderAll();
+  const c = canvas.value;
+  if (!c) return;
 
-  // 2. 获取 Base64
-  const dataURL = canvas.value?.toDataURL({ format: "png" });
+  // 1) 取消选中状态
+  c.discardActiveObject();
+  c.renderAll();
 
-  // 3. 抛出事件给父组件
+  // 2) 找到主图
+  const main = c.getObjects().find((o) => o?.isMainImage);
+  if (!main) {
+    // 回退：找不到主图则导出整画布
+    const dataURL = c.toDataURL({ format: "png" });
+    emit("save", dataURL);
+    return;
+  }
+
+  // 3) 计算主图外接框（包含旋转/缩放后的轴对齐框）
+  const bounds = main.getBoundingRect(true, true);
+
+  // 4) 裁剪导出
+  const dataURL = c.toDataURL({
+    format: "png",
+    left: bounds.left,
+    top: bounds.top,
+    width: bounds.width,
+    height: bounds.height,
+  });
+
   emit("save", dataURL);
 };
 
@@ -141,7 +161,22 @@ const api = {
   redo,
   saveHistory,
   addText: (text) => addText(text),
-  exportImg: () => canvas.value?.toDataURL({ format: "png" }),
+  exportImg: () => {
+    const c = canvas.value;
+    if (!c) return null;
+
+    const main = c.getObjects().find((o) => o?.isMainImage);
+    if (!main) return c.toDataURL({ format: "png" });
+
+    const bounds = main.getBoundingRect(true, true);
+    return c.toDataURL({
+      format: "png",
+      left: bounds.left,
+      top: bounds.top,
+      width: bounds.width,
+      height: bounds.height,
+    });
+  },
   getActiveImgSrc: () => canvas.value?.getActiveObject()?.getSrc(),
   clearPaths: () => {
     const paths = canvas.value?.getObjects().filter((o) => o.type === "path");
