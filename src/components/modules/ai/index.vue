@@ -64,16 +64,29 @@
         </div>
       </div>
     </div>
+
+    <!-- Loading遮罩层 -->
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loading-content">
+        <svg class="loading-spinner" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+        <span>翻译中...</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, inject } from "vue";
 import { aiApi } from "@/api/ai";
+import { toast } from "@/utils/toast";
 
 const isExpanded = ref(false);
 const sourceLanguage = ref("zh");
 const targetLanguage = ref("ru");
+const isLoading = ref(false);
 const canvasAPI = inject("canvasAPI");
 
 const handleToggle = () => {
@@ -84,6 +97,9 @@ const handleTranslate = async () => {
   // 从canvasAPI获取画布实例
   const canvas = canvasAPI?.canvas.value;
   if (!canvas) return console.error("Canvas实例不存在");
+
+  // 设置加载状态
+  isLoading.value = true;
 
   // Canvas内容转File
   const dataURL = canvas.toDataURL("image/png");
@@ -101,9 +117,14 @@ const handleTranslate = async () => {
     // 清除画布上所有元素并替换为翻译结果图片
     if (res.data[0].newImage && canvasAPI.initImage) {
       canvasAPI.initImage(res.data[0].newImage);
+    } else {
+      toast.error("翻译失败");
     }
   } catch (error) {
     console.error("图片翻译失败:", error);
+  } finally {
+    // 无论成功失败都关闭加载状态
+    isLoading.value = false;
   }
 };
 </script>
@@ -111,6 +132,7 @@ const handleTranslate = async () => {
 <style scoped>
 .panel-ai {
   padding: 10px;
+  position: relative;
 }
 
 .tool-group {
@@ -203,5 +225,40 @@ const handleTranslate = async () => {
 .ie-btn.ie-primary {
   background-color: var(--ie-primary-color);
   color: white;
+}
+
+/* Loading遮罩层样式 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  color: white;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

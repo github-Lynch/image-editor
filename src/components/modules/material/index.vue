@@ -265,7 +265,6 @@
 
 <script setup>
   import { ref, computed, inject, onMounted } from "vue";
-  import { useEditorState } from "@/composables/useEditorState";
   import { registerMaterialModule, addMaterial } from "@/components/modules/material/useCanvasMaterial";
   import {
     templateListApi,
@@ -289,8 +288,6 @@
     if (canvasAPI?.canvas) registerMaterialModule(canvasAPI.canvas, canvasAPI.saveHistory);
   });
 
-  const { setActiveTab } = useEditorState();
-
   // Tab配置
   const tabs = [
     { key: 'template', label: '模板' },
@@ -306,7 +303,6 @@
     if (activeTab.value === tabKey) return;
 
     activeTab.value = tabKey;
-    setActiveTab(tabKey);
 
     switch (tabKey) {
       case 'template':
