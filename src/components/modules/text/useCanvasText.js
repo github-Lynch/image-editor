@@ -635,7 +635,11 @@ export function useCanvasText() {
     
     // === 重置文字特效 ===
     const resetTextEffect = () => {
-        // 仅重置“特效相关属性”，不影响字体字号等
+        // 重置“文字特效”时：需要将填充色（fill）也一并回到默认值
+        // 这里通过把 textState.fill 先恢复为默认色，再应用 none 特效，确保：
+        // - UI 默认样式缓存被更新
+        // - 选中文本对象时，画布对象也会同步更新
+        textState.value.fill = '#ffffff';
         applyTextEffect('none');
     };
     

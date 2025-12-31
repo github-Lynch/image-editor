@@ -278,14 +278,24 @@ const syncLockState = () => {
 
   // ✨ 关键修复：进入任何模块（非 resize）时，必须强制关闭全局手型模式
   // 参考调整模块的行为：主图不能被移动，除非用户手动启用手型
-  if (isInModule && !isResizeMode && state.isGlobalDragMode) {
+  // 边框模块例外：允许在边框模块内继续使用手型拖动（主图可拖动）
+  const isBorderModule = state.activeTool === "border";
+
+  if (
+    isInModule &&
+    !isResizeMode &&
+    !isBorderModule &&
+    state.isGlobalDragMode
+  ) {
     setGlobalDragMode(false);
   }
 
   // ✨ 关键修复：如果进入了模块（非 resize），即使手型模式开启，也不允许拖动主图
   // 使用局部变量来确保逻辑正确执行
   const isDragModeActive =
-    isInModule && !isResizeMode ? false : state.isGlobalDragMode;
+    isInModule && !isResizeMode && !isBorderModule
+      ? false
+      : state.isGlobalDragMode;
 
   const dragPolicy = isDragModeActive
     ? {
@@ -320,7 +330,7 @@ const syncLockState = () => {
   // 参考调整模块的行为：主图不能被移动，除非用户手动启用手型
   // 即使手型模式开启，也不允许在模块内拖动主图
   // 这是最终保障，确保主图拖动开关只能在全局手型图标上触发
-  if (isInModule && !isResizeMode) {
+  if (isInModule && !isResizeMode && !isBorderModule) {
     // ✨ 强制取消选中主图：如果主图当前被选中，立即取消选中（必须在设置策略之前执行）
     const activeObj = canvas.getActiveObject();
     if (activeObj && (activeObj.isMainImage || activeObj.id === "main-image")) {
@@ -424,6 +434,16 @@ watch(
     // ✨ 使用 nextTick 确保状态更新后再执行锁定逻辑
     // 参考页面初始化逻辑：onMounted 中调用 syncLockState 确保主图被锁定
     // 这样可以确保模块组件挂载完成后再执行锁定，避免时机问题
+    nextTick(() => {
+      syncLockState();
+    });
+  }
+);
+
+// ✨ 空格键/按钮切换手型模式时，需要同步刷新锁策略
+watch(
+  () => state.isGlobalDragMode,
+  () => {
     nextTick(() => {
       syncLockState();
     });

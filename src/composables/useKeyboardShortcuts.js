@@ -1,11 +1,47 @@
 import { onMounted, onUnmounted } from 'vue';
+import { useEditorState } from '@/composables/useEditorState';
 
 export function useKeyboardShortcuts(actions) {
+  const { state, setGlobalDragMode } = useEditorState();
+
+  // === Space 手型：兼容“按住临时”与“点按切换” ===
+  const SPACE_TAP_THRESHOLD = 200;
+  let spaceDownAt = 0;
+  let spacePrevDragMode = false;
+  let spaceIsDown = false;
   
+  const isTypingTarget = () => {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName?.toUpperCase?.();
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
+    // contenteditable
+    if (el.isContentEditable) return true;
+    return false;
+  };
+
   const handleKeydown = (e) => {
     // 1. 🛡️ 避开输入框：如果用户正在打字，不触发快捷键
-    const activeTag = document.activeElement.tagName.toUpperCase();
-    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') {
+    if (isTypingTarget()) return;
+
+    // === Space：手型拖拽（按住临时开启）===
+    // 说明：
+    // - keydown：若首次按下，记录旧值并强制开启拖拽
+    // - keyup：根据是否为“点按”决定切换/恢复
+    if (e.code === 'Space') {
+      // 防止浏览器页面滚动
+      e.preventDefault();
+
+      if (!spaceIsDown) {
+        spaceIsDown = true;
+        spaceDownAt = Date.now();
+        spacePrevDragMode = !!state.isGlobalDragMode;
+
+        // 按住立即开启
+        if (!state.isGlobalDragMode) {
+          setGlobalDragMode(true);
+        }
+      }
       return;
     }
 
@@ -95,11 +131,43 @@ export function useKeyboardShortcuts(actions) {
     }
   };
 
+  const handleKeyup = (e) => {
+    if (isTypingTarget()) return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+
+      if (!spaceIsDown) return;
+      spaceIsDown = false;
+
+      const heldMs = Date.now() - spaceDownAt;
+
+      // 点按：切换开关
+      if (heldMs <= SPACE_TAP_THRESHOLD) {
+        setGlobalDragMode(!spacePrevDragMode);
+        return;
+      }
+
+      // 长按：松开恢复旧状态
+      setGlobalDragMode(spacePrevDragMode);
+      return;
+    }
+
+    // Esc：强制退出手型
+    if (e.key === 'Escape') {
+      if (state.isGlobalDragMode) {
+        setGlobalDragMode(false);
+      }
+    }
+  };
+
   onMounted(() => {
     window.addEventListener('keydown', handleKeydown);
+    window.addEventListener('keyup', handleKeyup);
   });
 
   onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown);
+    window.removeEventListener('keyup', handleKeyup);
   });
 }
